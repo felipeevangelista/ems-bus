@@ -40,6 +40,20 @@
 	},
 
 	{
+		"name": "/netadm/cpus",
+		"comment": "Get cpus usage.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:cpus",
+		"url": "/netadm/cpus",
+		"async": "false",
+		"result_cache" : 0,
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+	
+	{
 		"name": "/netadm/tasks",
 		"comment": "Get total tasks running.",
 		"owner": "netadm",

@@ -12,8 +12,12 @@
 -include("include/ems_schema.hrl").
 
 -export([names/1, world/1, hostfile/1, hostname/1, localhost/1, memory/1, timestamp/1, 
+<<<<<<< HEAD
 		 threads/1, info/1, config/1, restart/1, pid/1, uptime/1, tasks/1,
 		 version/1, servername/1]).
+=======
+		 threads/1, info/1, config/1, restart/1, pid/1, uptime/1, tasks/1, cpu/1, cpus/1]).
+>>>>>>> 7cc986f0... Serviço de monitoramento do uso de CPUs do servidor
   
 names(Request) -> 
 	ContentData = case net_adm:names() of
@@ -129,6 +133,11 @@ servername(Request) ->
 						 response_data = ems_schema:to_json(ContentData)}
 	}.
 	
+cpus(Request) -> 
+	ContentData = {ok, cpu_sup:util([per_cpu])},
+	{ok, Request#request{code = 200, 
+						 response_data = ems_schema:to_json(ContentData)}
+	}.
 
 %% internal functions
 
