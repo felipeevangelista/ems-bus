@@ -599,7 +599,7 @@
 		"async": "false",
 		"datasource" : {
 			"type" : "sqlserver",
-			"connection" : "DSN=sitab;UID=UsuTabelaApoio;PWD=tabelaapoio",
+			"connection" : "DSN=sitab;UID=UsuTabelaApoio;PWD=usutabelaapoio",
 			"table_name" : "TB_OrgaoInterno",
 			"primary_key" : "OInCodigo"
 		},

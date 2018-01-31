@@ -380,7 +380,9 @@ to_resource_owner(User) ->
 						<<"\"type\":"/utf8>>, integer_to_binary(User#user.type), <<","/utf8>>,
 						<<"\"subtype\":"/utf8>>, integer_to_binary(User#user.subtype), <<","/utf8>>,
 						<<"\"active\":"/utf8>>, ems_util:boolean_to_binary(User#user.active), <<","/utf8>>,
-						<<"\"cpf\":\""/utf8>>, User#user.cpf, <<"\""/utf8>>,
+						<<"\"cpf\":\""/utf8>>, User#user.cpf, <<"\","/utf8>>,
+						<<"\"lista_perfil\":{},"/utf8>>, 
+						<<"\"lista_permission\":{}"/utf8>>, 
 					<<"}"/utf8>>]).
 
 

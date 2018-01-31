@@ -171,15 +171,18 @@ dispatch_service_work(Request = #request{rid = Rid,
 		{ok, Node} ->
 			case erlang:is_tuple(Client) of
 				false -> 
-					ClientJson = <<"{id=0, codigo=0, name=\"public\", description=\"\", secret=null, redirect_uri=null, active=1.0, scope=null, ctrl_insert=null, ctrl_update=null}">>;
+					ClientJson = <<"{id:0, codigo:0, name:\"public\", active:true}">>;
 				_ -> 
-					ClientJson = ems_schema:to_json(Client)
+					ClientJson = ems_client:to_json(Client)
 			end,
 			case erlang:is_tuple(User) of
 				false -> 
-					UserJson = <<"{id=0, codigo=0, name=\"public\", login=null, password=null, cpf=null, active=1.0, ctrl_insert=null, ctrl_update=null}">>;
+					UserJson = <<"{id:0, codigo:0, name:\"public\", login:null, email:null, type:null, subtype:null, cpf:null, active:true, lista_perfil:{}, lista_permission:{}}">>;
 				_ -> 
-					UserJson = ems_schema:to_json(User)
+					case erlang:is_tuple(Client) of
+						true -> UserJson = ems_user:to_resource_owner(User, Client#client.id);
+						false -> UserJson = ems_user:to_resource_owner(User)
+					end
 			end,
 			Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
 					ClientJson, UserJson, ems_catalog:get_metadata_json(Service), Scope, 
