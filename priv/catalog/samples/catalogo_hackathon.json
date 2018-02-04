@@ -8,13 +8,14 @@
 		"url": "/hackathon/pessoa",
 		"type": "GET",
 		"datasource" : {
-			"type" : "sqlserver",
-			"connection" : "DSN=siger;UID=ususiger;PWD=ususiger;useUnicode=true;characterEncoding=UTF-8",
+			"extends" : "ds_ems_user_loader",
 			"table_name" : "BDPessoa.dbo.TB_Pessoa",
 			"primary_key" : "PesCodigoPessoa",
 			"sql_check_valid_connection" : "select 1",
 			"close_idle_connection_timeout" : 30000,
-			"check_valid_connection_timeout" : 3000
+			"check_valid_connection_timeout" : 3000,
+			"max_pool_size" : 135,
+			"show_remap_fields" : false
 		},
 		"lang" : "erlang",
 		"authorization" : "public",

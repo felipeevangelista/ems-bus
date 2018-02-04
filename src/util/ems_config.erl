@@ -199,7 +199,7 @@ parse_static_file_path(Json) ->
 parse_datasources([], _, Result) -> maps:from_list(Result);
 parse_datasources([DsName|T], Datasources, Result) ->
 	M = maps:get(DsName, Datasources),
-	Ds = ems_db:create_datasource_from_map(M),
+	Ds = ems_db:create_datasource_from_map(M, undefined, #{}),
 	parse_datasources(T, Datasources, [{DsName, Ds} | Result]).
 								
 	
