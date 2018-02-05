@@ -281,8 +281,13 @@ compile_page_module(Page, Rowid, Conf) ->
 	
 -spec parse_datasource(map(), non_neg_integer(), #config{}) -> #service_datasource{} | undefined.
 parse_datasource(undefined, _, _) -> undefined;
-parse_datasource(M, Rowid, _) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid);
-parse_datasource(DsName, _Rowid, Conf) -> maps:get(DsName, Conf#config.ems_datasources, undefined).
+parse_datasource(M, Rowid, Conf) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid, Conf#config.ems_datasources);
+parse_datasource(DsName, _Rowid, Conf) -> 
+	case maps:get(DsName, Conf#config.ems_datasources, undefined) of
+		undefined -> erlang:error(einexistent_datasource);
+		Ds -> Ds
+	end.
+		
 
 	
 parse_node_service(undefined) -> <<>>;
