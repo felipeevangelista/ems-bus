@@ -1604,6 +1604,12 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
 								PayloadMap = maps:from_list(Payload),
 								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
+							<<"application/x-www-form-urlencoded;charset=UTF-8">> ->
+								ems_db:inc_counter(http_content_type_in_form_urlencode),
+								ContentType2 = <<"application/x-www-form-urlencoded; charset=UTF-8">>,
+								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
+								PayloadMap = maps:from_list(Payload),
+								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
 							<<"application/xml">> ->
 								ems_db:inc_counter(http_content_type_in_application_xml),
 								ContentType2 = <<"application/xml">>,
