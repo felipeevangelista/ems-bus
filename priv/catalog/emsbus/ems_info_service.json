@@ -1,9 +1,9 @@
 [
 	{
 		"name": "/info",
-		"comment": "Information on bus.",
+		"comment": "Show Its works!!!",
 		"owner": "emsbus",
-		"version": "1",
+		"version": "1.0.0",
 		"service" : "ems_info_service:info",
 		"url": "/info",
 		"async": "false",
@@ -14,9 +14,9 @@
 
 	{
 		"name": "/",
-		"comment": "Information on bus.",
+		"comment": "Show Its works!!!",
 		"owner": "emsbus",
-		"version": "1",
+		"version": "1.0.0",
 		"service" : "ems_info_service:info",
 		"url": "/",
 		"async": "false",

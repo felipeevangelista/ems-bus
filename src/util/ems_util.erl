@@ -107,7 +107,7 @@
 		 match_ip_address/2,
  		 allow_ip_address/2,
 		 mask_ipaddress_to_tuple/1,
-		 encode_request_cowboy/3,
+		 encode_request_cowboy/4,
 		 msg_campo_obrigatorio/2, msg_email_invalido/2, mensagens/1,
 		 msg_registro_ja_existe/1, msg_registro_ja_existe/2,
 		 hashsym_and_params/1,
@@ -137,10 +137,6 @@
 		 to_utf8/1,
 		 load_erlang_module/1,
 		 mime_type/1,
-		 encode_response/3,
-		 encode_response/4,
-		 encode_response/2,
-		 header_cache_control/1,
 		 rid_to_string/1,
 		 method_to_string/1,
 		 decode_http_header/2,
@@ -1461,8 +1457,8 @@ mime_type(".m4a") -> <<"audio/mpeg">>;
 mime_type(_) -> <<"application/octet-stream">>.
 
 
--spec encode_request_cowboy(tuple(), pid(), map()) -> {ok, #request{}} | {error, atom()}.
-encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault) ->
+-spec encode_request_cowboy(tuple(), pid(), map(), map()) -> {ok, #request{}} | {error, atom()}.
+encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions) ->
 	try
 		Url = cowboy_req:path(CowboyReq),
 		Url2 = remove_ult_backslash_url(binary_to_list(Url)),
@@ -1559,7 +1555,14 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault) ->
 			referer = Referer
 		},	
 		case ems_catalog_lookup:lookup(Request) of
-			{Service = #service{http_max_content_length = HttpMaxContentLengthService}, ParamsMap, QuerystringMap} -> 
+			{Service = #service{name = ServiceName,
+								url = ServiceUrl,
+								owner = ServiceOwner,
+								version = ServiceVersion,
+								http_max_content_length = HttpMaxContentLengthService,
+								authorization = ServiceAuthorization}, 
+			 ParamsMap, 
+			 QuerystringMap} -> 
 				case cowboy_req:body_length(CowboyReq) of
 					undefined -> ContentLength = 0; %% The value returned will be undefined if the length couldn't be figured out from the request headers. 
 					ContentLengthValue -> ContentLength = ContentLengthValue
@@ -1683,7 +1686,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault) ->
 				end,
 				ReqHash = erlang:phash2([Url, QuerystringBin, ContentLength, ContentType2]),
 				Request2 = Request#request{
-					type = Type,
+					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
 					content_type_in = ContentType2,
 					content_type = ContentType2,
@@ -1691,17 +1694,39 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault) ->
 					payload = Payload, 
 					payload_map = PayloadMap,
 					params_url = ParamsMap,
-					req_hash = ReqHash
+					req_hash = ReqHash,
+					service = Service,
+					response_header = case Type of
+											<<"OPTIONS">> -> 
+												ExpireDate = date_add_minute(Timestamp, 1440),
+												Expires = cowboy_clock:rfc1123(ExpireDate),
+												HttpHeaderOptions#{<<"ems-catalog">> => ServiceName,
+																   <<"ems-owner">> => ServiceOwner,
+																   <<"ems-version">> => ServiceVersion,
+																   <<"ems-url">> => ServiceUrl,
+																   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8),
+																   <<"expires">> => Expires};
+											_ -> 
+												HttpHeaderDefault#{<<"ems-catalog">> => ServiceName,
+																   <<"ems-owner">> => ServiceOwner,
+																   <<"ems-version">> => ServiceVersion,
+																   <<"ems-url">> => ServiceUrl,
+																   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8)}
+									  end
 				},	
 				{ok, Request2, Service, CowboyReq2};
 			Error2 -> 
 				if 
 					Type =:= <<"OPTIONS">> orelse Type =:= "HEAD" ->
-							{ok, request, Request#request{code = 200, 
-														  reason = ok, 
-														  response_header = HttpHeaderDefault,
-														  latency = ems_util:get_milliseconds() - T1}
-							};
+							Request2 = Request#request{code = 200, 
+													   reason = ok,
+													   type = Type,  % use original verb of request
+													   response_header = case Type of
+																			<<"OPTIONS">> -> HttpHeaderOptions;
+																			_ -> HttpHeaderDefault
+																	     end,
+													   latency = ems_util:get_milliseconds() - T1},
+							{ok, request, Request2, CowboyReq};
 					true ->
 						ems_db:inc_counter(ems_dispatcher_lookup_enoent),								
 						Error2
@@ -1724,59 +1749,7 @@ parse_protocol(_) -> erlang:error(einvalid_protocol).
 parse_if_modified_since(undefined) -> undefined;
 parse_if_modified_since(IfModifiedSince) -> cow_date:parse_date(IfModifiedSince).
 
-
-%% @doc Gera o response HTTP
-encode_response(<<Codigo/binary>>, <<Payload/binary>>, <<MimeType/binary>>) ->
-	encode_response(Codigo, Payload, MimeType, undefined).
-	
-encode_response(<<Codigo/binary>>, <<Payload/binary>>, <<MimeType/binary>>, Header) ->
-	PayloadLength = list_to_binary(integer_to_list(size(Payload))),
-	Response = [<<"HTTP/1.1 "/utf8>>, Codigo, <<" OK\n"/utf8>>,
-				<<"Server: ErlangMS\n"/utf8>>,
-				<<"Content-Type: "/utf8>>, MimeType, <<"\n"/utf8>>,
-				<<"Content-Length: "/utf8>>, PayloadLength, <<"\n"/utf8>>,
-				<<"Access-Control-Allow-Origin: *\n"/utf8>>,
-				<<"Access-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS\n"/utf8>>,
-				<<"Access-Control-Allow-Headers: Content-Type, Content-Range, Content-Disposition, Content-Description, X-Requested-With, X-CSRFToken, X-CSRF-Token, Authorization\n"/utf8>>,
-				case Header of undefined -> header_cache_control(MimeType); _ -> Header end,
-				<<"\n\n"/utf8>>, 
-	            Payload],
-	Response2 = iolist_to_binary(Response),
-	Response2.
-
-
-encode_response(Codigo, []) ->
-	encode_response(Codigo, <<"[]">>, <<"application/json; charset=utf-8"/utf8>>);
-encode_response(<<Codigo/binary>>, []) ->
-	encode_response(Codigo, <<"[]">>, <<"application/json; charset=utf-8"/utf8>>);
-encode_response(<<Codigo/binary>>, <<>>) ->
-	encode_response(Codigo, <<"[]">>, <<"application/json; charset=utf-8"/utf8>>);
-encode_response(<<Codigo/binary>>, <<Payload/binary>>) ->
-	encode_response(Codigo, Payload, <<"application/json; charset=utf-8"/utf8>>);
-encode_response(Codigo, Payload) when is_tuple(Payload) ->
-    Payload2 = ems_schema:to_json(Payload),
-    encode_response(Codigo, Payload2).
 						
-header_cache_control(<<"application/x-javascript">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<"text/css">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<"image/x-icon">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<"image/png">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<"image/gif">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<"image/jpeg">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<"image/bmp">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<"application/font-woff">>) ->
-	<<"Cache-Control: max-age=290304000, public"/utf8>>;
-header_cache_control(<<_MimeType/binary>>) ->
-	<<"Cache-Control: no-cache"/utf8>>.
-
-
 -spec parse_querystring(list()) -> list(tuple()).
 parse_querystring(Q) ->
 	Q1 = httpd:parse_query(Q),
@@ -2120,7 +2093,7 @@ parse_tcp_port(Port) when is_integer(Port) ->
 	
 	
 -spec node_binary() -> binary().
-node_binary() -> erlang:atom_to_binary(node(), utf8).
+node_binary() -> erlang:atom_to_binary(node(), utf8).   
 
 uptime_str() ->
 	{UpTime, _} = erlang:statistics(wall_clock),
@@ -2186,6 +2159,7 @@ load_from_file_req(Request = #request{url = Url,
 									  if_modified_since = IfModifiedSinceReq, 
 									  if_none_match = IfNoneMatchReq,
 									  timestamp = Timestamp,
+									  response_header = ResponseHeader,
 									  service = #service{cache_control = CacheControl,
 														 expires = ExpiresMinute,
 														 path = Path}}) ->
@@ -2198,7 +2172,7 @@ load_from_file_req(Request = #request{url = Url,
 			LastModified = cowboy_clock:rfc1123(MTime),
 			ExpireDate = date_add_minute(Timestamp, ExpiresMinute + 120), % add +120min (2h) para ser horário GMT
 			Expires = cowboy_clock:rfc1123(ExpireDate),
-			HttpHeader =	#{
+			ResponseHeader2 = ResponseHeader#{
 								<<"cache-control">> => CacheControl,
 								<<"etag">> => ETag,
 								<<"last-modified">> => LastModified,
@@ -2211,7 +2185,7 @@ load_from_file_req(Request = #request{url = Url,
 											 etag = ETag,
 											 filename = Filename,
 											 response_data = <<>>, 
-											 response_header = HttpHeader}
+											 response_header = ResponseHeader2}
 						 };
 				false ->
 					case file:read_file(Filename) of
@@ -2222,7 +2196,7 @@ load_from_file_req(Request = #request{url = Url,
 											     etag = ETag,
 											     filename = Filename,
 											     response_data = FileData, 
-											     response_header = HttpHeader}
+											     response_header = ResponseHeader2}
 							};
 						{error, Reason} = Error -> 
 							{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 

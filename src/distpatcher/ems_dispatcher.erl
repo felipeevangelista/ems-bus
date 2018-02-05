@@ -63,12 +63,10 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 								{ok, request, Request2#request{code = 200, 
 															   content_type = ?CONTENT_TYPE_JSON,
 															   response_data = ems_catalog:get_metadata_json(Service),
-															   response_header = #{<<"ems-node">> => ems_util:node_binary()},
 															   latency = ems_util:get_milliseconds() - T1}
 								};
 						"HEAD" -> 
 								{ok, request, Request2#request{code = 200, 
-															   response_header = #{<<"ems-node">> => ems_util:node_binary()},
 															   latency = ems_util:get_milliseconds() - T1}
 								};
 						<<"GET">> ->
@@ -103,12 +101,10 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 								{ok, request, Request2#request{code = 200, 
 															   content_type = ?CONTENT_TYPE_JSON,
 															   response_data = ems_catalog:get_metadata_json(Service),
-															   response_header = #{<<"ems-node">> => ems_util:node_binary()},
 															   latency = ems_util:get_milliseconds() - T1}
 								};
 						"HEAD" -> 
 								{ok, request, Request2#request{code = 200, 
-															   response_header = #{<<"ems-node">> => ems_util:node_binary()},
 															   latency = ems_util:get_milliseconds() - T1}
 								};
 						 _ -> 
@@ -117,7 +113,6 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 															  content_type = ?CONTENT_TYPE_JSON,
 															  reason = Reason, 
 															  response_data = ems_schema:to_json(Error), 
-															  response_header = #{<<"ems-node">> => ems_util:node_binary()},
 															  latency = ems_util:get_milliseconds() - T1}
 							}
 					end
@@ -130,9 +125,7 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 
 
 dispatch_service_work(Request,
-					 _Service = #service{name = ServiceName,
-										 owner = ServiceOwner,
-										 host = '',
+					 _Service = #service{host = '',
 										 module_name = ModuleName,
 										 module = Module,
 										 function = Function}) ->
@@ -142,9 +135,7 @@ dispatch_service_work(Request,
 												undefined -> Reason;
 												Reason2 -> Reason2
 										 end,
-								response_header = ResponseHeader#{<<"ems-node">> => ems_util:node_binary(),
-																  <<"ems-catalog">> => ServiceName,
-																  <<"ems-owner">> => ServiceOwner}},
+								response_header = ResponseHeader},
 	dispatch_middleware_function(Request4);
 dispatch_service_work(Request = #request{rid = Rid,
 										  type = Type,
@@ -157,9 +148,7 @@ dispatch_service_work(Request = #request{rid = Rid,
 										  content_type = ContentType,  
 										  params_url = ParamsMap,
 										  querystring_map = QuerystringMap},
-					  Service = #service{name = ServiceName,
-										 owner = ServiceOwner,
-										 host = Host,
+					  Service = #service{host = Host,
 										 host_name = HostName,
 										 module_name = ModuleName,
 										 module = Module,
@@ -189,7 +178,6 @@ dispatch_service_work(Request = #request{rid = Rid,
 					undefined, undefined}, self()
 				  },
 			{Module, Node} ! Msg,
-			NodeBin = erlang:atom_to_binary(Node, utf8),
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, Timeout]),
 			receive 
 				{Code, RidRemote, {Reason, ResponseDataReceived}} when RidRemote == Rid  -> 
@@ -211,9 +199,6 @@ dispatch_service_work(Request = #request{rid = Rid,
 											   service = Service,
 											   params_url = ParamsMap,
 											   querystring_map = QuerystringMap,
-											   response_header = #{<<"ems-node">> => NodeBin,
-																   <<"ems-catalog">> => ServiceName,
-																   <<"ems-owner">> => ServiceOwner},
 											   response_data = ResponseData},
 					dispatch_middleware_function(Request2);
 				Msg -> 
@@ -224,12 +209,9 @@ dispatch_service_work(Request = #request{rid = Rid,
 													 service = Service,
 													 params_url = ParamsMap,
 													 querystring_map = QuerystringMap,
-													 response_header = #{<<"ems-node">> => NodeBin,
-																		 <<"ems-catalog">> => ServiceName,
-																		 <<"ems-owner">> => ServiceOwner},
-													 response_data = ems_schema:to_json({error, einvalid_rec_message}),
+													 response_data = ?EINVALID_JAVA_MESSAGE,
 													 latency = ems_util:get_milliseconds() - T1}}
-				after Timeout + 3000 ->
+				after Timeout + 5000 ->
 					?DEBUG("ems_dispatcher received a timeout while waiting ~pms for the result of a service from ~p.", [Timeout, {Module, Node}]),
 					ems_db:inc_counter(ServiceTimeoutMetricName),
 					{error, request, Request#request{code = 503,
@@ -238,10 +220,7 @@ dispatch_service_work(Request = #request{rid = Rid,
 													 service = Service,
 													 params_url = ParamsMap,
 													 querystring_map = QuerystringMap,
-													 response_header = #{<<"ems-node">> => NodeBin,
-																		 <<"ems-catalog">> => ServiceName,
-																		 <<"ems-owner">> => ServiceOwner},
-													 response_data = ems_schema:to_json({error, etimeout_service}),
+													 response_data = ?ETIMEOUT_SERVICE,
 													 latency = ems_util:get_milliseconds() - T1}}
 			end;
 		Error ->  

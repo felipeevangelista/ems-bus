@@ -14,12 +14,14 @@
 -export([init/2, terminate/3]).
 
 -record(state, {http_max_content_length,
-				http_header_default}).
+				http_header_default,
+				http_header_options}).
 
 
-init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault}) ->
+init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
+							   http_header_options = HttpHeaderOptions}) ->
 	?DEBUG("ems_http_handler new request: ~p.", [CowboyReq]),
-	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault) of
+	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault, HttpHeaderOptions) of
 		{ok, request, #request{code = Code,
 									  response_header = ResponseHeader,
 									  response_data = ResponseData}, CowboyReq2} ->
@@ -86,9 +88,10 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault}) ->
 												CowboyReq2),
 					ems_logger:log_request(Request2);
 				{error, request, Request2 = #request{code = Code,
+													 response_header = ResponseHeader,
 													 response_data = ResponseData}} ->
 					Response = cowboy_req:reply(Code, 
-												HttpHeaderDefault,
+												ResponseHeader,
 												ResponseData, 
 												CowboyReq2),
 					ems_logger:log_request(Request2);
@@ -97,16 +100,19 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault}) ->
 											   content_type = ?CONTENT_TYPE_JSON,
 											   reason = Reason, 
 											   response_data = ems_schema:to_json(Error), 
-											   response_header = HttpHeaderDefault,
+											   response_header = Request#request.response_header,
 											   latency = ems_util:get_milliseconds() - T1},
 					Response = cowboy_req:reply(Request2#request.code, 
 												Request2#request.response_header, 
 												Request2#request.response_data, CowboyReq2),
 					ems_logger:log_request(Request2)
 			end;
-		{error, Reason} = Error -> 
+		{error, Reason} = Error when is_atom(Reason) -> 
 			ems_logger:error("ems_http_handler request exception: ~p.", [Reason]),
-			Response = cowboy_req:reply(400, HttpHeaderDefault, ems_schema:to_json(Error), CowboyReq)
+			Response = cowboy_req:reply(400, HttpHeaderDefault, ems_schema:to_json(Error), CowboyReq);
+		{error, Reason} -> 
+			ems_logger:error("ems_http_handler request exception: ~p.", [Reason]),
+			Response = cowboy_req:reply(400, HttpHeaderDefault, ?EINVALID_HTTP_REQUEST, CowboyReq)
 	end,
 	{ok, Response, State}.
 
