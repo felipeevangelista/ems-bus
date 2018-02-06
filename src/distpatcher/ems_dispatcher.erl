@@ -138,25 +138,23 @@ dispatch_service_work(Request,
 								response_header = ResponseHeader},
 	dispatch_middleware_function(Request4);
 dispatch_service_work(Request = #request{rid = Rid,
-										  type = Type,
-										  url = Url,
-										  payload = Payload,
-										  t1 = T1,
-										  client = Client,
-										  user = User,
-										  scope = Scope,
-										  content_type = ContentType,  
-										  params_url = ParamsMap,
-										  querystring_map = QuerystringMap},
+										 type = Type,
+										 url = Url,
+										 payload = Payload,
+										 client = Client,
+										 user = User,
+										 scope = Scope,
+										 content_type = ContentType,  
+										 params_url = ParamsMap,
+										 querystring_map = QuerystringMap},
 					  Service = #service{host = Host,
 										 host_name = HostName,
 										 module_name = ModuleName,
 										 module = Module,
 										 function_name = FunctionName, 
-										 timeout = Timeout,
-										 service_timeout_metric_name = ServiceTimeoutMetricName,
+										 timeout = TimeoutService,
 										 service_unavailable_metric_name = ServiceUnavailableMetricName}) ->
-	case get_work_node(Host, Host, HostName, ModuleName, 1) of
+	case get_work_node(Host, Host, HostName, ModuleName) of
 		{ok, Node} ->
 			case erlang:is_tuple(Client) of
 				false -> 
@@ -178,41 +176,59 @@ dispatch_service_work(Request = #request{rid = Rid,
 					undefined, undefined}, self()
 				  },
 			{Module, Node} ! Msg,
-			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, Timeout]),
-			receive 
-				{Code, RidRemote, {Reason, ResponseDataReceived}} when RidRemote == Rid  -> 
-					case Reason == ok andalso byte_size(ResponseDataReceived) >= 27 of
-						true ->
-							case ResponseDataReceived of
-								% Os dados recebidos do Java pode ser um array de bytes que possui um "header especial" que precisa ser removido do verdadeiro conteúdo
-								<<HeaderJavaSerializable:25/binary, _H2:2/binary, DataBin/binary>> -> 
-									case HeaderJavaSerializable =:= <<172,237,0,5,117,114,0,2,91,66,172,243,23,248,6,8,84,224,2,0,0,120,112,0,0>> of
-										true -> ResponseData = DataBin;
-										false -> ResponseData = ResponseDataReceived
-									end;
-								_ -> ResponseData = ResponseDataReceived
+			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
+			dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0);
+		Error ->  
+			ems_db:inc_counter(ServiceUnavailableMetricName),
+			Error
+	end.
+		
+dispatch_service_work_receive(Request = #request{rid = Rid,
+												 t1 = T1,
+												 params_url = ParamsMap,
+												 querystring_map = QuerystringMap},
+							  Service = #service{module = Module,
+												 service_timeout_metric_name = ServiceTimeoutMetricName},
+							  Node,
+							  Timeout, TimeoutWaited) ->
+	receive 
+		{Code, RidRemote, {Reason, ResponseDataReceived}} when RidRemote == Rid  -> 
+			case Reason == ok andalso byte_size(ResponseDataReceived) >= 27 of
+				true ->
+					case ResponseDataReceived of
+						% Os dados recebidos do Java pode ser um array de bytes que possui um "header especial" que precisa ser removido do verdadeiro conteúdo
+						<<HeaderJavaSerializable:25/binary, _H2:2/binary, DataBin/binary>> -> 
+							case HeaderJavaSerializable =:= <<172,237,0,5,117,114,0,2,91,66,172,243,23,248,6,8,84,224,2,0,0,120,112,0,0>> of
+								true -> ResponseData = DataBin;
+								false -> ResponseData = ResponseDataReceived
 							end;
-						false -> ResponseData = ResponseDataReceived
-					end,
-					Request2 = Request#request{code = Code,
-											   reason = Reason,
-											   service = Service,
-											   params_url = ParamsMap,
-											   querystring_map = QuerystringMap,
-											   response_data = ResponseData},
-					dispatch_middleware_function(Request2);
-				Msg -> 
-					ems_logger:error("ems_dispatcher received invalid message ~p.", [Msg]), 
-					{error, request, Request#request{code = 500,
-													 reason = einvalid_rec_message,
-													 content_type = ?CONTENT_TYPE_JSON,
-													 service = Service,
-													 params_url = ParamsMap,
-													 querystring_map = QuerystringMap,
-													 response_data = ?EINVALID_JAVA_MESSAGE,
-													 latency = ems_util:get_milliseconds() - T1}}
-				after Timeout + 5000 ->
-					?DEBUG("ems_dispatcher received a timeout while waiting ~pms for the result of a service from ~p.", [Timeout, {Module, Node}]),
+						_ -> ResponseData = ResponseDataReceived
+					end;
+				false -> ResponseData = ResponseDataReceived
+			end,
+			Request2 = Request#request{code = Code,
+									   reason = Reason,
+									   service = Service,
+									   params_url = ParamsMap,
+									   querystring_map = QuerystringMap,
+									   response_data = ResponseData},
+			dispatch_middleware_function(Request2);
+		Msg -> 
+			ems_logger:error("ems_dispatcher received java invalid message ~p.", [Msg]), 
+			{error, request, Request#request{code = 500,
+											 reason = einvalid_rec_message,
+											 content_type = ?CONTENT_TYPE_JSON,
+											 service = Service,
+											 params_url = ParamsMap,
+											 querystring_map = QuerystringMap,
+											 response_data = ?EINVALID_JAVA_MESSAGE,
+											 latency = ems_util:get_milliseconds() - T1}}
+		after 1000 ->
+			TimeoutWaited2 = TimeoutWaited + 1000,
+			Timeout2 = Timeout - 1000,
+			case Timeout2 =< 0 of
+				true ->
+					ems_logger:warn("ems_dispatcher etimeout_service while waiting ~pms for ~p.", [Timeout, {Module, Node}]),
 					ems_db:inc_counter(ServiceTimeoutMetricName),
 					{error, request, Request#request{code = 503,
 													 reason = etimeout_service,
@@ -221,17 +237,17 @@ dispatch_service_work(Request = #request{rid = Rid,
 													 params_url = ParamsMap,
 													 querystring_map = QuerystringMap,
 													 response_data = ?ETIMEOUT_SERVICE,
-													 latency = ems_util:get_milliseconds() - T1}}
-			end;
-		Error ->  
-			ems_db:inc_counter(ServiceUnavailableMetricName),
-			Error
+													 latency = ems_util:get_milliseconds() - T1}};
+				false ->
+					ems_logger:warn("ems_dispatcher is waiting ~p for more than ~pms.", [{Module, Node}, TimeoutWaited2]),
+					dispatch_service_work_receive(Request, Service, Node, Timeout2, TimeoutWaited2)
+			end
 	end.
-		
 
-get_work_node('', _, _, _, _) -> {ok, node()};
-get_work_node([], _, _, _, _) -> {error, eunavailable_service};
-get_work_node([_|T], HostList, HostNames, ModuleName, Tentativa) -> 
+
+get_work_node('', _, _, _) -> {ok, node()};
+get_work_node([], _, _, _) -> {error, eunavailable_service};
+get_work_node([_|T], HostList, HostNames, ModuleName) -> 
 	QtdHosts = length(HostList),
 	case QtdHosts == 1 of
 		true -> Node = hd(HostList);
@@ -263,7 +279,7 @@ get_work_node([_|T], HostList, HostNames, ModuleName, Tentativa) ->
 	Ping = net_adm:ping(Node),
 	case Ping of
 		pong -> {ok, Node};
-		pang -> get_work_node(T, HostList, HostNames, ModuleName, Tentativa)
+		pang -> get_work_node(T, HostList, HostNames, ModuleName)
 	end.
 		
 
