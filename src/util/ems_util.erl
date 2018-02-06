@@ -45,7 +45,6 @@
 		 get_priv_dir/0,
 		 get_working_dir/0,
  		 get_milliseconds/0,
-		 get_property_request/2, 
 		 get_param_url/3,
 		 get_querystring/3,
 		 get_querystring/4,
@@ -1557,8 +1556,11 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,
 								url = ServiceUrl,
+								content_type = ContentTypeService,
 								owner = ServiceOwner,
 								version = ServiceVersion,
+								lang = LangService,
+								timeout = TimeoutService,
 								http_max_content_length = HttpMaxContentLengthService,
 								authorization = ServiceAuthorization}, 
 			 ParamsMap, 
@@ -1695,7 +1697,10 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
 					content_type_in = ContentType2,
-					content_type = ContentType2,
+					content_type_out = 	case ContentTypeService of
+											undefined -> ContentType2;
+											_ -> ContentTypeService
+										end,
 					content_length = ContentLength,
 					payload = Payload, 
 					payload_map = PayloadMap,
@@ -1706,17 +1711,25 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 											<<"OPTIONS">> -> 
 												ExpireDate = date_add_minute(Timestamp, 1440),
 												Expires = cowboy_clock:rfc1123(ExpireDate),
-												HttpHeaderOptions#{<<"ems-catalog">> => ServiceName,
+												HttpHeaderOptions#{<<"ems-rowid">> => integer_to_binary(Rowid),
+																   <<"ems-hash">> => integer_to_binary(ReqHash),
+																   <<"ems-catalog">> => ServiceName,
 																   <<"ems-owner">> => ServiceOwner,
 																   <<"ems-version">> => ServiceVersion,
 																   <<"ems-url">> => ServiceUrl,
+																   <<"ems-timeout">> => integer_to_binary(TimeoutService),
+																   <<"ems-lang">> => LangService,
 																   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8),
 																   <<"expires">> => Expires};
 											_ -> 
-												HttpHeaderDefault#{<<"ems-catalog">> => ServiceName,
+												HttpHeaderDefault#{<<"ems-rowid">> => integer_to_binary(Rowid),
+																   <<"ems-hash">> => integer_to_binary(ReqHash),
+																   <<"ems-catalog">> => ServiceName,
 																   <<"ems-owner">> => ServiceOwner,
 																   <<"ems-version">> => ServiceVersion,
 																   <<"ems-url">> => ServiceUrl,
+																   <<"ems-timeout">> => integer_to_binary(TimeoutService),
+																   <<"ems-lang">> => LangService,
 																   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8)}
 									  end
 				},	
@@ -2107,29 +2120,6 @@ uptime_str() ->
     lists:flatten(io_lib:format("~p days, ~p hours, ~p minutes and ~p seconds", [D,H,M,S])).
     
 
-%% @doc Retorna a URL do request
-get_property_request(<<"url">>, Request) ->
-	Request#request.url;
-
-%% @doc Retorna o tipo do request
-get_property_request(<<"metodo">>, Request) ->
-	Request#request.type;
-
-get_property_request(<<"type">>, Request) ->
-	Request#request.type;
-
-%% @doc Retorna a URL do request
-get_property_request(<<"http_version">>, Request) ->
-	Request#request.version;
-
-%% @doc Retorna o payload/body do request
-get_property_request(<<"payload">>, Request) ->
-	Request#request.payload_map;
-
-%% @doc Retorna o payload/body do request
-get_property_request(<<"body">>, Request) ->
-	Request#request.payload_map.
-
 %% @doc Retorna um parâmetro do request
 get_param_url(NomeParam, Default, Request) ->
 	ParamsUrl = Request#request.params_url,
@@ -2187,7 +2177,7 @@ load_from_file_req(Request = #request{url = Url,
 			case ETag == IfNoneMatchReq orelse LastModified == IfModifiedSinceReq of
 				true -> {ok, Request#request{code = 304, 
 											 reason = enot_modified,
-											 content_type = MimeType,
+											 content_type_out = MimeType,
 											 etag = ETag,
 											 filename = Filename,
 											 response_data = <<>>, 
@@ -2198,7 +2188,7 @@ load_from_file_req(Request = #request{url = Url,
 						{ok, FileData} -> 
 							{ok, Request#request{code = 200, 
 											     reason = ok,
-												 content_type = MimeType,
+												 content_type_out = MimeType,
 											     etag = ETag,
 											     filename = Filename,
 											     response_data = FileData, 
@@ -2207,7 +2197,7 @@ load_from_file_req(Request = #request{url = Url,
 						{error, Reason} = Error -> 
 							{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
 												    reason = Reason,
-												    content_type = ?CONTENT_TYPE_JSON,
+												    content_type_out = ?CONTENT_TYPE_JSON,
 												    response_data = ems_schema:to_json(Error)}
 							}
 					end

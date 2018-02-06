@@ -24,7 +24,7 @@ execute(Request = #request{access_token = AccessToken}) ->
 											   <<"}"/utf8>>]),
 			{ok, Request#request{code = 200, 
 								 response_data = ResponseData2,
-								 content_type = <<"application/json; charset=UTF-8">>}
+								 content_type_out = <<"application/json; charset=UTF-8">>}
 			};		
 		_ -> 
 			{error, Request#request{code = 401,  

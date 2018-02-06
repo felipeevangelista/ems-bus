@@ -30,7 +30,7 @@ execute(Request = #request{timestamp = Timestamp,
 				{ok, FileData} -> 		
 					{ok, Request#request{code = 200,
 										 reason = ok,
-										 content_type = <<"image/x-icon">>,
+										 content_type_out = <<"image/x-icon">>,
 										 response_data = FileData,
 										 response_header = ResponseHeader#{
 																<<"cache-control">> => <<"max-age=604800, public">>,
@@ -41,7 +41,7 @@ execute(Request = #request{timestamp = Timestamp,
 				{error, Reason} = Error -> 
 					{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
 										    reason = Reason,
-										    content_type = ?CONTENT_TYPE_JSON,
+										    content_type_out = ?CONTENT_TYPE_JSON,
 											response_data = ems_schema:to_json(Error), 
 											response_header = ResponseHeader}
 					 }

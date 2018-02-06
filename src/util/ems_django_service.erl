@@ -29,7 +29,7 @@ execute(Request) ->
 							end;
 						{error, Reason} -> {error, Request2#request{code = 500, 
 																	reason = einvalid_django_sintax,
-																	content_type = ?CONTENT_TYPE_JSON,
+																	content_type_out = ?CONTENT_TYPE_JSON,
 																	response_data = ems_schema:to_json({error, Reason})}
 							 }
 					end;
@@ -37,7 +37,7 @@ execute(Request) ->
 				{error, Reason} -> 
 					{error, Request2#request{code = 500, 
 											 reason = einvalid_django_sintax,
-											 content_type = ?CONTENT_TYPE_JSON,
+											 content_type_out = ?CONTENT_TYPE_JSON,
 											 response_data = ems_schema:to_json({error, Reason})}
 							 }
 			end;

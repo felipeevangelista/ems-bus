@@ -34,7 +34,7 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 				{ok, request, Request2 = #request{code = Code,
 												  response_header = ResponseHeader,
 												  response_data = ResponseData,
-												  content_type = ContentType}} ->
+												  content_type_out = ContentType}} ->
 					case ContentType of
 						<<"application/x-www-form-urlencoded; charset=UTF-8">> ->
 							ems_db:inc_counter(http_content_type_out_form_urlencode);
@@ -97,7 +97,7 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 					ems_logger:log_request(Request2);
 				{error, Reason} = Error ->
 					Request2 = Request#request{code = 400, 
-											   content_type = ?CONTENT_TYPE_JSON,
+											   content_type_out = ?CONTENT_TYPE_JSON,
 											   reason = Reason, 
 											   response_data = ems_schema:to_json(Error), 
 											   response_header = Request#request.response_header,

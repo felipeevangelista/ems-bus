@@ -499,7 +499,7 @@ do_log_request(#request{rid = RID,
 						uri = Uri,
 						version = Version,
 						content_type_in = ContentTypeIn,
-						content_type = ContentType,
+						content_type_out = ContentTypeOut,
 						content_length = ContentLength,
 						accept = Accept,
 						ip_bin = IpBin,
@@ -546,9 +546,9 @@ do_log_request(#request{rid = RID,
 														undefined -> <<>>;
 														_ -> ContentTypeIn
 													end, 
-						<<"\n\tContent-Type out: ">>,  case ContentType of
+						<<"\n\tContent-Type out: ">>,  case ContentTypeOut of
 															undefined -> <<>>;
-															_ -> ContentType 
+															_ -> ContentTypeOut 
 													   end,
 						<<"\n\tPeer: ">>, IpBin, <<"  Referer: ">>, case Referer of
 																		undefined -> <<>>;

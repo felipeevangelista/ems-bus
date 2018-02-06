@@ -86,7 +86,7 @@ info(Request) ->
 config(Request) -> 
 	ContentData = lists:flatten(io_lib:format("~p", [ems_config:getConfig()])),
 	{ok, Request#request{code = 200, 
-						 content_type = <<"text/plain">>,
+						 content_type_out = <<"text/plain">>,
 						 response_data = ContentData}
 	}.
 

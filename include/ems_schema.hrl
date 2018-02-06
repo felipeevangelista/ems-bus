@@ -175,7 +175,7 @@
 					  latency :: non_neg_integer(),				%% Latência (tempo que levou para processar a requisição)
 					  code = 200 :: non_neg_integer(), 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 					  reason = ok :: atom(),					%% Registra a mensagem de erro, quando status indicar um erro
-					  type :: string(),							%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
+					  type :: binary(),							%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
 					  uri :: string(),							%% URI da requisição do serviço
 					  url :: string(),							%% URL da requisição do serviço
 					  version :: string(),						%% Versão do cabeçalho HTTP
@@ -184,9 +184,9 @@
 					  querystring :: binary(),					%% Querystring da requisição
 					  querystring_map,							%% Querystring convertida para map após o parser e validação
 					  params_url,								%% Map com os parâmetros da URL
-					  content_type_in :: binary(),				%% Tipo de conteúdo enviado ao barramento (Ex.: application/json, application/pdf)
+					  content_type_in :: binary(),				%% Tipo de conteúdo de entrada (Ex.: application/json)
+					  content_type_out :: binary(),				%% Tipo de conteúdo de saída. (Ex.: application/json)
 					  content_length :: non_neg_integer(), 		%% Largura da requisição
-					  content_type :: string(),					%% Tipo de conteúdo (Ex.: application/json)
 					  accept :: binary(),						%% Parâmetro ACCEPT HTTP
 					  user_agent :: binary(),					%% Nome do browser
 					  user_agent_version :: binary(),			%% Versão do browser
@@ -200,13 +200,12 @@
 					  t1,										%% Utilizado para cálculo da latência (Tempo inicial em milisegundos)
 					  socket :: gen_tcp:socket(),				%% Socket da requisição
 					  worker :: pid(),							%% Processo worker http que vai atender a requisição
-					  status_send,								%% Registra que a mensagem foi entregue ou o erro ocorrido na entrega
 					  authorization :: binary(),				%% Dados da autenticação da requisição
 					  client :: #client{},
 					  user :: #user{},							%% Usuário da requisição ou public
 					  node_exec = undefined,					%% Node que foi enviado a solicitação
-					  status = latency,							%% status: latency, req_done, req_send
 					  worker_send,
+					  status = req_processing :: atom(),		%% status: req_processing, req_done
 					  protocol :: atom(),						%% Protocol (http, ldap)
 					  protocol_bin :: binary(),	
 					  port :: non_neg_integer(),				

@@ -100,7 +100,7 @@ execute(Request = #request{type = Type,
 										 oauth2_grant_type = GrantType,
 										 oauth2_access_token = AccessToken,
 										 oauth2_refresh_token = RefreshToken,
-										 content_type = <<"application/json; charset=UTF-8">>}
+										 content_type_out = <<"application/json; charset=UTF-8">>}
 					};		
 			{redirect, ClientId, RedirectUri} ->
 					ClientBin = integer_to_binary(ClientId),

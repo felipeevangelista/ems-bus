@@ -138,7 +138,7 @@
 -define(MAX_ID_RECORD_QUERY, 9999999999).  
 
 % Timeout in ms to expire cache of get request (ems_dispatcher_cache)
--define(TIMEOUT_DISPATCHER_CACHE, 12000).
+-define(TIMEOUT_DISPATCHER_CACHE, 16000).
 
 % Number of datasource entries by odbc connection pool
 -define(MAX_CONNECTION_BY_POOL, 300).
@@ -154,9 +154,7 @@
 -define(DATA_LOADER_UPDATE_CHECKPOINT, 90000).
 
 
-%Define the checkpoint to update permission for ems_user_permission_loader process
--define(PERMISSION_LOADRES_UPDATE_CHECKPOINT, 120000).
-
+%Define the checkpoint to update permission for ems_user_permission_l
 % HTTP access control (CORS) headers
 -define(ACCESS_CONTROL_ALLOW_HEADERS, <<"Accept, Accept-Language, Content-Language, Content-Type, X-ACCESS_TOKEN, X-CSRF-Token, Access-Control-Allow-Origin, Authorization, Origin, x-requested-with, Content-Range, Content-Disposition, Content-Description">>).
 -define(ACCESS_CONTROL_MAX_AGE, <<"604800">>).
