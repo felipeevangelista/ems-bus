@@ -117,7 +117,10 @@ get_http_header_default() ->
 		<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
 		<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
 		<<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
-		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS
+		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
+		<<"X-XSS-Protection">> => <<"1; mode=block">>,
+		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
+		<<"X-Content-Type-Options">> => <<"nosniff">>
 	}.
 
 get_http_header_options() ->
@@ -130,5 +133,8 @@ get_http_header_options() ->
 		<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
 		<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
 		<<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
-		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS
+		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
+		<<"X-XSS-Protection">> => <<"1; mode=block">>,
+		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
+		<<"X-Content-Type-Options">> => <<"nosniff">>
 	}.
