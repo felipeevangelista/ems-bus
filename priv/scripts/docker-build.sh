@@ -544,10 +544,12 @@ check_push_registry(){
 			done
 
 			if [[ "$DO_PUSH" = "Y" || "$DO_PUSH" = "y" ]]; then
-				PUSH_MESSAGE='\n\tEnter the IP or DNS of the Registry server (Example: desenvservicos.unb.br): '
+				PUSH_MESSAGE='\tEnter the IP or DNS of the Registry server (Example: desenvservicos.unb.br): '
 				CANCEL_PUSH="n"
 				while [[ ! "$CANCEL_PUSH" = "Y" && ! "$CANCEL_PUSH" = "y" ]]; do
-					printf "\n$PUSH_MESSAGE"
+					echo
+					echo "---------------------------------------------------------------------------------------------------"
+					printf "$PUSH_MESSAGE"
 					read REGISTRY
 					if [ ! -z "$REGISTRY" ]; then
 						REGISTRY_PORT="5000"
@@ -563,7 +565,7 @@ check_push_registry(){
 						push_registry
 						PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
 					else
-						printf 'Do you want cancel push images? [Y/n] '
+						printf '\tDo you want cancel push images? [Y/n] '
 						read CANCEL_PUSH
 						echo
 						PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
@@ -584,9 +586,26 @@ push_registry(){
 			docker tag $APP_NAME $PUSH_TAG
 			echo
 			echo "Push $PUSH_TAG to $REGISTRY_SERVER"
-			echo "---------------------------------------------------------------------------------------------------"
 			docker push $REGISTRY_SERVER/$APP_NAME
-			echo "---------------------------------------------------------------------------------------------------"
+
+			echo
+			
+			# Check if deploy
+			DO_DEPLOY="y"
+			printf '\n\tYou want to deploy the app in this environment: [Y/n] '
+			while true; do
+				read DO_DEPLOY
+				if [[ ! $DO_DEPLOY =~ [yYnN] ]]; then
+					printf '\tOps, You want to deploy the app in this environment: [Y/n] '
+				else
+					break
+				fi
+			done
+
+			if [[ "$DO_DEPLOY" = "Y" || "$DO_DEPLOY" = "y" ]]; then
+				echo deploy...
+			fi
+			
 		else
 			printf "\tError: Registry server daemon $REGISTRY_SERVER is out, you will not be able to push image.\n"
 		fi
@@ -711,15 +730,8 @@ exec > >(tee -a ${LOG_FILE} )
 exec 2> >(tee -a ${LOG_FILE} >&2)
 
 
-if [ "$SKIP_PUSH" = "false" ]; then
+if [ "$SKIP_BUILD" = "false" ]; then
 	make_stage_area
-
-	if [ "$APP_NAME" = "emsbus" ]; then
-		echo "Start build of erlangms..."
-	else
-		echo "Start build of erlangms frontend images..."
-	fi
-
 
 	if [ "$SKIP_CHECK" = "false" ]; then
 		check_npm_version
@@ -732,7 +744,7 @@ if [ "$SKIP_PUSH" = "false" ]; then
 
 	# Enter build mode
 	while [[ ! "$MODE_BUILD" =~ (dev|prod) ]]; do
-		printf 'What type of build do you want? (dev|prod): '
+		printf 'What type of build do you want? [dev/prod]: '
 		read MODE_BUILD
 		if [ -z "$MODE_BUILD" ]; then 
 			MODE_BUILD="dev"
@@ -747,7 +759,7 @@ if [ -s "$REGISTRY" ]; then
 	echo "Registry server: $REGISTRY"
 fi	
 echo "Git url: $APP_URL_GIT"
-if [ "$SKIP_PUSH" = "false" ]; then
+if [ "$SKIP_BUILD" = "false" ]; then
 	echo "Docker expose http port: $HTTP_PORT"
 	echo "Docker expose https port: $HTTPS_PORT"
 	if [ "$BUILD_FROM_MASTER" = "true" ]; then
