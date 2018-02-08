@@ -109,13 +109,13 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 			Url = binary_to_list(cowboy_req:path(CowboyReq)),
 			{Ip, _} = cowboy_req:peer(CowboyReq),
 			Ip2 = inet_parse:ntoa(Ip),
-			ems_logger:error("ems_http_handler ~s exception from ~s: ~p.", [Url, Ip2, Reason]),
+			ems_logger:error("ems_http_handler ~s from ~s: ~p.", [Url, Ip2, Reason]),
 			Response = cowboy_req:reply(400, HttpHeaderDefault, ems_schema:to_json(Error), CowboyReq);
 		{error, Reason} -> 
 			Url = binary_to_list(cowboy_req:path(CowboyReq)),
 			{Ip, _} = cowboy_req:peer(CowboyReq),
 			Ip2 = inet_parse:ntoa(Ip),
-			ems_logger:error("ems_http_handler ~s exception from ~s: ~p.", [Url, Ip2, Reason]),
+			ems_logger:error("ems_http_handler ~s from ~s: ~p.", [Url, Ip2, Reason]),
 			Response = cowboy_req:reply(400, HttpHeaderDefault, ?EINVALID_HTTP_REQUEST, CowboyReq)
 	end,
 	{ok, Response, State}.

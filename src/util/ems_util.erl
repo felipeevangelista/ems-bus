@@ -1495,7 +1495,10 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			undefined -> Cache_Control = <<>>;
 			CacheControlValue -> Cache_Control = CacheControlValue
 		end,
-		Authorization = cowboy_req:header(<<"authorization">>, CowboyReq),
+		case cowboy_req:header(<<"authorization">>, CowboyReq) of
+			undefined -> Authorization = <<>>;
+			AuthorizationValue -> Authorization = AuthorizationValue
+		end,
 		IfModifiedSince = cowboy_req:header(<<"if-modified-since">>, CowboyReq),
 		IfNoneMatch = cowboy_req:header(<<"if-none-match">>, CowboyReq),
 		Referer = cowboy_req:header(<<"referer">>, CowboyReq),
@@ -1692,7 +1695,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 						QuerystringMap2 = QuerystringMap,
 						CowboyReq2 = CowboyReq
 				end,
-				ReqHash = erlang:phash2([Url, QuerystringBin, ContentLength, ContentType2]),
+				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentType2]),
 				Request2 = Request#request{
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
@@ -2141,13 +2144,16 @@ get_querystring(QueryName, Default, #request{querystring_map = QuerystringMap}) 
 	end.
 
 get_querystring(QueryName, OrQueryName2, Default, #request{querystring_map = QuerystringMap}) ->
-	case maps:is_key(QueryName, QuerystringMap) of
-		true ->	Value = maps:get(QueryName, QuerystringMap, Default);
-		false -> Value = maps:get(OrQueryName2, QuerystringMap, Default)
+	Value = maps:get(QueryName, QuerystringMap, undefined),
+	case Value =/= undefined andalso Value =/= <<>> of
+		true ->	
+			Value2 = maps:get(QueryName, QuerystringMap);
+		false -> 
+			Value2 = maps:get(OrQueryName2, QuerystringMap, Default)
 	end,
-	case erlang:is_list(Value) of
-		true -> list_to_binary(Value);
-		false -> Value
+	case erlang:is_list(Value2) of
+		true -> list_to_binary(Value2);
+		false -> Value2
 	end.
 
 

@@ -157,19 +157,18 @@
 %Define the checkpoint to update permission for ems_user_permission_l
 % HTTP access control (CORS) headers
 -define(ACCESS_CONTROL_ALLOW_HEADERS, <<"Accept, Accept-Language, Content-Language, Content-Type, X-ACCESS_TOKEN, X-CSRF-Token, Access-Control-Allow-Origin, Authorization, Origin, x-requested-with, Content-Range, Content-Disposition, Content-Description">>).
--define(ACCESS_CONTROL_MAX_AGE, <<"604800">>).
+-define(ACCESS_CONTROL_MAX_AGE, <<"31536000">>).
 -define(ACCESS_CONTROL_ALLOW_ORIGIN, <<"*">>).
 -define(ACCESS_CONTROL_ALLOW_METHODS, <<"GET, POST, PUT, DELETE, OPTIONS, HEAD">>).
--define(ACCESS_CONTROL_EXPOSE_HEADERS, <<"Cache-Control, Content-Language, Content-Type, Expires, Last-Modified, Content-Length, ems-catalog, ems_owner, ems_node">>).
+-define(ACCESS_CONTROL_EXPOSE_HEADERS, <<"Cache-Control, Content-Language, Content-Type, Expires, Last-Modified, Content-Length">>).
 
 
 -define(AUTHORIZATION_TYPE_DEFAULT, <<"oauth2">>).
 
 
 -define(CONTENT_TYPE_JSON, <<"application/json; charset=utf-8"/utf8>>).
--define(CACHE_CONTROL_NO_CACHE, <<"no-cache, public"/utf8>>).
--define(CACHE_CONTROL_1_SECOND, <<"max-age=1, public"/utf8>>).
--define(CACHE_CONTROL_30_DAYS, <<"max-age=2592000, public"/utf8>>).
+-define(CACHE_CONTROL_NO_CACHE, <<"max-age=31536000, private, no-cache, no-store, must-revalidate"/utf8>>).
+-define(CACHE_CONTROL_30_DAYS, <<"max-age=2592000, private"/utf8>>).
 -define(OK_JSON, <<"{\"ok\": true}"/utf8>>).
 -define(ENOENT_JSON, <<"{\"error\": \"enoent\"}"/utf8>>).
 -define(EINVALID_HTTP_REQUEST, <<"{\"error\": \"einvalid_request\"}"/utf8>>).

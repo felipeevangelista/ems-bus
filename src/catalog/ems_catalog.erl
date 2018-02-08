@@ -396,8 +396,15 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		end,
 		Timeout = ems_util:parse_timeout(maps:get(<<"timeout">>, Map, ?SERVICE_TIMEOUT), ?SERVICE_MAX_TIMEOUT),
 		Middleware = parse_middleware(maps:get(<<"middleware">>, Map, undefined)),
-		CacheControl = maps:get(<<"cache_control">>, Map, ?CACHE_CONTROL_1_SECOND),
-		ExpiresMinute = maps:get(<<"expires_minute">>, Map, 1),
+		CacheControlValue = maps:get(<<"cache_control">>, Map, ?CACHE_CONTROL_NO_CACHE),
+		case CacheControlValue of
+			<<"no-cache">> -> 
+				ems_logger:warn("ems_catalog parse incomplete Cache-Control HTTP header in ~p catalog, setting to Cache-Control: max-age=31536000, private, no-cache, no-store, must-revalidate.", [Name]),
+				CacheControl = ?CACHE_CONTROL_NO_CACHE;
+			_ -> 
+				CacheControl = CacheControlValue
+		end,
+		ExpiresMinute = maps:get(<<"expires_minute">>, Map, 0),
 		Public = ems_util:parse_bool(maps:get(<<"public">>, Map, true)),
 		ContentType = maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON),
 		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),

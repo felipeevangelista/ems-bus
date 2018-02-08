@@ -30,9 +30,7 @@ check_result_cache(ReqHash, Timestamp2) ->
 dispatch_request(Request = #request{req_hash = ReqHash, 
 								    ip = Ip,
 								    type = Type,
-								    t1 = T1,
-									params_url = ParamsMap,
-									querystring_map = QuerystringMap},
+								    t1 = T1},
 				 Service = #service{tcp_allowed_address_t = AllowedAddress,
 									result_cache = ResultCache,
 									service_exec_metric_name = ServiceExecMetricName,
@@ -40,7 +38,7 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 									service_host_denied_metric_name = ServiceHostDeniedMetricName,
 									service_auth_denied_metric_name = ServiceAuthDeniedMetricName}) -> 
 	?DEBUG("ems_dispatcher lookup request ~p.", [Request]),
-	ems_db:inc_counter(ServiceExecMetricName),								
+	ems_db:inc_counter(ServiceExecMetricName),				
 	case ems_util:allow_ip_address(Ip, AllowedAddress) of
 		true ->
 			case ems_auth_user:authenticate(Service, Request) of
@@ -84,27 +82,24 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 							dispatch_service_work(Request2, Service)
 					end;
 				{error, Reason} = Error -> 
-					Request2 = Request#request{service = Service,
-											   params_url = ParamsMap,
-											   querystring_map = QuerystringMap},
 					case Type of
 						<<"OPTIONS">> -> 
-								{ok, request, Request2#request{code = 200, 
-															   content_type_out = ?CONTENT_TYPE_JSON,
-															   response_data = ems_catalog:get_metadata_json(Service),
-															   latency = ems_util:get_milliseconds() - T1}
+								{ok, request, Request#request{code = 200, 
+															  content_type_out = ?CONTENT_TYPE_JSON,
+															  response_data = ems_catalog:get_metadata_json(Service),
+															  latency = ems_util:get_milliseconds() - T1}
 								};
 						"HEAD" -> 
-								{ok, request, Request2#request{code = 200, 
-															   latency = ems_util:get_milliseconds() - T1}
+								{ok, request, Request#request{code = 200, 
+															  latency = ems_util:get_milliseconds() - T1}
 								};
 						 _ -> 
 							ems_db:inc_counter(ServiceAuthDeniedMetricName),								
-							{error, request, Request2#request{code = 400, 
-															  content_type_out = ?CONTENT_TYPE_JSON,
-															  reason = Reason, 
-															  response_data = ems_schema:to_json(Error), 
-															  latency = ems_util:get_milliseconds() - T1}
+							{error, request, Request#request{code = 400, 
+															 content_type_out = ?CONTENT_TYPE_JSON,
+															 reason = Reason, 
+															 response_data = ems_schema:to_json(Error), 
+															 latency = ems_util:get_milliseconds() - T1}
 							}
 					end
 			end;
