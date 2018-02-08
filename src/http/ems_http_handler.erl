@@ -20,7 +20,6 @@
 
 init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 							   http_header_options = HttpHeaderOptions}) ->
-	?DEBUG("ems_http_handler new request: ~p.", [CowboyReq]),
 	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault, HttpHeaderOptions) of
 		{ok, request, #request{code = Code,
 									  response_header = ResponseHeader,
@@ -107,10 +106,16 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 					ems_logger:log_request(Request2)
 			end;
 		{error, Reason} = Error when is_atom(Reason) -> 
-			ems_logger:error("ems_http_handler request exception: ~p.", [Reason]),
+			Url = binary_to_list(cowboy_req:path(CowboyReq)),
+			{Ip, _} = cowboy_req:peer(CowboyReq),
+			Ip2 = inet_parse:ntoa(Ip),
+			ems_logger:error("ems_http_handler ~s exception from ~s: ~p.", [Url, Ip2, Reason]),
 			Response = cowboy_req:reply(400, HttpHeaderDefault, ems_schema:to_json(Error), CowboyReq);
 		{error, Reason} -> 
-			ems_logger:error("ems_http_handler request exception: ~p.", [Reason]),
+			Url = binary_to_list(cowboy_req:path(CowboyReq)),
+			{Ip, _} = cowboy_req:peer(CowboyReq),
+			Ip2 = inet_parse:ntoa(Ip),
+			ems_logger:error("ems_http_handler ~s exception from ~s: ~p.", [Url, Ip2, Reason]),
 			Response = cowboy_req:reply(400, HttpHeaderDefault, ?EINVALID_HTTP_REQUEST, CowboyReq)
 	end,
 	{ok, Response, State}.
