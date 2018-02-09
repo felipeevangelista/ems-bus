@@ -120,7 +120,8 @@ get_http_header_default() ->
 		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
 		<<"X-XSS-Protection">> => <<"1; mode=block">>,
 		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
-		<<"X-Content-Type-Options">> => <<"nosniff">>
+		<<"X-Content-Type-Options">> => <<"nosniff">>,
+		<<"X-Powered-By">> => <<"ErlangMS">>
 	}.
 
 get_http_header_options() ->
@@ -136,5 +137,6 @@ get_http_header_options() ->
 		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
 		<<"X-XSS-Protection">> => <<"1; mode=block">>,
 		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
-		<<"X-Content-Type-Options">> => <<"nosniff">>
+		<<"X-Content-Type-Options">> => <<"nosniff">>,
+		<<"X-Powered-By">> => <<"ErlangMS">>
 	}.

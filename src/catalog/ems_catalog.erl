@@ -399,7 +399,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		CacheControlValue = maps:get(<<"cache_control">>, Map, ?CACHE_CONTROL_NO_CACHE),
 		case CacheControlValue of
 			<<"no-cache">> -> 
-				ems_logger:warn("ems_catalog parse incomplete Cache-Control HTTP header in ~p catalog, setting to Cache-Control: max-age=31536000, private, no-cache, no-store, must-revalidate.", [Name]),
+				ems_logger:warn("ems_catalog parse incomplete http header cache-control in ~p.", [Name]),
 				CacheControl = ?CACHE_CONTROL_NO_CACHE;
 			_ -> 
 				CacheControl = CacheControlValue
