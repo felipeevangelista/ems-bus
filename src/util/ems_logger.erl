@@ -602,10 +602,7 @@ do_log_request(#request{rid = RID,
 								end;
 							false -> <<>>
 						end,
-					   <<"\n\tCache-Control: ">>, case CacheControl of
-													undefined -> <<>>;
-													_ -> CacheControl
-											  end,  
+					   <<"\n\tCache-Control In: ">>, CacheControl,
 						<<"  ETag: ">>, case Etag of
 										undefined -> <<>>;
 										_ -> Etag

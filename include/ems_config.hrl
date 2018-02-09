@@ -171,6 +171,7 @@
 -define(CACHE_CONTROL_30_DAYS, <<"max-age=2592000, private"/utf8>>).
 -define(OK_JSON, <<"{\"ok\": true}"/utf8>>).
 -define(ENOENT_JSON, <<"{\"error\": \"enoent\"}"/utf8>>).
+-define(ENOENT_SERVICE_CONTRACT_JSON, <<"{\"error\": \"enoent_service_contract\"}"/utf8>>).
 -define(EINVALID_HTTP_REQUEST, <<"{\"error\": \"einvalid_request\"}"/utf8>>).
 -define(ETIMEOUT_SERVICE, <<"{\"error\": \"etimeout_service\"}"/utf8>>).
 -define(EINVALID_JAVA_MESSAGE, <<"{\"error\": \"einvalid_java_message\"}"/utf8>>).

@@ -21,20 +21,13 @@
 init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 							   http_header_options = HttpHeaderOptions}) ->
 	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault, HttpHeaderOptions) of
-		{ok, request, #request{code = Code,
-									  response_header = ResponseHeader,
-									  response_data = ResponseData}, CowboyReq2} ->
-					Response = cowboy_req:reply(Code, 
-												ResponseHeader, 
-												ResponseData, 
-												CowboyReq2);
 		{ok, Request = #request{t1 = T1}, Service, CowboyReq2} -> 
 			case ems_dispatcher:dispatch_request(Request, Service) of
 				{ok, request, Request2 = #request{code = Code,
 												  response_header = ResponseHeader,
 												  response_data = ResponseData,
-												  content_type_out = ContentType}} ->
-					case ContentType of
+												  content_type_out = ContentTypeOut}} ->
+					case ContentTypeOut of
 						<<"application/x-www-form-urlencoded; charset=UTF-8">> ->
 							ems_db:inc_counter(http_content_type_out_form_urlencode);
 						<<"application/x-www-form-urlencoded">> ->
@@ -76,7 +69,7 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 					end,
 					Response = cowboy_req:reply(Code, 
 												ResponseHeader#{
-													<<"content-type">> => ContentType,
+													<<"content-type">> => ContentTypeOut,
 													<<"access-control-allow-origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
 													<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
 													<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
@@ -105,17 +98,18 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 												Request2#request.response_data, CowboyReq2),
 					ems_logger:log_request(Request2)
 			end;
-		{error, Reason} = Error when is_atom(Reason) -> 
-			Url = binary_to_list(cowboy_req:path(CowboyReq)),
-			{Ip, _} = cowboy_req:peer(CowboyReq),
-			Ip2 = inet_parse:ntoa(Ip),
-			ems_logger:error("ems_http_handler ~s from ~s: ~p.", [Url, Ip2, Reason]),
-			Response = cowboy_req:reply(400, HttpHeaderDefault, ems_schema:to_json(Error), CowboyReq);
+		{_, request, #request{code = Code,
+									  response_header = ResponseHeader,
+									  response_data = ResponseData}, CowboyReq2} ->
+					Response = cowboy_req:reply(Code, 
+												ResponseHeader, 
+												ResponseData, 
+												CowboyReq2);
 		{error, Reason} -> 
 			Url = binary_to_list(cowboy_req:path(CowboyReq)),
 			{Ip, _} = cowboy_req:peer(CowboyReq),
 			Ip2 = inet_parse:ntoa(Ip),
-			ems_logger:error("ems_http_handler ~s from ~s: ~p.", [Url, Ip2, Reason]),
+			ems_logger:error("ems_http_handler ~s from ~s: ~p.\n\t~p", [Url, Ip2, Reason, CowboyReq]),
 			Response = cowboy_req:reply(400, HttpHeaderDefault, ?EINVALID_HTTP_REQUEST, CowboyReq)
 	end,
 	{ok, Response, State}.
