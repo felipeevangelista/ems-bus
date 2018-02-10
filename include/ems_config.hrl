@@ -160,7 +160,7 @@
 -define(ACCESS_CONTROL_MAX_AGE, <<"31536000">>).
 -define(ACCESS_CONTROL_ALLOW_ORIGIN, <<"*">>).
 -define(ACCESS_CONTROL_ALLOW_METHODS, <<"GET, POST, PUT, DELETE, OPTIONS, HEAD">>).
--define(ACCESS_CONTROL_EXPOSE_HEADERS, <<"Cache-Control, Content-Language, Content-Type, Expires, Last-Modified, Content-Length">>).
+-define(ACCESS_CONTROL_EXPOSE_HEADERS, <<"Cache-Control, Content-Language, Content-Type, Expires, Last-Modified, Pragma, Content-Length">>).
 
 
 -define(AUTHORIZATION_TYPE_DEFAULT, <<"oauth2">>).
@@ -211,6 +211,7 @@
 				 ems_debug :: boolean(),
 				 ems_result_cache  :: non_neg_integer(),
 				 ems_datasources :: map(),
+				 ems_response_headers :: boolean,			%% Add ems_headers in HTTP response headers
 				 tcp_listen_address :: list(),
 				 tcp_listen_address_t :: list(),
 				 tcp_listen_main_ip :: binary(),

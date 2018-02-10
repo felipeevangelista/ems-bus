@@ -12,7 +12,7 @@
 -include("../include/ems_schema.hrl").
 
 %% Client API
--export([start/0, dispatch_request/2]).
+-export([start/0, dispatch_request/3]).
 
 
 start() -> 
@@ -30,13 +30,16 @@ check_result_cache(ReqHash, Timestamp2) ->
 dispatch_request(Request = #request{req_hash = ReqHash, 
 								    ip = Ip,
 								    type = Type,
+								    if_modified_since = IfModifiedSince,
+									if_none_match = IfNoneMatch,
 								    t1 = T1},
 				 Service = #service{tcp_allowed_address_t = AllowedAddress,
-									result_cache = ResultCache,
-									service_exec_metric_name = ServiceExecMetricName,
-									service_result_cache_hit_metric_name = ServiceResultCacheHitMetricName,
-									service_host_denied_metric_name = ServiceHostDeniedMetricName,
-									service_auth_denied_metric_name = ServiceAuthDeniedMetricName}) -> 
+									 result_cache = ResultCache,
+									 service_exec_metric_name = ServiceExecMetricName,
+									 service_result_cache_hit_metric_name = ServiceResultCacheHitMetricName,
+									 service_host_denied_metric_name = ServiceHostDeniedMetricName,
+									 service_auth_denied_metric_name = ServiceAuthDeniedMetricName},
+				ShowEmsResponseHeaders) -> 
 	?DEBUG("ems_dispatcher lookup request ~p.", [Request]),
 	ems_db:inc_counter(ServiceExecMetricName),				
 	case ems_util:allow_ip_address(Ip, AllowedAddress) of
@@ -50,13 +53,13 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request2#request{code = 200, 
-															   content_type_out = ?CONTENT_TYPE_JSON,
-															   response_data = ems_catalog:get_metadata_json(Service),
-															   latency = ems_util:get_milliseconds() - T1}
+															    content_type_out = ?CONTENT_TYPE_JSON,
+															    response_data = ems_catalog:get_metadata_json(Service),
+															    latency = ems_util:get_milliseconds() - T1}
 								};
 						"HEAD" -> 
 								{ok, request, Request2#request{code = 200, 
-															   latency = ems_util:get_milliseconds() - T1}
+															    latency = ems_util:get_milliseconds() - T1}
 								};
 						<<"GET">> ->
 							case ResultCache > 0 of
@@ -64,42 +67,56 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 									case check_result_cache(ReqHash, T1) of
 										{true, RequestCache} -> 
 											ems_db:inc_counter(ServiceResultCacheHitMetricName),								
-											{ok, request, Request2#request{result_cache = true,
-																		   code = RequestCache#request.code,
-																		   reason = RequestCache#request.reason,
-																		   content_type_out = RequestCache#request.content_type_out,
-																		   response_data = RequestCache#request.response_data,
-																		   response_header = RequestCache#request.response_header,
-																		   result_cache_rid = RequestCache#request.rid,
-																		   etag = RequestCache#request.etag,
-																		   filename = RequestCache#request.filename,
-																		   latency = ems_util:get_milliseconds() - T1}};
-										false -> dispatch_service_work(Request2, Service)
+											case IfNoneMatch == <<>> andalso IfModifiedSince == <<>> of
+												true ->
+													{ok, request, Request2#request{result_cache = true,
+																					code = RequestCache#request.code,
+																					reason = RequestCache#request.reason,
+																					content_type_out = RequestCache#request.content_type_out,
+																					response_data = RequestCache#request.response_data,
+																					response_header = RequestCache#request.response_header,
+																					result_cache_rid = RequestCache#request.rid,
+																					etag = RequestCache#request.etag,
+																					filename = RequestCache#request.filename,
+																					latency = ems_util:get_milliseconds() - T1}};
+												false ->
+													{ok, request, Request2#request{result_cache = true,
+																					code = 304,
+																					reason = enot_modified,
+																					content_type_out = RequestCache#request.content_type_out,
+																					response_data = <<>>,
+																					response_header = RequestCache#request.response_header,
+																					result_cache_rid = RequestCache#request.rid,
+																					etag = RequestCache#request.etag,
+																					filename = RequestCache#request.filename,
+																					latency = ems_util:get_milliseconds() - T1}}
+											end;
+										false -> dispatch_service_work(Request2, Service, ShowEmsResponseHeaders)
 									end;
-								false -> dispatch_service_work(Request2, Service)
+								false -> dispatch_service_work(Request2, Service, ShowEmsResponseHeaders)
 							end;
 						_ ->
-							dispatch_service_work(Request2, Service)
+							dispatch_service_work(Request2, Service, ShowEmsResponseHeaders)
 					end;
 				{error, Reason} = Error -> 
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request#request{code = 200, 
-															  content_type_out = ?CONTENT_TYPE_JSON,
-															  response_data = ems_catalog:get_metadata_json(Service),
-															  latency = ems_util:get_milliseconds() - T1}
+															   content_type_out = ?CONTENT_TYPE_JSON,
+															   response_data = ems_catalog:get_metadata_json(Service),
+															   latency = ems_util:get_milliseconds() - T1}
 								};
 						"HEAD" -> 
 								{ok, request, Request#request{code = 200, 
-															  latency = ems_util:get_milliseconds() - T1}
+															   latency = ems_util:get_milliseconds() - T1}
 								};
 						 _ -> 
 							ems_db:inc_counter(ServiceAuthDeniedMetricName),								
 							{error, request, Request#request{code = 400, 
-															 content_type_out = ?CONTENT_TYPE_JSON,
-															 reason = Reason, 
-															 response_data = ems_schema:to_json(Error), 
-															 latency = ems_util:get_milliseconds() - T1}
+															  content_type_out = ?CONTENT_TYPE_JSON,
+															  reason = Reason, 
+															  response_data = ems_schema:to_json(Error), 
+															  latency = ems_util:get_milliseconds() - T1}
 							}
 					end
 			end;
@@ -110,36 +127,40 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 	
 
 
-dispatch_service_work(Request,
-					 _Service = #service{host = '',
-										 module_name = ModuleName,
-										 module = Module,
-										 function = Function}) ->
-	ems_logger:info("ems_dispatcher send local msg to ~s.", [ModuleName]),
-	{Reason, Request3 = #request{response_header = ResponseHeader}} = apply(Module, Function, [Request]),
-	Request4 = Request3#request{reason = case Request3#request.reason of
+dispatch_service_work(Request = #request{type = Type,
+										  url = Url,
+										  ip_bin = IpBin},
+					  #service{host = '',
+							    module_name = ModuleName,
+							    module = Module,
+							    function = Function},
+ 					  ShowEmsResponseHeaders) ->
+	ems_logger:info(iolist_to_binary([<<"ems_dispatcher ">>, Type, <<" ">>, Url, <<" to ">>, list_to_binary(ModuleName), <<" from ">>, IpBin])),
+	{Reason, Request2 = #request{response_header = ResponseHeader}} = apply(Module, Function, [Request]),
+	Request3 = Request2#request{reason = case Request2#request.reason of
 												undefined -> Reason;
 												Reason2 -> Reason2
-										 end,
-								response_header = ResponseHeader},
-	dispatch_middleware_function(Request4);
+										   end,
+								 response_header = ResponseHeader},
+	dispatch_middleware_function(Request3, ShowEmsResponseHeaders);
 dispatch_service_work(Request = #request{rid = Rid,
-										 type = Type,
-										 url = Url,
-										 payload = Payload,
-										 client = Client,
-										 user = User,
-										 scope = Scope,
-										 content_type_out = ContentType,  
-										 params_url = ParamsMap,
-										 querystring_map = QuerystringMap},
+										  type = Type,
+										  url = Url,
+										  payload = Payload,
+										  client = Client,
+										  user = User,
+										  scope = Scope,
+										  content_type_out = ContentType,  
+										  params_url = ParamsMap,
+										  querystring_map = QuerystringMap},
 					  Service = #service{host = Host,
 										 host_name = HostName,
 										 module_name = ModuleName,
 										 module = Module,
 										 function_name = FunctionName, 
 										 timeout = TimeoutService,
-										 service_unavailable_metric_name = ServiceUnavailableMetricName}) ->
+										 service_unavailable_metric_name = ServiceUnavailableMetricName},
+					  ShowEmsResponseHeaders) ->
 	case get_work_node(Host, Host, HostName, ModuleName) of
 		{ok, Node} ->
 			case erlang:is_tuple(Client) of
@@ -163,7 +184,7 @@ dispatch_service_work(Request = #request{rid = Rid,
 				  },
 			{Module, Node} ! Msg,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
-			dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0);
+			dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0, ShowEmsResponseHeaders);
 		Error ->  
 			ems_db:inc_counter(ServiceUnavailableMetricName),
 			Error
@@ -176,7 +197,7 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 							  Service = #service{module = Module,
 												 service_timeout_metric_name = ServiceTimeoutMetricName},
 							  Node,
-							  Timeout, TimeoutWaited) ->
+							  Timeout, TimeoutWaited, ShowEmsResponseHeaders) ->
 	receive 
 		{Code, RidRemote, {Reason, ResponseDataReceived}} when RidRemote == Rid  -> 
 			case Reason == ok andalso byte_size(ResponseDataReceived) >= 27 of
@@ -193,22 +214,22 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 				false -> ResponseData = ResponseDataReceived
 			end,
 			Request2 = Request#request{code = Code,
-									   reason = Reason,
-									   service = Service,
-									   params_url = ParamsMap,
-									   querystring_map = QuerystringMap,
-									   response_data = ResponseData},
-			dispatch_middleware_function(Request2);
+									    reason = Reason,
+									    service = Service,
+									    params_url = ParamsMap,
+									    querystring_map = QuerystringMap,
+									    response_data = ResponseData},
+			dispatch_middleware_function(Request2, ShowEmsResponseHeaders);
 		Msg -> 
 			ems_logger:error("ems_dispatcher received java invalid message ~p.", [Msg]), 
 			{error, request, Request#request{code = 500,
-											 reason = einvalid_rec_message,
-											 content_type_out = ?CONTENT_TYPE_JSON,
-											 service = Service,
-											 params_url = ParamsMap,
-											 querystring_map = QuerystringMap,
-											 response_data = ?EINVALID_JAVA_MESSAGE,
-											 latency = ems_util:get_milliseconds() - T1}}
+										 	  reason = einvalid_rec_message,
+									 		  content_type_out = ?CONTENT_TYPE_JSON,
+											  service = Service,
+											  params_url = ParamsMap,
+											  querystring_map = QuerystringMap,
+											  response_data = ?EINVALID_JAVA_MESSAGE,
+											  latency = ems_util:get_milliseconds() - T1}}
 		after 1000 ->
 			TimeoutWaited2 = TimeoutWaited + 1000,
 			Timeout2 = Timeout - 1000,
@@ -226,7 +247,7 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 													 latency = ems_util:get_milliseconds() - T1}};
 				false ->
 					ems_logger:warn("ems_dispatcher is waiting ~p for more than ~pms.", [{Module, Node}, TimeoutWaited2]),
-					dispatch_service_work_receive(Request, Service, Node, Timeout2, TimeoutWaited2)
+					dispatch_service_work_receive(Request, Service, Node, Timeout2, TimeoutWaited2, ShowEmsResponseHeaders)
 			end
 	end.
 
@@ -270,14 +291,15 @@ get_work_node([_|T], HostList, HostNames, ModuleName) ->
 		
 
 
--spec dispatch_middleware_function(#request{}) -> {ok, request, #request{}} | {error, request, #request{}}.
+-spec dispatch_middleware_function(#request{}, boolean()) -> {ok, request, #request{}} | {error, request, #request{}}.
 dispatch_middleware_function(Request = #request{reason = ok,
-												req_hash = ReqHash,
-												t1 = T1,
-												type = Type,
-												service = Service = #service{middleware = Middleware,
-																			 result_cache = ResultCache,
-																			 service_error_metric_name = ServiceErrorMetricName}}) ->
+												 req_hash = ReqHash,
+												 t1 = T1,
+												 type = Type,
+												 service = Service = #service{middleware = Middleware,
+												  							   result_cache = ResultCache,
+																			   service_error_metric_name = ServiceErrorMetricName}},
+							 ShowEmsResponseHeaders) ->
 	try
 		case Middleware of 
 			undefined -> Result = {ok, Request};
@@ -297,14 +319,27 @@ dispatch_middleware_function(Request = #request{reason = ok,
 					true -> 
 						case ResultCache > 0 of
 							true ->
-								Request3 = Request2#request{response_header = ResponseHeader#{<<"ems-result-cache">> => integer_to_binary(ResultCache)},
-															latency = ems_util:get_milliseconds() - T1,
-															status = req_done},
+								case ShowEmsResponseHeaders of
+									false ->
+										Request3 = Request2#request{latency = ems_util:get_milliseconds() - T1,
+																	 status = req_done};
+									true ->
+										Request3 = Request2#request{response_header = ResponseHeader#{<<"ems-result-cache">> => integer_to_binary(ResultCache)},
+																	 latency = ems_util:get_milliseconds() - T1,
+																	 status = req_done}
+								end,
 								ems_cache:add(ets_result_cache_get, ResultCache, ReqHash, {T1, Request3, ResultCache}),
 								{ok, request, Request3};
 							_ -> 
-								{ok, request, Request2#request{response_header = ResponseHeader#{<<"ems-result-cache">> => <<"0"/utf8>>},
-															   latency = ems_util:get_milliseconds() - T1}}
+								case ShowEmsResponseHeaders of
+									false ->
+										{ok, request, Request2#request{latency = ems_util:get_milliseconds() - T1,
+																		status = req_done}};
+									true ->
+										{ok, request, Request2#request{response_header = ResponseHeader#{<<"ems-result-cache">> => <<"0"/utf8>>},
+																		latency = ems_util:get_milliseconds() - T1,
+																		status = req_done}}
+								end
 						end;
 					false ->
 						ems_cache:flush(ets_result_cache_get),
@@ -329,12 +364,11 @@ dispatch_middleware_function(Request = #request{reason = ok,
 											 response_data = ems_schema:to_json(Error2),
 											 latency = ems_util:get_milliseconds() - T1}}
 	end;
-dispatch_middleware_function(Request = #request{code = Code, 
-												t1 = T1, 
-											    service = #service{service_error_metric_name = ServiceErrorMetricName}}) ->
+dispatch_middleware_function(Request = #request{t1 = T1, 
+											     service = #service{service_error_metric_name = ServiceErrorMetricName}},
+							_ShowEmsResponseHeaders) ->
 	ems_db:inc_counter(ServiceErrorMetricName),								
-	{error, request, Request#request{code = Code,
-									 content_type_out = ?CONTENT_TYPE_JSON,
-									 latency = ems_util:get_milliseconds() - T1}}.
+	{error, request, Request#request{content_type_out = ?CONTENT_TYPE_JSON,
+									  latency = ems_util:get_milliseconds() - T1}}.
 
 									 	

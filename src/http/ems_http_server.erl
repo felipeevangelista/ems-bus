@@ -64,7 +64,7 @@ handle_info(State) ->
    {noreply, State}.
 
 handle_info(timeout, State = #state{service = S = #service{name = Name, 
-														   tcp_listen_address_t = ListenAddress_t}}) ->
+														    tcp_listen_address_t = ListenAddress_t}}) ->
 	case ems_data_loader_ctl:is_loading() of
 		false ->
 			S2 = ems_config:get_port_offset(S),

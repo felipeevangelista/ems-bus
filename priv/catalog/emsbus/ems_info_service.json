@@ -1,18 +1,5 @@
 [
 	{
-		"name": "/info",
-		"comment": "Show Its works!!!",
-		"owner": "emsbus",
-		"version": "1.0.0",
-		"service" : "ems_info_service:info",
-		"url": "/info",
-		"async": "false",
-		"type": "GET",
-		"authorization" : "public",
-		"lang" : "erlang"
-	},
-
-	{
 		"name": "/",
 		"comment": "Show Its works!!!",
 		"owner": "emsbus",

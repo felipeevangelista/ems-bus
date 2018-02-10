@@ -24,7 +24,8 @@
 
 -record(state, {http_max_content_length,
 				http_header_default,
-				http_header_options}).
+				http_header_options,
+				ems_response_headers}).
 
 
 %%====================================================================
@@ -45,17 +46,20 @@ stop() ->
  
 init({IpAddress, 
 	  _Service = #service{protocol = Protocol,
-						  tcp_port = Port,
-						  tcp_is_ssl = IsSsl,
-						  tcp_max_connections = MaxConnections,
-						  tcp_ssl_cacertfile = SslCaCertFile,
-						  tcp_ssl_certfile = SslCertFile,
-						  tcp_ssl_keyfile = SslKeyFile,
-						  http_max_content_length = HttpMaxContentLength},
+						   tcp_port = Port,
+						   tcp_is_ssl = IsSsl,
+						   tcp_max_connections = MaxConnections,
+						   tcp_ssl_cacertfile = SslCaCertFile,
+						   tcp_ssl_certfile = SslCertFile,
+						   tcp_ssl_keyfile = SslKeyFile,
+						   http_max_content_length = HttpMaxContentLength},
 	  ListenerName}) ->
+    Conf = ems_config:getConfig(),
+    EmsResponseHeaders = Conf#config.ems_response_headers,
     State = #state{http_max_content_length = HttpMaxContentLength,
-				   http_header_default = get_http_header_default(),
-				   http_header_options = get_http_header_options()},
+				    http_header_default = get_http_header_default(EmsResponseHeaders),
+				    http_header_options = get_http_header_options(EmsResponseHeaders),
+				    ems_response_headers = EmsResponseHeaders},
 	Dispatch = cowboy_router:compile([
 		{'_', [
 			{"/websocket", ems_websocket_handler, State},
@@ -107,36 +111,54 @@ terminate(_Reason, _State) -> ok.
  
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
-get_http_header_default() ->
+get_http_header_default(false) ->
 	#{
 		<<"server">> => ?SERVER_NAME,
 		<<"content-type">> => ?CONTENT_TYPE_JSON,
-		<<"ems-node">> => ems_util:node_binary(),
 		<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
-		<<"access-control-allow-origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
-		<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
-		<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
-		<<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
-		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
+		<<"Access-Control-Allow-Origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
+		<<"X-XSS-Protection">> => <<"1; mode=block">>,
+		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
+		<<"X-Content-Type-Options">> => <<"nosniff">>
+	};
+get_http_header_default(true) ->
+	#{
+		<<"server">> => ?SERVER_NAME,
+		<<"content-type">> => ?CONTENT_TYPE_JSON,
+		<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
+		<<"Access-Control-Allow-Origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
 		<<"X-XSS-Protection">> => <<"1; mode=block">>,
 		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
 		<<"X-Content-Type-Options">> => <<"nosniff">>,
-		<<"X-Powered-By">> => <<"ErlangMS">>
+		<<"ems-node">> => ems_util:node_binary()
 	}.
 
-get_http_header_options() ->
+get_http_header_options(false) ->
 	#{
 		<<"server">> => ?SERVER_NAME,
 		<<"content-type">> => ?CONTENT_TYPE_JSON,
-		<<"ems-node">> => ems_util:node_binary(),
 		<<"cache-control">> => ?CACHE_CONTROL_30_DAYS,
-		<<"access-control-allow-origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
-		<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
-		<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
-		<<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
-		<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
+		<<"Access-Control-Allow-Origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
+		<<"Access-Control-Max-Age">> => ?ACCESS_CONTROL_MAX_AGE,
+		<<"Access-Control-Allow-Headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
+		<<"Access-Control-Allow-Methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
+		<<"Access-Control-Expose-Headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
+		<<"X-XSS-Protection">> => <<"1; mode=block">>,
+		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
+		<<"X-Content-Type-Options">> => <<"nosniff">>
+	};
+get_http_header_options(true) ->
+	#{
+		<<"server">> => ?SERVER_NAME,
+		<<"content-type">> => ?CONTENT_TYPE_JSON,
+		<<"cache-control">> => ?CACHE_CONTROL_30_DAYS,
+		<<"Access-Control-Allow-Origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
+		<<"Access-Control-Max-Age">> => ?ACCESS_CONTROL_MAX_AGE,
+		<<"Access-Control-Allow-Headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
+		<<"Access-Control-Allow-Methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
+		<<"Access-Control-Expose-Headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
 		<<"X-XSS-Protection">> => <<"1; mode=block">>,
 		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
 		<<"X-Content-Type-Options">> => <<"nosniff">>,
-		<<"X-Powered-By">> => <<"ErlangMS">>
+		<<"ems-node">> => ems_util:node_binary()
 	}.

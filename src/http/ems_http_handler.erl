@@ -15,14 +15,16 @@
 
 -record(state, {http_max_content_length,
 				http_header_default,
-				http_header_options}).
+				http_header_options,
+				ems_response_headers}).
 
 
 init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
-							   http_header_options = HttpHeaderOptions}) ->
-	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault, HttpHeaderOptions) of
+							    http_header_options = HttpHeaderOptions, 
+							    ems_response_headers = ShowEmsResponseHeaders}) ->
+	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault, HttpHeaderOptions, ShowEmsResponseHeaders) of
 		{ok, Request = #request{t1 = T1}, Service, CowboyReq2} -> 
-			case ems_dispatcher:dispatch_request(Request, Service) of
+			case ems_dispatcher:dispatch_request(Request, Service, ShowEmsResponseHeaders) of
 				{ok, request, Request2 = #request{code = Code,
 												  response_header = ResponseHeader,
 												  response_data = ResponseData,
@@ -68,13 +70,7 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 							ems_db:inc_counter(http_content_type_out_other)
 					end,
 					Response = cowboy_req:reply(Code, 
-												ResponseHeader#{
-													<<"content-type">> => ContentTypeOut,
-													<<"access-control-allow-origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
-													<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
-													<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
-													<<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
-													<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS}, 
+												ResponseHeader#{<<"content-type">> => ContentTypeOut}, 
 												ResponseData, 
 												CowboyReq2),
 					ems_logger:log_request(Request2);
@@ -98,13 +94,14 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 												Request2#request.response_data, CowboyReq2),
 					ems_logger:log_request(Request2)
 			end;
-		{_, request, #request{code = Code,
-									  response_header = ResponseHeader,
-									  response_data = ResponseData}, CowboyReq2} ->
-					Response = cowboy_req:reply(Code, 
-												ResponseHeader, 
-												ResponseData, 
-												CowboyReq2);
+		{_, request, Request = #request{code = Code,
+									     response_header = ResponseHeader,
+									     response_data = ResponseData}, CowboyReq2} ->
+			Response = cowboy_req:reply(Code, 
+										ResponseHeader, 
+										ResponseData, 
+										CowboyReq2),
+			ems_logger:log_request(Request);
 		{error, Reason} -> 
 			Url = binary_to_list(cowboy_req:path(CowboyReq)),
 			{Ip, _} = cowboy_req:peer(CowboyReq),

@@ -106,7 +106,7 @@
 		 match_ip_address/2,
  		 allow_ip_address/2,
 		 mask_ipaddress_to_tuple/1,
-		 encode_request_cowboy/4,
+		 encode_request_cowboy/5,
 		 msg_campo_obrigatorio/2, msg_email_invalido/2, mensagens/1,
 		 msg_registro_ja_existe/1, msg_registro_ja_existe/2,
 		 hashsym_and_params/1,
@@ -1461,8 +1461,8 @@ mime_type(".m4a") -> <<"audio/mpeg">>;
 mime_type(_) -> <<"application/octet-stream">>.
 
 
--spec encode_request_cowboy(tuple(), pid(), map(), map()) -> {ok, #request{}} | {error, atom()}.
-encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions) ->
+-spec encode_request_cowboy(tuple(), pid(), map(), map(), boolean()) -> {ok, #request{}} | {error, atom()}.
+encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions, ShowEmsResponseHeaders) ->
 	try
 		Url = cowboy_req:path(CowboyReq),
 		Url2 = remove_ult_backslash_url(binary_to_list(Url)),
@@ -1561,18 +1561,22 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			port = Port,
 			result_cache = false,
 			t1 = T1,
-			referer = Referer
+			referer = Referer,
+			payload = <<>>, 
+			payload_map = #{},
+			response_data = <<>>,
+			node_exec = ems_util:node_binary()
 		},	
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,
-								url = ServiceUrl,
-								content_type = ContentTypeService,
-								owner = ServiceOwner,
-								version = ServiceVersion,
-								lang = LangService,
-								timeout = TimeoutService,
-								http_max_content_length = HttpMaxContentLengthService,
-								authorization = ServiceAuthorization}, 
+								 url = ServiceUrl,
+								 content_type = ContentTypeService,
+								 owner = ServiceOwner,
+								 version = ServiceVersion,
+								 lang = LangService,
+								 timeout = TimeoutService,
+								 http_max_content_length = HttpMaxContentLengthService,
+								 authorization = ServiceAuthorization}, 
 			 ParamsMap, 
 			 QuerystringMap} -> 
 				case cowboy_req:body_length(CowboyReq) of
@@ -1721,26 +1725,36 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 											<<"OPTIONS">> -> 
 												ExpireDate = date_add_minute(Timestamp, 1440),
 												Expires = cowboy_clock:rfc1123(ExpireDate),
-												HttpHeaderOptions#{<<"ems-rowid">> => integer_to_binary(Rowid),
-																   <<"ems-hash">> => integer_to_binary(ReqHash),
-																   <<"ems-catalog">> => ServiceName,
-																   <<"ems-owner">> => ServiceOwner,
-																   <<"ems-version">> => ServiceVersion,
-																   <<"ems-url">> => ServiceUrl,
-																   <<"ems-timeout">> => integer_to_binary(TimeoutService),
-																   <<"ems-lang">> => LangService,
-																   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8),
-																   <<"expires">> => Expires};
+												case ShowEmsResponseHeaders of
+													false ->
+														HttpHeaderOptions#{<<"expires">> => Expires};
+													true ->
+														HttpHeaderOptions#{<<"ems-rowid">> => integer_to_binary(Rowid),
+																		   <<"ems-hash">> => integer_to_binary(ReqHash),
+																		   <<"ems-catalog">> => ServiceName,
+																		   <<"ems-owner">> => ServiceOwner,
+																		   <<"ems-version">> => ServiceVersion,
+																		   <<"ems-url">> => ServiceUrl,
+																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
+																		   <<"ems-lang">> => LangService,
+																		   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8),
+																		   <<"expires">> => Expires}
+												end;
 											_ -> 
-												HttpHeaderDefault#{<<"ems-rowid">> => integer_to_binary(Rowid),
-																   <<"ems-hash">> => integer_to_binary(ReqHash),
-																   <<"ems-catalog">> => ServiceName,
-																   <<"ems-owner">> => ServiceOwner,
-																   <<"ems-version">> => ServiceVersion,
-																   <<"ems-url">> => ServiceUrl,
-																   <<"ems-timeout">> => integer_to_binary(TimeoutService),
-																   <<"ems-lang">> => LangService,
-																   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8)}
+												case ShowEmsResponseHeaders of
+													false ->
+														HttpHeaderDefault;
+													true ->
+														HttpHeaderDefault#{<<"ems-rowid">> => integer_to_binary(Rowid),
+																		   <<"ems-hash">> => integer_to_binary(ReqHash),
+																		   <<"ems-catalog">> => ServiceName,
+																		   <<"ems-owner">> => ServiceOwner,
+																		   <<"ems-version">> => ServiceVersion,
+																		   <<"ems-url">> => ServiceUrl,
+																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
+																		   <<"ems-lang">> => LangService,
+																		   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8)}
+												end
 									  end
 				},	
 				{ok, Request2, Service, CowboyReq2};
@@ -1760,7 +1774,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 						ems_db:inc_counter(ems_dispatcher_lookup_enoent),								
 						Request2 = Request#request{req_hash = ReqHash,
 													code = 404, 
-												    reason = ok,
+												    reason = enoent_service_contract,
 												    type = Type,  % use original verb of request
 												    response_header = HttpHeaderDefault,
 												    response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
@@ -1769,9 +1783,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 				end			
 		end
 	catch
-		_Exception:Reason -> 
-			ems_db:inc_counter(Reason),
-			{error, Reason}
+		_Exception:Reason2 -> {error, Reason2}
 	end.
 
 
@@ -2206,26 +2218,26 @@ load_from_file_req(Request = #request{url = Url,
 					case file:read_file(Filename) of
 						{ok, FileData} -> 
 							{ok, Request#request{code = 200, 
-											     reason = ok,
-												 content_type_out = MimeType,
-											     etag = ETag,
-											     filename = Filename,
-											     response_data = FileData, 
-											     response_header = ResponseHeader2}
+											      reason = ok,
+												  content_type_out = MimeType,
+											      etag = ETag,
+											      filename = Filename,
+											      response_data = FileData, 
+											      response_header = ResponseHeader2}
 							};
 						{error, Reason} = Error -> 
 							{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
-												    reason = Reason,
-												    content_type_out = ?CONTENT_TYPE_JSON,
-												    response_data = ems_schema:to_json(Error)}
+												     reason = Reason,
+												     content_type_out = ?CONTENT_TYPE_JSON,
+												     response_data = ems_schema:to_json(Error)}
 							}
 					end
 			end;
 		{error, Reason} = Error -> 
 			ems_logger:warn("ems_static_file_service file ~p does not exist.", [Filename]),
 			{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
-									reason = Reason,	
-									response_data = ems_schema:to_json(Error)}
+									 reason = Reason,	
+									 response_data = ems_schema:to_json(Error)}
 			 }
 	end.
 
