@@ -15,7 +15,7 @@ execute(Request) ->
 							Service2 = Service#service{module_name = atom_to_list(ModuleController),
 													   module = ModuleController,
 													   function = execute},
-							case ems_dispatcher:dispatch_service_work(Request2, Service2) of
+							case ems_dispatcher:dispatch_service_work(Request2, Service2, false) of
 								{ok, request, #request{response_data = Args}} ->
 									case ems_django:render(ModuleTemplate, Args) of
 										{ok, Content} ->

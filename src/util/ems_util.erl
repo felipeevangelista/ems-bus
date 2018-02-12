@@ -148,7 +148,8 @@
 		 user_agent_atom_to_binary/1,
 		 to_lower_and_remove_backslash/1,
 		 check_type_email/2,
-		 is_email_institucional/2
+		 is_email_institucional/2,
+		 invoque_service/3
 		]).
 
 -spec version() -> string().
@@ -1461,6 +1462,74 @@ mime_type(".m4a") -> <<"audio/mpeg">>;
 mime_type(_) -> <<"application/octet-stream">>.
 
 
+invoque_service(Type, Url, QuerystringBin) ->
+	case QuerystringBin of
+		<<>> -> QuerystringMap = #{};
+		_ -> QuerystringMap = parse_querystring([binary_to_list(QuerystringBin)])
+	end,
+	invoque_service(Type, Url, QuerystringBin, QuerystringMap, ?CONTENT_TYPE_JSON).
+
+invoque_service(Type, Url, QuerystringBin, QuerystringMap, ContentTypeIn) ->
+	Url2 = remove_ult_backslash_url(binary_to_list(Url)),
+	{Rowid, Params_url} = hashsym_and_params(Url2),
+	RID = erlang:system_time(),
+	Timestamp = calendar:local_time(),
+	T1 = trunc(RID / 1.0e6), % optimized: same that get_milliseconds()
+	Request = #request{
+				rid = RID,
+				rowid = Rowid,
+				type = Type,
+				uri = <<>>,
+				url = Url2,
+				version = <<>>,
+				content_type_in = ContentTypeIn,
+				content_length = 0,
+				querystring = QuerystringBin,
+				querystring_map = QuerystringMap,
+				params_url = Params_url,
+				accept = <<"*/*">>,
+				user_agent = <<"ems-bus">>,
+				user_agent_version = <<>>,
+				accept_encoding = <<"*">>,
+				cache_control = <<>>,
+				ip = {127,0,0,1},
+				ip_bin = <<"127.0.0.1">>,
+				host = <<"localhost">>,
+				timestamp = Timestamp,
+				authorization = <<>>,
+				worker_send = undefined,
+				if_modified_since = <<>>,
+				if_none_match = <<>>,
+				protocol = http,
+				protocol_bin = <<"http">>,
+				port = 2301,
+				result_cache = false,
+				t1 = T1,
+				referer = <<"ems-bus">>,
+				payload = <<>>, 
+				payload_map = #{},
+				response_data = <<>>,
+				node_exec = ems_util:node_binary()
+			},	
+	case ems_catalog_lookup:lookup(Request) of
+		{Service = #service{content_type = ContentTypeService}, 
+		 ParamsMap, 
+		 QuerystringMap2} -> 
+			 ReqHash = erlang:phash2([Url, QuerystringMap2, 0, ContentTypeIn]),
+			 Request2 = Request#request{
+						querystring_map = QuerystringMap2,
+						content_type_out = 	case ContentTypeService of
+												undefined -> ContentTypeIn;
+												_ -> ContentTypeService
+											end,
+						params_url = ParamsMap,
+						req_hash = ReqHash,
+						service = Service},
+			ems_dispatcher:dispatch_service_work(Request2, Service, false);
+		 Error -> Error
+	end.	
+
+
 -spec encode_request_cowboy(tuple(), pid(), map(), map(), boolean()) -> {ok, #request{}} | {error, atom()}.
 encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions, ShowEmsResponseHeaders) ->
 	try
@@ -1504,9 +1573,18 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			undefined -> Authorization = <<>>;
 			AuthorizationValue -> Authorization = AuthorizationValue
 		end,
-		IfModifiedSince = cowboy_req:header(<<"if-modified-since">>, CowboyReq),
-		IfNoneMatch = cowboy_req:header(<<"if-none-match">>, CowboyReq),
-		Referer = cowboy_req:header(<<"referer">>, CowboyReq),
+		case cowboy_req:header(<<"if-modified-since">>, CowboyReq) of
+			undefined -> IfModifiedSince = <<>>;
+			IfModifiedSinceValue -> IfModifiedSince = IfModifiedSinceValue
+		end,
+		case cowboy_req:header(<<"if-none-match">>, CowboyReq) of
+			undefined -> IfNoneMatch = <<>>;
+			IfNoneMatchValue -> IfNoneMatch = IfNoneMatchValue
+		end,
+		case cowboy_req:header(<<"referer">>, CowboyReq) of
+			undefined -> Referer = <<>>;
+			RefererValue -> Referer = RefererValue
+		end,
 		{Rowid, Params_url} = hashsym_and_params(Url2),
 		TypeLookup = case Type of
 					<<"OPTIONS">> -> 

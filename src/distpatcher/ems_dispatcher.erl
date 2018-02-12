@@ -12,7 +12,7 @@
 -include("../include/ems_schema.hrl").
 
 %% Client API
--export([start/0, dispatch_request/3]).
+-export([start/0, dispatch_request/3, dispatch_service_work/3]).
 
 
 start() -> 
@@ -28,11 +28,11 @@ check_result_cache(ReqHash, Timestamp2) ->
 	end.
 
 dispatch_request(Request = #request{req_hash = ReqHash, 
-								    ip = Ip,
-								    type = Type,
-								    if_modified_since = IfModifiedSince,
-									if_none_match = IfNoneMatch,
-								    t1 = T1},
+								     ip = Ip,
+								     type = Type,
+								     if_modified_since = IfModifiedSince,
+									 if_none_match = IfNoneMatch,
+								     t1 = T1},
 				 Service = #service{tcp_allowed_address_t = AllowedAddress,
 									 result_cache = ResultCache,
 									 service_exec_metric_name = ServiceExecMetricName,
@@ -47,9 +47,9 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 			case ems_auth_user:authenticate(Service, Request) of
 				{ok, Client, User, AccessToken, Scope} -> 
 					Request2 = Request#request{client = Client,
-											   user = User,
-											   scope = Scope,
-											   access_token = AccessToken},
+											    user = User,
+											    scope = Scope,
+											    access_token = AccessToken},
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request2#request{code = 200, 
@@ -67,13 +67,13 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 									case check_result_cache(ReqHash, T1) of
 										{true, RequestCache} -> 
 											ems_db:inc_counter(ServiceResultCacheHitMetricName),								
-											case IfNoneMatch == <<>> andalso IfModifiedSince == <<>> of
+											case IfNoneMatch =/= <<>> orelse IfModifiedSince =/= <<>> of
 												true ->
 													{ok, request, Request2#request{result_cache = true,
-																					code = RequestCache#request.code,
-																					reason = RequestCache#request.reason,
+																					code = 304,
+																					reason = enot_modified,
 																					content_type_out = RequestCache#request.content_type_out,
-																					response_data = RequestCache#request.response_data,
+																					response_data = <<>>,
 																					response_header = RequestCache#request.response_header,
 																					result_cache_rid = RequestCache#request.rid,
 																					etag = RequestCache#request.etag,
@@ -81,10 +81,10 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 																					latency = ems_util:get_milliseconds() - T1}};
 												false ->
 													{ok, request, Request2#request{result_cache = true,
-																					code = 304,
-																					reason = enot_modified,
+																					code = RequestCache#request.code,
+																					reason = RequestCache#request.reason,
 																					content_type_out = RequestCache#request.content_type_out,
-																					response_data = <<>>,
+																					response_data = RequestCache#request.response_data,
 																					response_header = RequestCache#request.response_header,
 																					result_cache_rid = RequestCache#request.rid,
 																					etag = RequestCache#request.etag,
