@@ -1461,13 +1461,24 @@ mime_type(".z") -> <<"application/x-compress">>;
 mime_type(".m4a") -> <<"audio/mpeg">>;
 mime_type(_) -> <<"application/octet-stream">>.
 
-
-invoque_service(Type, Url, QuerystringBin) ->
-	case QuerystringBin of
-		<<>> -> QuerystringMap = #{};
-		_ -> QuerystringMap = parse_querystring([binary_to_list(QuerystringBin)])
-	end,
-	invoque_service(Type, Url, QuerystringBin, QuerystringMap, ?CONTENT_TYPE_JSON).
+-spec invoque_service(binary(), binary(), binary()) -> {ok, request, #request{}} | {error, request, #request{}} | {error, atom()}.
+invoque_service(Type, Url, QuerystringBin) -> 
+	try
+		case QuerystringBin of
+			<<>> -> QuerystringMap = #{};
+			_ -> 
+				Querystring = case binary_to_list(QuerystringBin) of
+									"?" ++ QuerystringValue -> QuerystringValue;
+									QuerystringValue -> QuerystringValue
+							  end,
+				QuerystringMap = parse_querystring([Querystring])
+		end,
+		invoque_service(Type, Url, QuerystringBin, QuerystringMap, ?CONTENT_TYPE_JSON)
+	catch
+		_Exception:Reason -> 
+			ems_logger:error("ems_util invoque_service ~p ~p with querystring ~p exception: ~p.", [Type, Url, QuerystringBin, Reason]),
+			{error, einvoque_service}
+	end.
 
 invoque_service(Type, Url, QuerystringBin, QuerystringMap, ContentTypeIn) ->
 	Url2 = remove_ult_backslash_url(binary_to_list(Url)),

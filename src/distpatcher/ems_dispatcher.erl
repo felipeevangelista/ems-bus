@@ -136,13 +136,25 @@ dispatch_service_work(Request = #request{type = Type,
 							    function = Function},
  					  ShowEmsResponseHeaders) ->
 	ems_logger:info(iolist_to_binary([<<"ems_dispatcher ">>, Type, <<" ">>, Url, <<" to ">>, list_to_binary(ModuleName), <<" from ">>, IpBin])),
-	{Reason, Request2 = #request{response_header = ResponseHeader}} = apply(Module, Function, [Request]),
-	Request3 = Request2#request{reason = case Request2#request.reason of
-												undefined -> Reason;
-												Reason2 -> Reason2
-										   end,
-								 response_header = ResponseHeader},
-	dispatch_middleware_function(Request3, ShowEmsResponseHeaders);
+	%% Retornos possíveis:
+	%%
+	%% Com processamento de middleware function e result cache
+	%% {ok, #request{}}
+	%% {error, #request{}}
+	%%
+	%% Sem processamento de middleware function e result cache
+	%% {ok, request, #request{}}
+	%% {error, request, #request{}}
+	%% {error, atom()}
+	case apply(Module, Function, [Request]) of
+		{Reason, Request2} ->
+			Request3 = Request2#request{reason = case Request2#request.reason of
+														undefined -> Reason;
+														Reason2 -> Reason2
+												   end},
+			dispatch_middleware_function(Request3, ShowEmsResponseHeaders);
+		Request2 -> Request2
+	end;
 dispatch_service_work(Request = #request{rid = Rid,
 										  type = Type,
 										  url = Url,
@@ -191,11 +203,9 @@ dispatch_service_work(Request = #request{rid = Rid,
 	end.
 		
 dispatch_service_work_receive(Request = #request{rid = Rid,
-												 t1 = T1,
-												 params_url = ParamsMap,
-												 querystring_map = QuerystringMap},
+												  t1 = T1},
 							  Service = #service{module = Module,
-												 service_timeout_metric_name = ServiceTimeoutMetricName},
+												  service_timeout_metric_name = ServiceTimeoutMetricName},
 							  Node,
 							  Timeout, TimeoutWaited, ShowEmsResponseHeaders) ->
 	receive 
@@ -215,9 +225,6 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 			end,
 			Request2 = Request#request{code = Code,
 									    reason = Reason,
-									    service = Service,
-									    params_url = ParamsMap,
-									    querystring_map = QuerystringMap,
 									    response_data = ResponseData},
 			dispatch_middleware_function(Request2, ShowEmsResponseHeaders);
 		Msg -> 
@@ -225,9 +232,6 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 			{error, request, Request#request{code = 500,
 										 	  reason = einvalid_rec_message,
 									 		  content_type_out = ?CONTENT_TYPE_JSON,
-											  service = Service,
-											  params_url = ParamsMap,
-											  querystring_map = QuerystringMap,
 											  response_data = ?EINVALID_JAVA_MESSAGE,
 											  latency = ems_util:get_milliseconds() - T1}}
 		after 1000 ->
@@ -238,13 +242,10 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 					ems_logger:warn("ems_dispatcher etimeout_service while waiting ~pms for ~p.", [Timeout, {Module, Node}]),
 					ems_db:inc_counter(ServiceTimeoutMetricName),
 					{error, request, Request#request{code = 503,
-													 reason = etimeout_service,
-													 content_type_out = ?CONTENT_TYPE_JSON,
-													 service = Service,
-													 params_url = ParamsMap,
-													 querystring_map = QuerystringMap,
-													 response_data = ?ETIMEOUT_SERVICE,
-													 latency = ems_util:get_milliseconds() - T1}};
+													  reason = etimeout_service,
+													  content_type_out = ?CONTENT_TYPE_JSON,
+													  response_data = ?ETIMEOUT_SERVICE,
+													  latency = ems_util:get_milliseconds() - T1}};
 				false ->
 					ems_logger:warn("ems_dispatcher is waiting ~p for more than ~pms.", [{Module, Node}, TimeoutWaited2]),
 					dispatch_service_work_receive(Request, Service, Node, Timeout2, TimeoutWaited2, ShowEmsResponseHeaders)
@@ -348,21 +349,21 @@ dispatch_middleware_function(Request = #request{reason = ok,
 			{error, Reason2} = Error ->
 				ems_db:inc_counter(ServiceErrorMetricName),	
 				{error, request, Request#request{code = 500,
-											     reason = Reason2,
-												 content_type_out = ?CONTENT_TYPE_JSON,
-												 service = Service,
-												 response_data = ems_schema:to_json(Error),
-												 latency = ems_util:get_milliseconds() - T1}}
+											      reason = Reason2,
+												  content_type_out = ?CONTENT_TYPE_JSON,
+												  service = Service,
+												  response_data = ems_schema:to_json(Error),
+												  latency = ems_util:get_milliseconds() - T1}}
 		end
 	catch 
 		_Exception:Error2 -> 
 			ems_db:inc_counter(ServiceErrorMetricName),
 			{error, request, Request#request{code = 500,
-											 reason = Error2,
-											 content_type_out = ?CONTENT_TYPE_JSON,
-											 service = Service,
-											 response_data = ems_schema:to_json(Error2),
-											 latency = ems_util:get_milliseconds() - T1}}
+											  reason = Error2,
+											  content_type_out = ?CONTENT_TYPE_JSON,
+											  service = Service,
+											  response_data = ems_schema:to_json(Error2),
+											  latency = ems_util:get_milliseconds() - T1}}
 	end;
 dispatch_middleware_function(Request = #request{t1 = T1, 
 											     service = #service{service_error_metric_name = ServiceErrorMetricName}},
