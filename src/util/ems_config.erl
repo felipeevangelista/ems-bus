@@ -19,7 +19,7 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/1, handle_info/2, terminate/2, code_change/3]).
 
--export([getConfig/0, getConfig/3, get_port_offset/1]).
+-export([getConfig/0, getConfig/3, get_port_offset/1, select_config_file/2]).
 
 -define(SERVER, ?MODULE).
 
@@ -109,41 +109,18 @@ code_change(_OldVsn, State, _Extra) ->
 % Locais do arquivo: home do user (.erlangms/node@hostname.conf, .erlangms/emsbus.conf) ou na pasta priv/conf do barramento
 -spec get_config_data() -> string() | {error, enofile_config}.
 get_config_data() ->
-	case init:get_argument(home) of
-		{ok, [[HomePath]]} -> 
-			Filename = lists:concat([HomePath, "/.erlangms/", node(), ".conf"]),
-			case file:read_file(Filename) of 
-				{ok, Arq} -> 
-					?DEBUG("ems_config checking if node file configuration ~p exist: Ok", [Filename]),
-					{ok, Arq, Filename};
-				_Error -> 
-					?DEBUG("ems_config checking if node file configuration ~p exist: No", [Filename]),
-					Filename2 = lists:concat([HomePath, "/.erlangms/emsbus.conf"]),
-					case file:read_file(Filename2) of 
-						{ok, Arq2} -> 
-							?DEBUG("ems_config checking if file configuration ~p exist: Ok", [Filename2]),
-							{ok, Arq2, Filename2};
-						_Error -> 
-							?DEBUG("ems_config checking if file configuration ~p exist: No", [Filename2]),
-							case file:read_file(?CONF_FILE_PATH) of 
-								{ok, Arq3} -> 
-									?DEBUG("ems_config checking if global file configuration ~p exist: Ok", [?CONF_FILE_PATH]),
-									{ok, Arq3, ?CONF_FILE_PATH};
-								_Error -> 
-									?DEBUG("ems_config checking if global file configuration ~p exist: No", [?CONF_FILE_PATH]),
-									{error, enofile_config}
-							end
-					end
-			end;
-		error ->
-			case file:read_file(?CONF_FILE_PATH) of 
-				{ok, Arq4} -> 
-					?DEBUG("ems_config checking if global file configuration ~p exist: Ok", [?CONF_FILE_PATH]),
-					{ok, Arq4, ?CONF_FILE_PATH};
-				{error, enoent} -> 
-					?DEBUG("ems_config checking if global file configuration ~p exist: No", [?CONF_FILE_PATH]),
-					{error, enofile_config}
-			end
+	try
+		ConfigFile = case init:get_argument(conf) of
+								{ok, [[ConfigFileCommandLine]]} -> ConfigFileCommandLine;
+								_ -> "emsbus.conf"
+							end,
+		Filename = select_config_file(ConfigFile, ?CONF_FILE_PATH),
+		case file:read_file(Filename) of 
+			{ok, Arq} -> {ok, Arq, Filename};
+			_ -> {error, enofile_config}
+		end
+	catch
+		_:_ -> {error, enofile_config}
 	end.
 
 print_config_settings(Json = #config{ems_debug = true, config_file = Filename}) ->
@@ -172,7 +149,7 @@ load_config() ->
 					get_default_config()
 			end;
 		{error, enofile_config} ->
-			ems_logger:format_warn("ems_config has no file configuration. Running with default settings.\n"),
+			ems_logger:format_warn("Configuration file does not exist or can not be read, using default settings.\n"),
 			get_default_config()
 	end.
 
@@ -245,18 +222,18 @@ parse_config(Json, NomeArqConfig) ->
 			 oauth2_with_check_constraint = ems_util:parse_bool(maps:get(<<"oauth2_with_check_constraint">>, Json, false)),
 			 config_file = NomeArqConfig,
 			 params = Json,
-			 client_path_search = maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH),
-			 user_path_search = maps:get(<<"user_path_search">>, Json, ?USER_PATH),
-			 user_dados_funcionais_path_search = maps:get(<<"user_path_search">>, Json, ?USER_DADOS_FUNCIONAIS_PATH),
-			 user_perfil_path_search = maps:get(<<"user_perfil_path_search">>, Json, ?USER_PERFIL_PATH),
-			 user_permission_path_search = maps:get(<<"user_permission_path_search">>, Json, ?USER_PERMISSION_PATH),
-			 user_endereco_path_search = maps:get(<<"user_endereco_path_search">>, Json, ?USER_ENDERECO_PATH),
-			 user_telefone_path_search = maps:get(<<"user_telefone_path_search">>, Json, ?USER_TELEFONE_PATH),
-			 user_email_path_search	= maps:get(<<"user_email_path_search">>, Json, ?USER_EMAIL_PATH),
+			 client_path_search = select_config_file(<<"user_client.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
+			 user_path_search = select_config_file(<<"users.json">>, maps:get(<<"user_path_search">>, Json, ?USER_PATH)),
+			 user_dados_funcionais_path_search = select_config_file(<<"user_dados_funcionais.json">>, maps:get(<<"user_dados_funcionais_path">>, Json, ?USER_DADOS_FUNCIONAIS_PATH)),
+			 user_perfil_path_search = select_config_file(<<"user_perfil.json">>, maps:get(<<"user_perfil_path_search">>, Json, ?USER_PERFIL_PATH)),
+			 user_permission_path_search = select_config_file(<<"user_permission.json">>, maps:get(<<"user_permission_path_search">>, Json, ?USER_PERMISSION_PATH)),
+			 user_endereco_path_search = select_config_file(<<"user_endereco.json">>, maps:get(<<"user_endereco_path_search">>, Json, ?USER_ENDERECO_PATH)),
+			 user_telefone_path_search = select_config_file(<<"user_telefone.json">>, maps:get(<<"user_telefone_path_search">>, Json, ?USER_TELEFONE_PATH)),
+			 user_email_path_search	= select_config_file(<<"user_email.json">>, maps:get(<<"user_email_path_search">>, Json, ?USER_EMAIL_PATH)),
  			 ssl_cacertfile = maps:get(<<"ssl_cacertfile">>, Json, undefined),
 			 ssl_certfile = maps:get(<<"ssl_certfile">>, Json, undefined),
 			 ssl_keyfile = maps:get(<<"ssl_keyfile">>, Json, undefined),
-			 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"">>))
+			 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>))
 		}.
 
 % It generates a default configuration if there is no configuration file
@@ -304,8 +281,45 @@ get_default_config() ->
 			 ssl_cacertfile = undefined,
 			 ssl_certfile = undefined,
 			 ssl_keyfile = undefined,
-			 sufixo_email_institucional = ""
+			 sufixo_email_institucional = "@unb.br"
 		}.
+
+-spec select_config_file(binary() | string(), binary() | string()) -> {ok, string()} | {error, enofile_config}.
+select_config_file(ConfigFile, ConfigFileDefault) ->
+	ConfigFile2 = case is_binary(ConfigFile) of
+					 true ->  binary_to_list(ConfigFile);
+				  	 false -> ConfigFile
+				  end,
+	ConfigFileDefault2 = case is_binary(ConfigFileDefault) of
+					 true ->  binary_to_list(ConfigFileDefault);
+				  	 false -> ConfigFileDefault
+				  end,
+	HomePath = ems_util:get_home_dir(),
+	Filename = lists:concat([HomePath, "/.erlangms/", ConfigFile2]),
+	case file:read_file(Filename) of 
+		{ok, _Arq} -> 
+			?DEBUG("ems_config checking if node file configuration ~p exist: Ok", [Filename]),
+			Filename;
+		_ -> 
+			?DEBUG("ems_config checking if node file configuration ~p exist: No", [Filename]),
+			Filename2 = lists:concat([HomePath, "/.erlangms/", ConfigFile2]),
+			case file:read_file(Filename2) of 
+				{ok, _Arq2} -> 
+					?DEBUG("ems_config checking if file configuration ~p exist: Ok", [Filename2]),
+					Filename2;
+				_ -> 
+					?DEBUG("ems_config checking if file configuration ~p exist: No", [Filename2]),
+					case file:read_file(ConfigFileDefault2) of 
+						{ok, _Arq3} -> 
+							?DEBUG("ems_config checking if global file configuration ~p exist: Ok", [ConfigFileDefault2]),
+							ConfigFileDefault2;
+						_ -> 
+							?DEBUG("ems_config checking if global file configuration ~p exist: No", [ConfigFileDefault2]),
+							erlang:error({error, enofile_config})
+					end
+			end
+	end.
+
 
 -spec get_tcp_listen_main_ip(list(tuple())) -> tuple().
 get_tcp_listen_main_ip(TcpListenAddress_t) when length(TcpListenAddress_t) > 0 -> 

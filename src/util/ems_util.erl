@@ -44,6 +44,7 @@
 		 get_rowid_and_params_from_url/2,
 		 get_priv_dir/0,
 		 get_working_dir/0,
+		 get_home_dir/0,
  		 get_milliseconds/0,
 		 get_param_url/3,
 		 get_querystring/3,
@@ -223,16 +224,22 @@ make_rowid_id([H|T]) when H == 47 -> T;
 make_rowid_id([_|T]) -> make_rowid_id(T).
 
 
+-spec get_priv_dir() -> string().
 get_priv_dir() ->
 	{ok, Path} = file:get_cwd(),
 	Path ++ "/priv".
 
+-spec get_working_dir() -> string().
 get_working_dir() ->
 	{ok, Path} = file:get_cwd(),
 	Path.
 
+-spec get_home_dir() -> string().
+get_home_dir() ->
+	{ok, [[Path]]} = init:get_argument(home),
+	Path.
 
-%% @doc Dorme por um determinado tempo
+
 -spec sleep(non_neg_integer()) -> true.
 sleep(T) ->
     receive
@@ -949,11 +956,7 @@ parse_file_name_path(Path, StaticFilePathList, RootPath) ->
 		true -> remove_ult_backslash_url(Path);  
 		false ->
 			case Ch == "~" of
-				true -> 
-					case init:get_argument(home) of
-						{ok, [[HomePath]]} -> replace(Path, "~", HomePath);
-						{error, Reason} -> erlang:error(Reason)
-					end;
+				true -> replace(Path, "~", get_home_dir());
 				_ -> 
 					case Ch == "." of
 						true -> 
@@ -965,11 +968,7 @@ parse_file_name_path(Path, StaticFilePathList, RootPath) ->
 							Path2 = replace_all_vars(Path, StaticFilePathList),
 							% after process variables, check ~ or . wildcards
 							case string:substr(Path2, 1, 1) == "~" of
-								true -> 
-									case init:get_argument(home) of
-										{ok, [[HomePath]]} -> replace(Path2, "~", HomePath);
-										{error, Reason} -> erlang:error(Reason)
-									end;
+								true -> replace(Path2, "~", get_home_dir());
 								_ -> 
 									case Ch == "." of
 										true -> 
