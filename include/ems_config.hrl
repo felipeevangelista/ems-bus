@@ -237,7 +237,9 @@
 				 ssl_cacertfile :: binary(),
 				 ssl_certfile :: binary(),
 				 ssl_keyfile :: binary(),
-				 sufixo_email_institucional :: binary()
+				 sufixo_email_institucional :: binary(),
+				 http_headers :: map(),
+				 http_headers_options :: map()
 		 }). 	
 
 

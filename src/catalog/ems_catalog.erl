@@ -85,7 +85,7 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 			   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
 			   ServiceErrorMetricName, ServiceUnavailableMetricName,
 			   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-			   HttpMaxContentLength) ->
+			   HttpMaxContentLength, HttpHeaders) ->
 	PatternKey = ems_util:make_rowid_from_url(Url, Type),
 	{ok, Id_re_compiled} = re:compile(PatternKey),
 	#service{
@@ -160,7 +160,8 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 				service_unavailable_metric_name = ServiceUnavailableMetricName,
 				service_timeout_metric_name = ServiceTimeoutMetricName,
 				authorization_public_check_credential = AuthorizationPublicCheckCredential,
-				http_max_content_length = HttpMaxContentLength
+				http_max_content_length = HttpMaxContentLength,
+				http_headers = HttpHeaders
 			}.
 
 new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, FunctionName,
@@ -178,7 +179,7 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 			ServiceHostDeniedMetricName, ServiceAuthDeniedMetricName, 
 			ServiceErrorMetricName, ServiceUnavailableMetricName,
 			ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-			HttpMaxContentLength) ->
+			HttpMaxContentLength, HttpHeaders) ->
 	#service{
 				id = Id,
 				rowid = Rowid,
@@ -249,7 +250,8 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 				service_unavailable_metric_name = ServiceUnavailableMetricName,
 				service_timeout_metric_name = ServiceTimeoutMetricName,
 				authorization_public_check_credential = AuthorizationPublicCheckCredential,
-				http_max_content_length = HttpMaxContentLength
+				http_max_content_length = HttpMaxContentLength,
+				http_headers = HttpHeaders
 			}.
 
 parse_middleware(null) -> undefined;
@@ -336,7 +338,8 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 								 ssl_cacertfile = SslCaCertFileDefault,
 								 ssl_certfile = SslCertFileDefault,
 								 ssl_keyfile = SslKeyFileDefault,
-								 http_max_content_length = HttpMaxContentLengthDefault}) ->
+								 http_max_content_length = HttpMaxContentLengthDefault,
+								 http_headers = HttpHeadersDefault}) ->
 	try
 		Name = ems_util:parse_name_service(maps:get(<<"name">>, Map)),
 		Owner = maps:get(<<"owner">>, Map, <<>>),
@@ -421,6 +424,8 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		Port = ems_util:parse_tcp_port(ems_config:getConfig(<<"tcp_port">>, Name, maps:get(<<"tcp_port">>, Map, undefined))),
 		Port = ems_util:parse_tcp_port(ems_config:getConfig(<<"tcp_port">>, Name, maps:get(<<"tcp_port">>, Map, undefined))),
 		HttpMaxContentLength = ems_util:parse_range(maps:get(<<"http_max_content_length">>, Map, HttpMaxContentLengthDefault), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
+		HttpHeaders0 = maps:get(<<"http_headers">>, Map, #{}),
+		HttpHeaders = maps:merge(HttpHeaders0, HttpHeadersDefault),
 		Ssl = maps:get(<<"tcp_ssl">>, Map, undefined),
 		case Ssl of
 			undefined ->
@@ -485,7 +490,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 												   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
 												   ServiceErrorMetricName, ServiceUnavailableMetricName, 
 												   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-												   HttpMaxContentLength),
+												   HttpMaxContentLength, HttpHeaders),
 						{ok, Service};
 					_ -> 
 						erlang:error(einvalid_re_service)
@@ -516,7 +521,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										ServiceHostDeniedMetricName, ServiceAuthDeniedMetricName, 
 										ServiceErrorMetricName, ServiceUnavailableMetricName, 
 										ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-										HttpMaxContentLength),
+										HttpMaxContentLength, HttpHeaders),
 				{ok, Service}
 		end
 	catch

@@ -349,7 +349,8 @@
 					service_error_metric_name :: atom(),
 					service_unavailable_metric_name :: atom(),
 					service_timeout_metric_name :: atom(),
-					http_max_content_length :: non_neg_integer()
+					http_max_content_length :: non_neg_integer(),
+					http_headers :: map()
 				}).
 
 
