@@ -116,7 +116,13 @@ get_http_header_default(false) ->
 		<<"server">> => ?SERVER_NAME,
 		<<"content-type">> => ?CONTENT_TYPE_JSON,
 		<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
-		<<"Access-Control-Allow-Origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
+
+		<<"Access-Control-Max-Age">> => ?ACCESS_CONTROL_MAX_AGE,
+		<<"Access-Control-Allow-Headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
+		<<"Access-Control-Allow-Methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
+		<<"Access-Control-Expose-Headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
+
+
 		<<"X-XSS-Protection">> => <<"1; mode=block">>,
 		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
 		<<"X-Content-Type-Options">> => <<"nosniff">>
@@ -127,6 +133,12 @@ get_http_header_default(true) ->
 		<<"content-type">> => ?CONTENT_TYPE_JSON,
 		<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
 		<<"Access-Control-Allow-Origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
+
+		<<"Access-Control-Max-Age">> => ?ACCESS_CONTROL_MAX_AGE,
+		<<"Access-Control-Allow-Headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
+		<<"Access-Control-Allow-Methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
+		<<"Access-Control-Expose-Headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS,
+
 		<<"X-XSS-Protection">> => <<"1; mode=block">>,
 		<<"X-Frame-Options">> => <<"SAMEORIGIN">>,
 		<<"X-Content-Type-Options">> => <<"nosniff">>,
