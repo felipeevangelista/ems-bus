@@ -10,8 +10,7 @@
 
 -export([start/0]).
 -export([get/2, exist/2, all/1, insert/1, insert/2, update/1, delete/2, 
-		 match/2, find/2, find/3, find/5, find_by_id/2, find_by_id/3, filter/2, 
-		 filter_with_limit/4, select_fields/2, 
+		 match/2, find/2, find/3, find/5, find_by_id/2, find_by_id/3, filter/2,
 		 find_first/2, find_first/3, find_first/4, field_position/3]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
@@ -683,10 +682,10 @@ filter(Tab, FilterList) when is_list(FilterList) ->
 			FieldsTable =  mnesia:table_info(Tab, attributes),
 			Where = string:join([io_lib:format("element(~s, R) ~s ~p", [integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList], ","),
 			ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, Where, <<"].">>])),
-			ParsedQuery = qlc:string_to_handle(ExprQuery),
-			mnesia:activity(async_dirty, fun () -> qlc:eval(ParsedQuery) end)
+			qlc:string_to_handle(ExprQuery)
 		end,
-	ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {Tab, FilterList}, F);
+	ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {filter, Tab, FilterList}, F),
+	mnesia:activity(async_dirty, fun () -> qlc:eval(ParsedQuery) end);
 filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
 	filter(Tab, [FilterTuple]).
 
@@ -749,16 +748,16 @@ filter_with_limit(Tab, FilterList, Limit, Offset) when is_list(FilterList) ->
 					FieldsTable =  mnesia:table_info(Tab, attributes),
 					Where = string:join([io_lib:format("element(~s, R) ~s ~p", [integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList], ","),
 					ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, Where, <<"].">>])),
-					ParsedQuery = qlc:string_to_handle(ExprQuery),
-					mnesia:activity(async_dirty, fun () -> 
-													Records = qlc:eval(ParsedQuery),
-													case Offset > length(Records) of
-														true -> [];
-														false -> lists:sublist(Records, Offset, Limit)
-													end
-												 end)
+					qlc:string_to_handle(ExprQuery)
 				end,
-			ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {Tab, FilterList, Limit, Offset}, F)
+			ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {filter_with_limit, Tab, FilterList}, F),
+			mnesia:activity(async_dirty, fun () -> 
+								Records = qlc:eval(ParsedQuery),
+								case Offset > length(Records) of
+									true -> [];
+									false -> lists:sublist(Records, Offset, Limit)
+								end
+							 end)
 	end;
 filter_with_limit(Tab, FilterTuple, Limit, Offset) when is_tuple(FilterTuple) -> 	
 	filter_with_limit(Tab, [FilterTuple], Limit, Offset).
