@@ -173,6 +173,7 @@
 		"url": "/logger/print/info",
 		"type": "POST",
 		"authorization": "basic",
+		"http_max_content_length" : 22020096,
 		"lang" : "erlang"
 	},
 	

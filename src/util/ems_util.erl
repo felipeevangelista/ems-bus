@@ -37,6 +37,7 @@
  		 read_file_as_string/1,
 		 tail_file/2,
 		 load_from_file_req/1,
+		 save_from_file_req/1,
 		 node_is_live/1,
  		 node_binary/0,
 		 get_node_name/0,
@@ -1541,7 +1542,7 @@ invoque_service(Type, Url, QuerystringBin, QuerystringMap, ContentTypeIn) ->
 
 
 -spec encode_request_cowboy(tuple(), pid(), map(), map(), boolean()) -> {ok, #request{}} | {error, atom()}.
-encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions, ShowEmsResponseHeaders) ->
+encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions, ShowDebugResponseHeaders) ->
 	try
 		Url = cowboy_req:path(CowboyReq),
 		Url2 = remove_ult_backslash_url(binary_to_list(Url)),
@@ -1698,19 +1699,19 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 								QuerystringMap2 = QuerystringMap;
 							<<"application/x-www-form-urlencoded">> ->
 								ems_db:inc_counter(http_content_type_in_form_urlencode),
-								ContentTypeIn2 = <<"application/x-www-form-urlencoded; charset=UTF-8">>,
+								ContentTypeIn2 = <<"application/x-www-form-urlencoded">>,
 								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
 								PayloadMap = maps:from_list(Payload),
 								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
 							<<"application/x-www-form-urlencoded; charset=UTF-8">> ->
 								ems_db:inc_counter(http_content_type_in_form_urlencode),
-								ContentTypeIn2 = <<"application/x-www-form-urlencoded; charset=UTF-8">>,
+								ContentTypeIn2 = <<"application/x-www-form-urlencoded">>,
 								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
 								PayloadMap = maps:from_list(Payload),
 								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
 							<<"application/x-www-form-urlencoded;charset=UTF-8">> ->
 								ems_db:inc_counter(http_content_type_in_form_urlencode),
-								ContentTypeIn2 = <<"application/x-www-form-urlencoded; charset=UTF-8">>,
+								ContentTypeIn2 = <<"application/x-www-form-urlencoded">>,
 								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
 								PayloadMap = maps:from_list(Payload),
 								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
@@ -1780,6 +1781,19 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
+							<<"multipart/form-data">> ->
+								ems_db:inc_counter(http_content_type_in_formdata),
+								ContentTypeIn2 = ContentTypeIn,
+								{ok, Headers, CowboyReq1} = cowboy_req:read_part(CowboyReq),
+								io:format("multipart/form-data headers is ~p\n", [Headers]),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_part_body(CowboyReq1),								
+								{file, <<"inputfile">>, Filename, ContentType} = cow_multipart:form_data(Headers),
+
+								io:format("Received file ~p of content-type ~p as follow:~n~p~n~n",
+									[Filename, ContentType, Payload]),
+
+								PayloadMap = undefined,
+								QuerystringMap2 = QuerystringMap;
 							_ -> 
 								ems_db:inc_counter(http_content_type_in_other),
 								ContentTypeIn2 = ContentTypeIn,
@@ -1813,7 +1827,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 											<<"OPTIONS">> -> 
 												ExpireDate = date_add_minute(Timestamp, 1440),
 												Expires = cowboy_clock:rfc1123(ExpireDate),
-												case ShowEmsResponseHeaders of
+												case ShowDebugResponseHeaders of
 													false ->
 														HttpHeaderOptions#{<<"expires">> => Expires};
 													true ->
@@ -1829,7 +1843,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 																		   <<"expires">> => Expires}
 												end;
 											_ -> 
-												case ShowEmsResponseHeaders of
+												case ShowDebugResponseHeaders of
 													false ->
 														HttpHeaderDefault;
 													true ->
@@ -2329,6 +2343,21 @@ load_from_file_req(Request = #request{url = Url,
 			 }
 	end.
 
+
+save_from_file_req(Request = #request{url = Url,
+									  if_modified_since = IfModifiedSinceReq, 
+									  if_none_match = IfNoneMatchReq,
+									  timestamp = Timestamp,
+									  response_header = ResponseHeader,
+									  service = #service{cache_control = CacheControl,
+														 expires = ExpiresMinute,
+														 path = Path}}) ->
+		io:format("saved...\n"),
+		{ok, Request#request{code = 200, 
+							 reason = ok,
+							 content_type_out = ?CONTENT_TYPE_JSON,
+							 response_data = ?OK_JSON}
+		}.
 
 -spec tuple_to_maps_with_keys(list(tuple()), list(tuple())) -> map().
 tuple_to_maps_with_keys(Tuple, Keys) ->

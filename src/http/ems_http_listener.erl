@@ -25,7 +25,7 @@
 -record(state, {http_max_content_length,
 				http_header_default,
 				http_header_options,
-				ems_response_headers}).
+				show_debug_response_headers}).
 
 
 %%====================================================================
@@ -55,11 +55,11 @@ init({IpAddress,
 						   http_max_content_length = HttpMaxContentLength},
 	  ListenerName}) ->
     Conf = ems_config:getConfig(),
-    EmsResponseHeaders = Conf#config.ems_response_headers,
+    EmsResponseHeaders = Conf#config.show_debug_response_headers,
     State = #state{http_max_content_length = HttpMaxContentLength,
 				    http_header_default = Conf#config.http_headers,
 				    http_header_options = Conf#config.http_headers_options,
-				    ems_response_headers = EmsResponseHeaders},
+				    show_debug_response_headers = EmsResponseHeaders},
 	Dispatch = cowboy_router:compile([
 		{'_', [
 			{"/websocket", ems_websocket_handler, State},

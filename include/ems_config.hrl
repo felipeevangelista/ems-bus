@@ -220,7 +220,7 @@
 				 ems_debug :: boolean(),
 				 ems_result_cache  :: non_neg_integer(),
 				 ems_datasources :: map(),
-				 ems_response_headers :: boolean,			%% Add ems_headers in HTTP response headers
+				 show_debug_response_headers :: boolean,	%% Add debug headers in HTTP response headers
 				 tcp_listen_address :: list(),
 				 tcp_listen_address_t :: list(),
 				 tcp_listen_main_ip :: binary(),

@@ -493,7 +493,7 @@ sync_buffer(State = #state{buffer = Buffer,
 	State2.
 
 	
-do_log_request(#request{rid = RID,
+do_log_request(R = #request{rid = RID,
 						req_hash = ReqHash,
 						type = Type,
 						uri = Uri,
@@ -532,6 +532,9 @@ do_log_request(#request{rid = RID,
 			  }, 
 			  State = #state{show_response = ShowResponse, ult_reqhash = UltReqHash}) ->
 	try
+		ContentLengthResponse = byte_size(ResponseData),
+		io:format("is ~p\n", [ContentTypeOut]),
+		io:format("response is ~p ~p = ~p\n", [binary_to_list(ContentTypeOut) =:= binary_to_list(<<"application/json; charset=utf-8">>), is_binary(ResponseData), ResponseData]),
 		case UltReqHash == undefined orelse UltReqHash =/= ReqHash of
 			true ->
 				Texto1 = 
@@ -542,14 +545,8 @@ do_log_request(#request{rid = RID,
 					   <<" {\n\tRID: ">>,  integer_to_binary(RID),
 					   <<"  (ReqHash: ">>, integer_to_binary(ReqHash), <<")">>, 
 					   <<"\n\tAccept: ">>, Accept,
-					   <<"\n\tContent-Type in: ">>, case ContentTypeIn of
-														undefined -> <<>>;
-														_ -> ContentTypeIn
-													end, 
-						<<"\n\tContent-Type out: ">>,  case ContentTypeOut of
-															undefined -> <<>>;
-															_ -> ContentTypeOut 
-													   end,
+					   <<"\n\tContent-Type in: ">>, ContentTypeIn, 
+						<<"\n\tContent-Type out: ">>, ContentTypeOut,
 						<<"\n\tPeer: ">>, IpBin, <<"  Referer: ">>, case Referer of
 																		undefined -> <<>>;
 																		_ -> Referer
@@ -561,13 +558,26 @@ do_log_request(#request{rid = RID,
 											 end,
 						<<"\n\tParams: ">>, ems_util:print_int_map(Params), 
 						<<"\n\tQuery: ">>, ems_util:print_str_map(Query), 
-						<<"\n\tPayload: ">>, case ContentLength < 90 of
-												true -> Payload;
-												false -> [binary:part(Payload, 0, 89), <<"...">>]
-											 end,
-						 case ShowResponse andalso byte_size(ResponseData) < 90 of 
-							true -> [<<"\n\tResponse: ">>, ResponseData]; 
-							false -> <<>> 
+						case (ContentLength < 500 andalso
+						       is_binary(Payload) andalso
+							   (ContentTypeIn =:= <<"application/json">> orelse 
+							    ContentTypeIn =:= <<"application/x-www-form-urlencoded">> orelse 
+							    ContentTypeIn =:= <<"text/plain">>)
+							  ) of
+							true -> [<<"\n\tPayload: ">>, integer_to_list(ContentLength), <<" bytes\n\033[0;33m">>, Payload, <<"\033[0m">>];
+							false -> [<<"\n\tPayload: ">>, integer_to_list(ContentLength), <<" bytes">>]
+						end,
+						case (ShowResponse andalso 
+							   ContentLengthResponse < 500 andalso
+							   is_binary(ResponseData) andalso
+							   (ContentTypeOut =:= <<"application/json; charset=utf-8">> orelse 
+							    ContentTypeOut =:= <<"application/json">> orelse 
+							    ContentTypeOut =:= <<"application/x-www-form-urlencoded; charset=UTF-8">> orelse 
+   							    ContentTypeOut =:= <<"application/x-www-form-urlencoded">> orelse 
+								ContentTypeOut =:= <<"text/plain">>)
+							  ) of 
+							true -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), <<" bytes\n\033[0;33m">>, ResponseData, <<"\033[0m">>]; 
+							false -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), <<" bytes">>]
 						end,
 						case Service =/= undefined of
 							true ->
@@ -602,11 +612,11 @@ do_log_request(#request{rid = RID,
 								end;
 							false -> <<>>
 						end,
-					   <<"\n\tCache-Control In: ">>, CacheControl,
+					    <<"\n\tCache-Control In: ">>, CacheControl,
 						<<"  ETag: ">>, case Etag of
-										undefined -> <<>>;
-										_ -> Etag
-									end,
+											undefined -> <<>>;
+											_ -> Etag
+										end,
 						<<"\n\tIf-Modified-Since: ">>, case IfModifiedSince of
 														undefined -> <<>>;
 														_ -> IfModifiedSince
@@ -659,9 +669,9 @@ do_log_request(#request{rid = RID,
 										_ -> Node
 									 end,
 					   <<"\n\tFilename: ">>, case Filename of
-											undefined -> <<>>;
-											_ -> Filename
-										 end,
+												undefined -> <<>>;
+												_ -> Filename
+											 end,
 					   <<"\n\tStatus: ">>, integer_to_binary(Code), 
 					   <<" <<">>, case is_atom(Reason) of
 										true -> atom_to_binary(Reason, utf8);
@@ -678,7 +688,7 @@ do_log_request(#request{rid = RID,
 				State
 		end
 	catch 
-		_:_ -> 
+		_:Erro -> 
 			ems_db:inc_counter(ems_logger_log_request_error),
 			State
 	end.
