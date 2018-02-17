@@ -179,6 +179,15 @@
 -define(ACCESS_DENIED_JSON, <<"{\"error\": \"access_denied\"}"/utf8>>).
 
 
+-define(HTTP_HEADERS_DEFAULT, #{<<"server">> => ?SERVER_NAME,
+							    <<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
+							    <<"access-control-allow-origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
+							    <<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
+							    <<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
+							    <<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
+							    <<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS
+							  }).
+
 
 % Default ports
 -define(LDAP_SERVER_PORT, 2389).

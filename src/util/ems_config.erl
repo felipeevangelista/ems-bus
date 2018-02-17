@@ -189,6 +189,33 @@ parse_tcp_allowed_address(undefined) -> all;
 parse_tcp_allowed_address([<<"*.*.*.*">>]) -> all;
 parse_tcp_allowed_address(V) -> V.
 
+parse_http_headers(HttpHeaders, ShowDebugResponseHeaders) ->
+	parse_http_headers_(maps:to_list(HttpHeaders), ShowDebugResponseHeaders, []).
+
+parse_http_headers_([], ShowDebugResponseHeaders, Result) ->
+	HttpHeaders = maps:from_list(Result),
+	HttpHeaders1 = maps:remove(<<"ems-node">>, HttpHeaders),
+	case ShowDebugResponseHeaders of
+		true -> HttpHeaders1#{<<"ems-node">> => ems_util:node_binary()};
+		false -> HttpHeaders1
+	end;
+parse_http_headers_([{Key, Value} = Item|T], ShowDebugResponseHeaders, Result) when is_binary(Value) ->
+	case byte_size(Key) =< 100 andalso Value =/= undefined andalso Value =/= <<>> andalso byte_size(Value) =< 450 of
+		true -> 
+			parse_http_headers_(T, ShowDebugResponseHeaders, [Item | Result]);
+		false -> 
+			erlang:error(einvalid_http_response_header)
+	end;
+parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Result) ->
+	case byte_size(Key) =< 100 of
+		true -> 
+			parse_http_headers_(T, ShowDebugResponseHeaders, [Item | Result]);
+		false -> 
+			erlang:error(einvalid_http_response_header)
+	end.
+	
+
+
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, NomeArqConfig) ->
 	{ok, Hostname} = inet:gethostname(),
@@ -197,16 +224,10 @@ parse_config(Json, NomeArqConfig) ->
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
  	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"ems_response_headers">>, Json, false)),
-	case ShowDebugResponseHeaders of
-		true ->
-			 HttpHeaders = maps:merge(#{<<"server">> => ?SERVER_NAME,
-										<<"ems-node">> => ems_util:node_binary()}, maps:get(<<"http_headers">>, Json, #{})),
-			 HttpHeadersOptions = maps:merge(#{<<"server">> => ?SERVER_NAME,
-											   <<"ems-node">> => ems_util:node_binary()}, maps:get(<<"http_headers_options">>, Json, #{}));
-		false -> 
-			 HttpHeaders = maps:merge(#{<<"server">> => ?SERVER_NAME}, maps:get(<<"http_headers">>, Json, #{})),
-			 HttpHeadersOptions = maps:merge(#{<<"server">> => ?SERVER_NAME}, maps:get(<<"http_headers_options">>, Json, #{}))
-	end,
+	HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers">>, Json, #{})),
+	HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers_options">>, Json, #{})),
+	HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
+	HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders),
 	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => Hostname2}),
 			 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
 			 cat_node_search = maps:get(<<"node_search">>, Json, <<>>),
@@ -291,26 +312,8 @@ get_default_config() ->
 			 user_endereco_path_search	= ?USER_ENDERECO_PATH,
 			 user_telefone_path_search	= ?USER_TELEFONE_PATH,
 			 http_max_content_length = ?HTTP_MAX_CONTENT_LENGTH,
-			 http_headers = #{
-								<<"server">> => ?SERVER_NAME,
-								<<"content-type">> => ?CONTENT_TYPE_JSON,
-								<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
-								<<"access-control-allow-origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
-								<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
-								<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
-								<<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
-								<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS
-							},
-			 http_headers_options = #{
-								<<"server">> => ?SERVER_NAME,
-								<<"content-type">> => ?CONTENT_TYPE_JSON,
-								<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
-								<<"access-control-allow-origin">> => ?ACCESS_CONTROL_ALLOW_ORIGIN,
-								<<"access-control-max-age">> => ?ACCESS_CONTROL_MAX_AGE,
-								<<"access-control-allow-headers">> => ?ACCESS_CONTROL_ALLOW_HEADERS,
-								<<"access-control-allow-methods">> => ?ACCESS_CONTROL_ALLOW_METHODS,
-								<<"access-control-expose-headers">> => ?ACCESS_CONTROL_EXPOSE_HEADERS
-							},
+			 http_headers = ?HTTP_HEADERS_DEFAULT,
+			 http_headers_options = ?HTTP_HEADERS_DEFAULT,
 			 ssl_cacertfile = undefined,
 			 ssl_certfile = undefined,
 			 ssl_keyfile = undefined,
