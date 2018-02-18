@@ -493,7 +493,7 @@ sync_buffer(State = #state{buffer = Buffer,
 	State2.
 
 	
-do_log_request(R = #request{rid = RID,
+do_log_request(#request{rid = RID,
 						req_hash = ReqHash,
 						type = Type,
 						uri = Uri,
@@ -533,8 +533,6 @@ do_log_request(R = #request{rid = RID,
 			  State = #state{show_response = ShowResponse, ult_reqhash = UltReqHash}) ->
 	try
 		ContentLengthResponse = byte_size(ResponseData),
-		io:format("is ~p\n", [ContentTypeOut]),
-		io:format("response is ~p ~p = ~p\n", [binary_to_list(ContentTypeOut) =:= binary_to_list(<<"application/json; charset=utf-8">>), is_binary(ResponseData), ResponseData]),
 		case UltReqHash == undefined orelse UltReqHash =/= ReqHash of
 			true ->
 				Texto1 = 
@@ -688,8 +686,8 @@ do_log_request(R = #request{rid = RID,
 				State
 		end
 	catch 
-		_:Erro -> 
-			ems_db:inc_counter(ems_logger_log_request_error),
+		_:ExceptionReason -> 
+			io:format("ems_logger do_log_request format invalid message. Reason: ~p.\n", [ExceptionReason]),
 			State
 	end.
 	

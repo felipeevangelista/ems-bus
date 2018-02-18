@@ -11,7 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([init/2, terminate/3]).
+-export([init/2]).
 
 -record(state, {http_max_content_length,
 				http_header_default,
@@ -68,14 +68,11 @@ init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
 			Protocol = binary_to_list(cowboy_req:scheme(CowboyReq)),
 			{Ip, _} = cowboy_req:peer(CowboyReq),
 			Ip2 = inet_parse:ntoa(Ip),
-			io:format("erro ~p\n", [Reason]),
 			ems_logger:error("ems_http_handler ~s ~s ~s from ~s. Reason: ~p.", [Type, Url, Protocol, Ip2, Reason]),
 			Response = cowboy_req:reply(400, HttpHeaderDefault, ?EINVALID_HTTP_REQUEST, CowboyReq)
 	end,
 	{ok, Response, State}.
 
-
-terminate(_Reason, _Req, _State) ->  ok.    
 
 compute_metric_by_content_type_out(ContentTypeOut) ->
 	case ContentTypeOut of

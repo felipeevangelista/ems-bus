@@ -1678,107 +1678,108 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 							true ->	erlang:error(ehttp_max_content_length_error);
 							false -> ok
 						end,
+						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 30000},
 						case ContentTypeIn of
 							<<"application/json">> ->
 								ems_db:inc_counter(http_content_type_in_application_json),
 								ContentTypeIn2 = <<"application/json">>,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = decode_payload_as_json(Payload),
 								QuerystringMap2 = QuerystringMap;
 							<<"application/json; charset=utf-8">> ->
 								ems_db:inc_counter(http_content_type_in_application_json),
 								ContentTypeIn2 = <<"application/json">>,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = decode_payload_as_json(Payload),
 								QuerystringMap2 = QuerystringMap;
 							<<"application/json;charset=utf-8">> -> 
 								ems_db:inc_counter(http_content_type_in_application_json),
 								ContentTypeIn2 = <<"application/json">>,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = decode_payload_as_json(Payload),
 								QuerystringMap2 = QuerystringMap;
 							<<"application/x-www-form-urlencoded">> ->
 								ems_db:inc_counter(http_content_type_in_form_urlencode),
 								ContentTypeIn2 = <<"application/x-www-form-urlencoded">>,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = maps:from_list(Payload),
 								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
 							<<"application/x-www-form-urlencoded; charset=UTF-8">> ->
 								ems_db:inc_counter(http_content_type_in_form_urlencode),
 								ContentTypeIn2 = <<"application/x-www-form-urlencoded">>,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = maps:from_list(Payload),
 								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
 							<<"application/x-www-form-urlencoded;charset=UTF-8">> ->
 								ems_db:inc_counter(http_content_type_in_form_urlencode),
 								ContentTypeIn2 = <<"application/x-www-form-urlencoded">>,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_urlencoded_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = maps:from_list(Payload),
 								QuerystringMap2 = maps:merge(QuerystringMap, PayloadMap);
 							<<"application/xml">> ->
 								ems_db:inc_counter(http_content_type_in_application_xml),
 								ContentTypeIn2 = <<"application/xml">>,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = decode_payload_as_xml(Payload),
 								QuerystringMap2 = QuerystringMap;
 							<<"text/plain">> ->
 								ems_db:inc_counter(http_content_type_in_text_plain),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"text/csv">> ->
 								ems_db:inc_counter(http_content_type_in_text_csv),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"application/octet-stream">> ->
 								ems_db:inc_counter(http_content_type_in_octet_stream),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"application/gzip">> ->
 								ems_db:inc_counter(http_content_type_in_application_gzip),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"application/pdf">> ->
 								ems_db:inc_counter(http_content_type_in_application_pdf),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"application/msword">> ->
 								ems_db:inc_counter(http_content_type_in_officedocument),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">> ->
 								ems_db:inc_counter(http_content_type_in_officedocument),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">> ->
 								ems_db:inc_counter(http_content_type_in_officedocument),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"image/png">> ->
 								ems_db:inc_counter(http_content_type_in_image_png),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"image/jpeg">> ->
 								ems_db:inc_counter(http_content_type_in_image_jpeg),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap;
 							<<"multipart/form-data">> ->
@@ -1797,7 +1798,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 							_ -> 
 								ems_db:inc_counter(http_content_type_in_other),
 								ContentTypeIn2 = ContentTypeIn,
-								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq),
+								{ok, Payload, CowboyReq2} = cowboy_req:read_body(CowboyReq, ReadBodyOpts),
 								PayloadMap = undefined,
 								QuerystringMap2 = QuerystringMap
 						end;
