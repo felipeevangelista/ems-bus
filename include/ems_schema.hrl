@@ -315,9 +315,10 @@
 					schema_out :: non_neg_integer(),
 					pool_size :: non_neg_integer(),
 					pool_max :: non_neg_integer(),
-					timeout :: non_neg_integer(),
-					expires :: non_neg_integer(),
-					cache_control :: binary(),
+					timeout :: non_neg_integer(),				%% Tempo que o dispatcher aguarda em milisegundos o processamento de um serviço antes de retornar etimeout_service para o cliente
+					timeout_alert_threshold = 0 :: non_neg_integer(),  	% Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
+					expires :: non_neg_integer(),				%% Cabeçalho HTTP expires
+					cache_control :: binary(),					%% Cabeçalho HTTP cache-control
 					enable = false :: boolean(),
 					content_type :: binary(),					%% Tipo de conteúdo (Ex.: application/json, application/pdf)
 					path :: string(),							%% Local para carregar arquivos estáticos

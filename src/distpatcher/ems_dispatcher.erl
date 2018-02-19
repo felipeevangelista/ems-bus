@@ -47,9 +47,9 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 			case ems_auth_user:authenticate(Service, Request) of
 				{ok, Client, User, AccessToken, Scope} -> 
 					Request2 = Request#request{client = Client,
-											    user = User,
-											    scope = Scope,
-											    access_token = AccessToken},
+											   user = User,
+											   scope = Scope,
+											   access_token = AccessToken},
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request2#request{code = 200, 
@@ -203,11 +203,16 @@ dispatch_service_work(Request = #request{rid = Rid,
 	end.
 		
 dispatch_service_work_receive(Request = #request{rid = Rid,
-												  t1 = T1},
+												 t1 = T1},
 							  Service = #service{module = Module,
-												  service_timeout_metric_name = ServiceTimeoutMetricName},
+												 service_timeout_metric_name = ServiceTimeoutMetricName,
+												 timeout_alert_threshold = TimeoutAlertThreshold},
 							  Node,
 							  Timeout, TimeoutWaited, ShowDebugResponseHeaders) ->
+	case TimeoutAlertThreshold of
+		0 -> TimeoutWait = Timeout;
+		_ -> TimeoutWait = TimeoutAlertThreshold
+	end,
 	receive 
 		{Code, RidRemote, {Reason, ResponseDataReceived}} when RidRemote == Rid  -> 
 			case Reason == ok andalso byte_size(ResponseDataReceived) >= 27 of
@@ -227,27 +232,27 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 									    reason = Reason,
 									    response_data = ResponseData},
 			dispatch_middleware_function(Request2, ShowDebugResponseHeaders);
-		Msg -> 
-			ems_logger:error("ems_dispatcher received java invalid message ~p.", [Msg]), 
-			{error, request, Request#request{code = 500,
-										 	  reason = einvalid_rec_message,
-									 		  content_type_out = ?CONTENT_TYPE_JSON,
-											  response_data = ?EINVALID_JAVA_MESSAGE,
-											  latency = ems_util:get_milliseconds() - T1}}
-		after 1000 ->
-			TimeoutWaited2 = TimeoutWaited + 1000,
-			Timeout2 = Timeout - 1000,
+		_UnknowMessage -> 
+			dispatch_service_work_receive(Request, Service, Node, Timeout, TimeoutWaited, ShowDebugResponseHeaders)
+		after TimeoutWait ->
+			TimeoutWaited2 = TimeoutWaited + TimeoutWait,
+			Timeout2 = Timeout - TimeoutWait,
 			case Timeout2 =< 0 of
 				true ->
-					ems_logger:warn("ems_dispatcher etimeout_service while waiting ~pms for ~p.", [Timeout, {Module, Node}]),
+					case TimeoutAlertThreshold > 0 of
+						true -> ems_logger:warn("ems_dispatcher etimeout_service while waiting ~pms for ~p.", [Timeout, {Module, Node}]);
+						false -> ok
+					end,
 					ems_db:inc_counter(ServiceTimeoutMetricName),
 					{error, request, Request#request{code = 503,
 													  reason = etimeout_service,
 													  content_type_out = ?CONTENT_TYPE_JSON,
 													  response_data = ?ETIMEOUT_SERVICE,
 													  latency = ems_util:get_milliseconds() - T1}};
-				false ->
+				false when TimeoutAlertThreshold > 0 ->
 					ems_logger:warn("ems_dispatcher is waiting ~p for more than ~pms.", [{Module, Node}, TimeoutWaited2]),
+					dispatch_service_work_receive(Request, Service, Node, Timeout2, TimeoutWaited2, ShowDebugResponseHeaders);
+				false -> 
 					dispatch_service_work_receive(Request, Service, Node, Timeout2, TimeoutWaited2, ShowDebugResponseHeaders)
 			end
 	end.

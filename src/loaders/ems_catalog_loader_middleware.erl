@@ -192,6 +192,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												pool_size = NewCatalog#service.pool_size,
 												pool_max = NewCatalog#service.pool_max,
 												timeout = NewCatalog#service.timeout,
+												timeout_alert_threshold = NewCatalog#service.timeout_alert_threshold,
 												middleware = NewCatalog#service.middleware,
 												properties = NewCatalog#service.properties,
 												cache_control = NewCatalog#service.cache_control,
