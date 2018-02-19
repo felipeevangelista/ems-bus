@@ -26,6 +26,9 @@
 		 mode_debug/1,
 		 set_level/1,
 		 show_response/1,
+		 show_response/2,
+		 show_payload/1,
+		 show_payload/2,
 		 log_file_tail/0,
 		 log_file_tail/1,
 		 log_file_head/0,
@@ -55,15 +58,18 @@
 -record(state, {buffer = [],             				% The messages go first to a buffer subsequently to the log file        
 			    buffer_tela = [],        				% The messages go first to a buffer subsequently to screen
 			    flag_checkpoint_sync_buffer = false,    % checkpoint to unload the buffer to the log file
-			    flag_checkpoint_screen = false, 			% checkpoint to unload the screen buffer
+			    flag_checkpoint_screen = false, 		% checkpoint to unload the screen buffer
 				log_file_checkpoint,      				% timeout archive log checkpoing
 				log_file_name,		      				% log file name
 				log_file_handle,						% IODevice of file
 				log_file_max_size,						% Max file size in KB
-				level = info,							% level of errors
+				level = info,							% level of printable messages
 				show_response = false,					% show response of request
+				show_response_max_length = 500,			% show response if content length < show_response_max_length
+				show_payload = false,					% show payload of request
+				show_payload_max_length  = 500,			% show payload if content length < show_response_max_length
 				ult_msg,								% last print message
-				ult_reqhash
+				ult_reqhash 							% last reqhash of print message
  			   }). 
 
 
@@ -149,12 +155,34 @@ set_level(Level) ->
 	info("ems_logger set level ~p.", [Level]),
 	gen_server:cast(?SERVER, {set_level, Level}). 
 
-show_response(Value) when Value == true -> 
+show_response(true) -> 
 	info("ems_logger set show response."),
-	gen_server:cast(?SERVER, {show_response, Value});
+	gen_server:cast(?SERVER, {show_response, true, ?LOG_SHOW_RESPONSE_MAX_LENGTH});
 show_response(_) -> 
 	info("ems_logger unset show response."),
-	gen_server:cast(?SERVER, {show_response, false}). 
+	gen_server:cast(?SERVER, {show_response, false, ?LOG_SHOW_RESPONSE_MAX_LENGTH}). 
+
+show_response(true, MaxLength) -> 
+	info("ems_logger set show response."),
+	gen_server:cast(?SERVER, {show_response, true, MaxLength});
+show_response(_, MaxLength) -> 
+	info("ems_logger unset show response."),
+	gen_server:cast(?SERVER, {show_response, false, MaxLength}). 
+
+
+show_payload(true) -> 
+	info("ems_logger set show payload."),
+	gen_server:cast(?SERVER, {show_payload, true, ?LOG_SHOW_PAYLOAD_MAX_LENGTH});
+show_payload(_) -> 
+	info("ems_logger unset show payload."),
+	gen_server:cast(?SERVER, {show_payload, false, ?LOG_SHOW_PAYLOAD_MAX_LENGTH}). 
+
+show_payload(true, MaxLength) -> 
+	info("ems_logger set show payload."),
+	gen_server:cast(?SERVER, {show_payload, true, MaxLength});
+show_payload(_, MaxLength) -> 
+	info("ems_logger unset show payload."),
+	gen_server:cast(?SERVER, {show_payload, false, MaxLength}). 
 
 log_file_head() ->
 	gen_server:call(?SERVER, {log_file_head, 80}). 		
@@ -229,8 +257,13 @@ handle_cast({log_request, Request}, State) ->
 handle_cast({set_level, Level}, State) ->
 	{noreply, State#state{level = Level}};
 
-handle_cast({show_response, Value}, State) ->
-	{noreply, State#state{show_response = Value}};
+handle_cast({show_response, Value, MaxLength}, State) ->
+	{noreply, State#state{show_response = Value,
+						  show_response_max_length = MaxLength}};
+
+handle_cast({show_payload, Value, MaxLength}, State) ->
+	{noreply, State#state{show_payload = Value,
+						  show_payload_max_length = MaxLength}};
 
 handle_cast(sync_buffer, State) ->
 	State2 = sync_buffer_screen(State),
@@ -530,9 +563,12 @@ do_log_request(#request{rid = RID,
 						oauth2_access_token = AccessToken,
 						oauth2_refresh_token = RefreshToken
 			  }, 
-			  State = #state{show_response = ShowResponse, ult_reqhash = UltReqHash}) ->
+			  State = #state{show_response = ShowResponse, 
+							 show_response_max_length = ShowResponseMaxLength, 
+							 show_payload = ShowPayload, 
+							 show_payload_max_length = ShowPayloadMaxLength, 
+							 ult_reqhash = UltReqHash}) ->
 	try
-		ContentLengthResponse = byte_size(ResponseData),
 		case UltReqHash == undefined orelse UltReqHash =/= ReqHash of
 			true ->
 				Texto1 = 
@@ -556,26 +592,45 @@ do_log_request(#request{rid = RID,
 											 end,
 						<<"\n\tParams: ">>, ems_util:print_int_map(Params), 
 						<<"\n\tQuery: ">>, ems_util:print_str_map(Query), 
-						case (ContentLength < 500 andalso
-						       is_binary(Payload) andalso
-							   (ContentTypeIn =:= <<"application/json">> orelse 
-							    ContentTypeIn =:= <<"application/x-www-form-urlencoded">> orelse 
-							    ContentTypeIn =:= <<"text/plain">>)
-							  ) of
-							true -> [<<"\n\tPayload: ">>, integer_to_list(ContentLength), <<" bytes\n\033[0;33m">>, Payload, <<"\033[0m">>];
-							false -> [<<"\n\tPayload: ">>, integer_to_list(ContentLength), <<" bytes">>]
+						case (ShowPayload orelse Reason =/= ok) andalso ContentLength > 0 of
+							true ->
+							   case ContentLength =< ShowPayloadMaxLength of
+									true ->
+									     Payload2 = case is_binary(Payload) of
+														true -> Payload;
+														false -> iolist_to_binary(io_lib:format("~p",[Payload]))
+										  		    end,
+									     [<<"\n\tPayload: ">>, integer_to_list(ContentLength), 
+									      <<" bytes  Content: \033[1;34m">>, Payload2, <<"\033[0m">>,
+											 case Reason =/= ok of
+												true -> <<"\033[0;31m">>;
+												false -> <<>>
+											 end]; 
+									false -> [<<"\n\tPayload: ">>, integer_to_list(ContentLength), <<" bytes  Content: large content">>]
+								end;
+							false -> <<>>
 						end,
-						case (ShowResponse andalso 
-							   ContentLengthResponse < 500 andalso
-							   is_binary(ResponseData) andalso
-							   (ContentTypeOut =:= <<"application/json; charset=utf-8">> orelse 
-							    ContentTypeOut =:= <<"application/json">> orelse 
-							    ContentTypeOut =:= <<"application/x-www-form-urlencoded; charset=UTF-8">> orelse 
-   							    ContentTypeOut =:= <<"application/x-www-form-urlencoded">> orelse 
-								ContentTypeOut =:= <<"text/plain">>)
-							  ) of 
-							true -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), <<" bytes\n\033[0;33m">>, ResponseData, <<"\033[0m">>]; 
-							false -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), <<" bytes">>]
+						case ShowResponse orelse Reason =/= ok of
+							true -> 
+								 ResponseData2 = case is_binary(ResponseData) of
+													true -> ResponseData;
+													false -> iolist_to_binary(io_lib:format("~p",[ResponseData]))
+												 end,
+								 ContentLengthResponse = byte_size(ResponseData2),
+							     case ContentLengthResponse > 0 of
+									true ->
+										case ContentLengthResponse =< ShowResponseMaxLength of
+											true -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), 
+													 <<" bytes  Content: \033[1;34m">>, ResponseData2, <<"\033[0m">>,
+													 case Reason =/= ok of
+														true -> <<"\033[0;31m">>;
+														false -> <<>>
+													 end]; 
+											false -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), <<" bytes  Content: Large content">>]
+										end;
+									false -> <<>>
+								end;
+							 false -> <<>>
 						end,
 						case Service =/= undefined of
 							true ->
