@@ -267,7 +267,11 @@ parse_config(Json, NomeArqConfig) ->
  			 ssl_cacertfile = maps:get(<<"ssl_cacertfile">>, Json, undefined),
 			 ssl_certfile = maps:get(<<"ssl_certfile">>, Json, undefined),
 			 ssl_keyfile = maps:get(<<"ssl_keyfile">>, Json, undefined),
-			 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>))
+			 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
+	 		 log_show_response = ems_util:parse_bool(maps:get(<<"log_show_response">>, Json, false)),
+			 log_show_payload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Json, false)),
+	 		 log_show_response_max_length = ems_util:parse_bool(maps:get(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH)),
+			 log_show_payload_max_length = ems_util:parse_bool(maps:get(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH))
 		}.
 
 % It generates a default configuration if there is no configuration file
@@ -317,7 +321,11 @@ get_default_config() ->
 			 ssl_cacertfile = undefined,
 			 ssl_certfile = undefined,
 			 ssl_keyfile = undefined,
-			 sufixo_email_institucional = "@unb.br"
+			 sufixo_email_institucional = "@unb.br",
+	 		 log_show_response = false,
+			 log_show_payload = false,
+	 		 log_show_response_max_length = ?LOG_SHOW_RESPONSE_MAX_LENGTH,
+			 log_show_payload_max_length = ?LOG_SHOW_PAYLOAD_MAX_LENGTH
 		}.
 
 -spec select_config_file(binary() | string(), binary() | string()) -> {ok, string()} | {error, enofile_config}.

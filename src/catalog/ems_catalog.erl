@@ -86,7 +86,7 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 			   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
 			   ServiceErrorMetricName, ServiceUnavailableMetricName,
 			   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-			   HttpMaxContentLength, HttpHeaders) ->
+			   HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload) ->
 	PatternKey = ems_util:make_rowid_from_url(Url, Type),
 	{ok, Id_re_compiled} = re:compile(PatternKey),
 	#service{
@@ -163,7 +163,9 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 				service_timeout_metric_name = ServiceTimeoutMetricName,
 				authorization_public_check_credential = AuthorizationPublicCheckCredential,
 				http_max_content_length = HttpMaxContentLength,
-				http_headers = HttpHeaders
+				http_headers = HttpHeaders,
+				log_show_response = LogShowResponse,
+				log_show_payload = LogShowPayload
 			}.
 
 new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, FunctionName,
@@ -183,7 +185,7 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 			ServiceHostDeniedMetricName, ServiceAuthDeniedMetricName, 
 			ServiceErrorMetricName, ServiceUnavailableMetricName,
 			ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-			HttpMaxContentLength, HttpHeaders) ->
+			HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload) ->
 	#service{
 				id = Id,
 				rowid = Rowid,
@@ -256,7 +258,9 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 				service_timeout_metric_name = ServiceTimeoutMetricName,
 				authorization_public_check_credential = AuthorizationPublicCheckCredential,
 				http_max_content_length = HttpMaxContentLength,
-				http_headers = HttpHeaders
+				http_headers = HttpHeaders,
+				log_show_response = LogShowResponse,
+				log_show_payload = LogShowPayload
 			}.
 
 parse_middleware(null) -> undefined;
@@ -402,20 +406,8 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 			true -> PoolMax = PoolSize;
 			false -> PoolMax = PoolMax0
 		end,
-		TimeoutValue = ems_util:parse_range(maps:get(<<"timeout">>, Map, ?SERVICE_TIMEOUT), ?SERVICE_MIN_TIMEOUT, ?SERVICE_MAX_TIMEOUT),
-		case TimeoutValue of
-			erange_not_allowed -> 
-				Timeout = 0,
-				erlang:error(einvalid_timeout_service);
-			_ -> Timeout = TimeoutValue
-		end,
-		TimeoutAlertThredholdValue = ems_util:parse_range(maps:get(<<"timeout_alert_threshold">>, Map, ?SERVICE_MIN_TIMEOUT), ?SERVICE_MIN_TIMEOUT, Timeout),
-		case TimeoutAlertThredholdValue of
-			erange_not_allowed -> 
-				TimeoutAlertThreshold = 0,
-				erlang:error(einvalid_timeout_alert_threshold);
-			_ -> TimeoutAlertThreshold = TimeoutAlertThredholdValue
-		end,
+		Timeout = ems_util:parse_range(maps:get(<<"timeout">>, Map, ?SERVICE_TIMEOUT), ?SERVICE_MIN_TIMEOUT, ?SERVICE_MAX_TIMEOUT, einvalid_timeout_service),
+		TimeoutAlertThreshold = ems_util:parse_range(maps:get(<<"timeout_alert_threshold">>, Map, 0), 0, Timeout, einvalid_timeout_alert_threshold),
 		Middleware = parse_middleware(maps:get(<<"middleware">>, Map, undefined)),
 		CacheControlValue = maps:get(<<"cache_control">>, Map, ?CACHE_CONTROL_NO_CACHE),
 		case CacheControlValue of
@@ -424,13 +416,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 				CacheControl = ?CACHE_CONTROL_NO_CACHE;
 			_ -> CacheControl = CacheControlValue
 		end,
-		ExpiresMinuteValue = ems_util:parse_range(maps:get(<<"expires_minute">>, Map, 0), ?SERVICE_MIN_EXPIRE_MINUTE, ?SERVICE_MAX_EXPIRE_MINUTE),
-		case ExpiresMinuteValue of
-			erange_not_allowed -> 
-				ExpiresMinute = 0,
-				erlang:error(einvalid_expires_minute);
-			_ -> ExpiresMinute = ExpiresMinuteValue
-		end,
+		ExpiresMinute = ems_util:parse_range(maps:get(<<"expires_minute">>, Map, 0), ?SERVICE_MIN_EXPIRE_MINUTE, ?SERVICE_MAX_EXPIRE_MINUTE, einvalid_expires_minute),
 		Public = ems_util:parse_bool(maps:get(<<"public">>, Map, true)),
 		ContentType = maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON),
 		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
@@ -449,6 +435,8 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		HttpMaxContentLength = ems_util:parse_range(maps:get(<<"http_max_content_length">>, Map, HttpMaxContentLengthDefault), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
 		HttpHeaders0 = maps:get(<<"http_headers">>, Map, #{}),
 		HttpHeaders = maps:merge(HttpHeaders0, HttpHeadersDefault),
+		LogShowResponse = ems_util:parse_bool(maps:get(<<"log_show_response">>, Map, false)),
+		LogShowPayload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Map, false)),
 		Ssl = maps:get(<<"tcp_ssl">>, Map, undefined),
 		case Ssl of
 			undefined ->
@@ -513,7 +501,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 												   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
 												   ServiceErrorMetricName, ServiceUnavailableMetricName, 
 												   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-												   HttpMaxContentLength, HttpHeaders),
+												   HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload),
 						{ok, Service};
 					_ -> 
 						erlang:error(einvalid_re_service)
@@ -544,7 +532,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										ServiceHostDeniedMetricName, ServiceAuthDeniedMetricName, 
 										ServiceErrorMetricName, ServiceUnavailableMetricName, 
 										ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-										HttpMaxContentLength, HttpHeaders),
+										HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload),
 				{ok, Service}
 		end
 	catch

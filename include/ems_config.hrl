@@ -255,7 +255,11 @@
 				 ssl_keyfile :: binary(),
 				 sufixo_email_institucional :: binary(),
 				 http_headers :: map(),
-				 http_headers_options :: map()
+				 http_headers_options :: map(),
+				 log_show_response = false :: boolean(),	%% Se true, imprime o response no log
+				 log_show_payload = false :: boolean(),		%% Se true, imprime o payload no log
+				 log_show_response_max_length :: boolean(),	%% show response if content length < show_response_max_length
+				 log_show_payload_max_length :: boolean()	%% show payload if content length < show_response_max_length
 		 }). 	
 
 

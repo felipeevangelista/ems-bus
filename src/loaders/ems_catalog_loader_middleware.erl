@@ -219,6 +219,10 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												authorization_public_check_credential = NewCatalog#service.authorization_public_check_credential,
 												protocol = NewCatalog#service.protocol,
 												filename = NewCatalog#service.filename,
+												http_max_content_length = NewCatalog#service.http_max_content_length,
+												http_headers = NewCatalog#service.http_headers,
+												log_show_response = NewCatalog#service.log_show_response,
+												log_show_payload = NewCatalog#service.log_show_payload,
 												ctrl_update = CtrlDate,
 												ctrl_modified = CtrlModified,
 												ctrl_hash = CtrlHash

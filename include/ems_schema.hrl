@@ -317,6 +317,8 @@
 					pool_max :: non_neg_integer(),
 					timeout :: non_neg_integer(),				%% Tempo que o dispatcher aguarda em milisegundos o processamento de um serviço antes de retornar etimeout_service para o cliente
 					timeout_alert_threshold = 0 :: non_neg_integer(),  	% Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
+					log_show_response = false :: boolean(),		%% Se true, imprime o response no log
+					log_show_payload = false :: boolean(),		%% Se true, imprime o payload no log
 					expires :: non_neg_integer(),				%% Cabeçalho HTTP expires
 					cache_control :: binary(),					%% Cabeçalho HTTP cache-control
 					enable = false :: boolean(),

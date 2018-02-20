@@ -104,6 +104,7 @@
 		 parse_tcp_port/1,
 		 parse_request_querystring/2,
 		 parse_range/3,
+		 parse_range/4,
 		 parse_email/1,
 		 match_ip_address/2,
  		 allow_ip_address/2,
@@ -2386,6 +2387,10 @@ is_range_valido(_Number, _RangeIni, _RangeFim) -> false.
 -spec parse_range(non_neg_integer(), integer(), integer()) -> non_neg_integer.
 parse_range(Number, RangeIni, RangeFim) when Number >= RangeIni andalso Number =< RangeFim -> Number;
 parse_range(_, _, _) -> erlang:error(erange_not_allowed).
+
+-spec parse_range(non_neg_integer(), integer(), integer(), atom()) -> non_neg_integer.
+parse_range(Number, RangeIni, RangeFim, _) when Number >= RangeIni andalso Number =< RangeFim -> Number;
+parse_range(_, _, _, Exception) -> erlang:error(Exception).
 
 
 -spec parse_email(string() | binary()) -> binary() | undefined.
