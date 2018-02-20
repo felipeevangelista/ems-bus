@@ -402,18 +402,35 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 			true -> PoolMax = PoolSize;
 			false -> PoolMax = PoolMax0
 		end,
-		Timeout = ems_util:parse_timeout(maps:get(<<"timeout">>, Map, ?SERVICE_TIMEOUT), ?SERVICE_MAX_TIMEOUT),
-		TimeoutAlertThreshold = ems_util:parse_timeout(maps:get(<<"timeout_alert_threshold">>, Map, 0), Timeout),
+		TimeoutValue = ems_util:parse_range(maps:get(<<"timeout">>, Map, ?SERVICE_TIMEOUT), ?SERVICE_MIN_TIMEOUT, ?SERVICE_MAX_TIMEOUT),
+		case TimeoutValue of
+			erange_not_allowed -> 
+				Timeout = 0,
+				erlang:error(einvalid_timeout_service);
+			_ -> Timeout = TimeoutValue
+		end,
+		TimeoutAlertThredholdValue = ems_util:parse_range(maps:get(<<"timeout_alert_threshold">>, Map, ?SERVICE_MIN_TIMEOUT), ?SERVICE_MIN_TIMEOUT, Timeout),
+		case TimeoutAlertThredholdValue of
+			erange_not_allowed -> 
+				TimeoutAlertThreshold = 0,
+				erlang:error(einvalid_timeout_alert_threshold);
+			_ -> TimeoutAlertThreshold = TimeoutAlertThredholdValue
+		end,
 		Middleware = parse_middleware(maps:get(<<"middleware">>, Map, undefined)),
 		CacheControlValue = maps:get(<<"cache_control">>, Map, ?CACHE_CONTROL_NO_CACHE),
 		case CacheControlValue of
 			<<"no-cache">> -> 
 				ems_logger:warn("ems_catalog parse incomplete http header cache-control in ~p.", [Name]),
 				CacheControl = ?CACHE_CONTROL_NO_CACHE;
-			_ -> 
-				CacheControl = CacheControlValue
+			_ -> CacheControl = CacheControlValue
 		end,
-		ExpiresMinute = maps:get(<<"expires_minute">>, Map, 0),
+		ExpiresMinuteValue = ems_util:parse_range(maps:get(<<"expires_minute">>, Map, 0), ?SERVICE_MIN_EXPIRE_MINUTE, ?SERVICE_MAX_EXPIRE_MINUTE),
+		case ExpiresMinuteValue of
+			erange_not_allowed -> 
+				ExpiresMinute = 0,
+				erlang:error(einvalid_expires_minute);
+			_ -> ExpiresMinute = ExpiresMinuteValue
+		end,
 		Public = ems_util:parse_bool(maps:get(<<"public">>, Map, true)),
 		ContentType = maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON),
 		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),

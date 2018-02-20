@@ -123,8 +123,11 @@
 -define(TCP_ACCEPT_CONNECT_TIMEOUT, 1000 * 60). % 1 minuto
 
 % Quanto tempo o dispatcher aguardar um serviço
--define(SERVICE_TIMEOUT, 180000). % 3 minutos é o tempo padrão que o dispatcher aguarde um serviço executar
--define(SERVICE_MAX_TIMEOUT, 604800000). % 7 dias é o tempo máximo que o dispatcher aguarde um serviço executar
+-define(SERVICE_TIMEOUT, 60000). 		 % 1 minuto é o tempo padrão que o dispatcher aguarda um serviço executar
+-define(SERVICE_MIN_TIMEOUT, 1000). 	 % 1 segundo é o tempo mínimo que o dispatcher aguarda um serviço executar
+-define(SERVICE_MAX_TIMEOUT, 604800000). % 7 dias é o tempo máximo que o dispatcher aguarda um serviço executar
+-define(SERVICE_MIN_EXPIRE_MINUTE, 0).
+-define(SERVICE_MAX_EXPIRE_MINUTE, 525601). % 1 ano
 
 % Caminho do utilitário que importa dados csv para um banco sqlite
 -define(CSV2SQLITE_PATH, ?PRIV_PATH ++ "/scripts/csv2sqlite.py"). 
