@@ -421,13 +421,14 @@ to_resource_owner(User) ->
 
 
 -spec new_from_map(map(), #config{}) -> {ok, #user{}} | {error, atom()}.
-new_from_map(Map, _Conf) ->
+new_from_map(Map, Conf) ->
 	try
 		PasswdCrypto = maps:get(<<"passwd_crypto">>, Map, <<>>),
 		Password = maps:get(<<"password">>, Map, <<>>),
+		Login = ?UTF8_STRING(maps:get(<<"login">>, Map)),
 		{ok, #user{	id = maps:get(<<"id">>, Map),
 					codigo = maps:get(<<"codigo">>, Map, undefined),
-					login = ?UTF8_STRING(maps:get(<<"login">>, Map)),
+					login = Login,
 					name = ?UTF8_STRING(maps:get(<<"name">>, Map)),
 					cpf = maps:get(<<"cpf">>, Map, <<>>),
 					password = case PasswdCrypto of
@@ -456,6 +457,7 @@ new_from_map(Map, _Conf) ->
 					subtype = maps:get(<<"subtype">>, Map, 0),
 					active = maps:get(<<"matricula">>, Map, true),
 					remap_user_id = maps:get(<<"remap_user_id">>, Map, undefined),
+					admin = maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_owner)),
 					ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 					ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
 					ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),

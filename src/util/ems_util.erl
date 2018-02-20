@@ -1629,6 +1629,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			url = Url2,
 			version = Version,
 			content_type_in = ContentTypeIn,
+			content_type_out = ContentTypeIn,  %% Igual ao content_type_in pois não se sabe o contrato ainda
 			content_length = 0,
 			querystring = QuerystringBin,
 			querystring_map = QuerystringMap0,

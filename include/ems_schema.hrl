@@ -41,6 +41,7 @@
 			   nacionalidade :: non_neg_integer(),
 			   matricula :: non_neg_integer(),				%% se o usuário tem alguma matrícula proveniente de dados funcionais
 			   remap_user_id :: non_neg_integer(),
+			   admin :: boolean(),
 			   ctrl_path :: string(),
 			   ctrl_file :: string(),
 			   ctrl_insert,									%% Data que o serviço foi inserido no banco mnesia
@@ -353,7 +354,8 @@
 					service_unavailable_metric_name :: atom(),
 					service_timeout_metric_name :: atom(),
 					http_max_content_length :: non_neg_integer(),
-					http_headers :: map()
+					http_headers :: map(),
+					restricted = false :: boolean()				%% Serviços restrito para admins
 				}).
 
 

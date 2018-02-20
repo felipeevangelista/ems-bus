@@ -223,6 +223,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												http_headers = NewCatalog#service.http_headers,
 												log_show_response = NewCatalog#service.log_show_response,
 												log_show_payload = NewCatalog#service.log_show_payload,
+												restricted = NewCatalog#service.restricted,
 												ctrl_update = CtrlDate,
 												ctrl_modified = CtrlModified,
 												ctrl_hash = CtrlHash

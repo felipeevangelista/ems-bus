@@ -86,7 +86,8 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 			   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
 			   ServiceErrorMetricName, ServiceUnavailableMetricName,
 			   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-			   HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload) ->
+			   HttpMaxContentLength, HttpHeaders, 
+			   LogShowResponse, LogShowPayload, Restricted) ->
 	PatternKey = ems_util:make_rowid_from_url(Url, Type),
 	{ok, Id_re_compiled} = re:compile(PatternKey),
 	#service{
@@ -165,7 +166,8 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 				http_max_content_length = HttpMaxContentLength,
 				http_headers = HttpHeaders,
 				log_show_response = LogShowResponse,
-				log_show_payload = LogShowPayload
+				log_show_payload = LogShowPayload,
+				restricted = Restricted
 			}.
 
 new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, FunctionName,
@@ -185,7 +187,8 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 			ServiceHostDeniedMetricName, ServiceAuthDeniedMetricName, 
 			ServiceErrorMetricName, ServiceUnavailableMetricName,
 			ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-			HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload) ->
+			HttpMaxContentLength, HttpHeaders, 
+			LogShowResponse, LogShowPayload, Restricted) ->
 	#service{
 				id = Id,
 				rowid = Rowid,
@@ -260,7 +263,8 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 				http_max_content_length = HttpMaxContentLength,
 				http_headers = HttpHeaders,
 				log_show_response = LogShowResponse,
-				log_show_payload = LogShowPayload
+				log_show_payload = LogShowPayload,
+				restricted = Restricted
 			}.
 
 parse_middleware(null) -> undefined;
@@ -335,6 +339,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 								 cat_disable_services = DisableServices,
 								 cat_enable_services_owner = EnableServicesOwner,
 								 cat_disable_services_owner = DisableServicesOwner,
+								 cat_restricted_services_owner = RestrictedServicesOwner,
 								 ems_result_cache = ResultCacheDefault,
 								 ems_hostname = HostNameDefault,
 								 authorization = AuthorizationDefault,
@@ -370,6 +375,11 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		case lists:member(Name, DisableServices) of
 			true -> Enable = false;
 			false -> Enable = Enable3
+		end,
+		Restricted0 = maps:get(<<"restricted">>, Map, undefined),
+		case Restricted0 of
+			undefined -> Restricted = lists:member(Owner, RestrictedServicesOwner);
+			_ -> Restricted = ems_util:parse_bool(Restricted0)
 		end,
 		UseRE = ems_util:parse_bool(maps:get(<<"use_re">>, Map, false)),
 		case UseRE of
@@ -501,7 +511,9 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 												   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
 												   ServiceErrorMetricName, ServiceUnavailableMetricName, 
 												   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-												   HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload),
+												   HttpMaxContentLength, HttpHeaders, 
+												   LogShowResponse, LogShowPayload,
+												   Restricted),
 						{ok, Service};
 					_ -> 
 						erlang:error(einvalid_re_service)
@@ -532,7 +544,9 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										ServiceHostDeniedMetricName, ServiceAuthDeniedMetricName, 
 										ServiceErrorMetricName, ServiceUnavailableMetricName, 
 										ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-										HttpMaxContentLength, HttpHeaders, LogShowResponse, LogShowPayload),
+										HttpMaxContentLength, HttpHeaders, 
+										LogShowResponse, LogShowPayload,
+										Restricted),
 				{ok, Service}
 		end
 	catch

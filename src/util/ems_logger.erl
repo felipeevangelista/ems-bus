@@ -572,8 +572,8 @@ do_log_request(#request{rid = RID,
 						ShowResponseService = Service#service.log_show_response,
 						ShowPayloadService = Service#service.log_show_payload
 				end,
-				Texto1 = 
-					  iolist_to_binary([
+				TextData = 
+					[
 					   Type, <<" ">>,
 					   Uri, <<" ">>,
 					   atom_to_binary(Version, utf8), <<" ">>,
@@ -665,12 +665,12 @@ do_log_request(#request{rid = RID,
 											_ -> Etag
 										end,
 						<<"\n\tIf-Modified-Since: ">>, case IfModifiedSince of
-														undefined -> <<>>;
-														_ -> IfModifiedSince
+															undefined -> <<>>;
+															_ -> IfModifiedSince
 												   end,
 					   <<"  If-None-Match: ">>, case IfNoneMatch of
-												undefined -> <<>>;
-												_ -> IfNoneMatch
+													undefined -> <<>>;
+													_ -> IfNoneMatch
 										   end,
 					   <<"\n\tAuthorization mode: ">>, case AuthorizationService of
 															basic -> <<"basic, oauth2">>;
@@ -719,11 +719,12 @@ do_log_request(#request{rid = RID,
 					   <<" <<">>, case is_atom(Reason) of
 										true -> atom_to_binary(Reason, utf8);
 										false -> <<"error">>
-								  end, <<">> (">>, integer_to_binary(Latency), <<"ms)\n}">>]),
+								  end, <<">> (">>, integer_to_binary(Latency), <<"ms)\n}">>],
 					   
+				TextBin = iolist_to_binary(TextData),
 				NewState = case Code >= 400 of
-								true  -> write_msg(error, Texto1, State#state{log_ult_reqhash = ReqHash});
-								false -> write_msg(info, Texto1, State#state{log_ult_reqhash = ReqHash})
+								true  -> write_msg(error, TextBin, State#state{log_ult_reqhash = ReqHash});
+								false -> write_msg(info,  TextBin, State#state{log_ult_reqhash = ReqHash})
 							end,
 				NewState;
 			false -> 

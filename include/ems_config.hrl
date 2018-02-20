@@ -212,22 +212,24 @@
 
 
 %  Definição para o arquivo de configuração
--record(config, {cat_host_alias :: map(),					%% Lista (Chave-Valor) com os names alternativos para os hosts. Ex.: ["negocio01", "192.168.0.103", "negocio02", "puebla"]
-				 cat_host_search,							%% Lista de hosts para pesquisar os serviços
-				 cat_node_search,							%% Lista de nodes para pesquisar os serviços
-				 cat_path_search :: list(tuple()),			%% Lista de tuplas com caminhos alternativos para catálogos
-				 cat_disable_services :: list(binary()),	%% Lista de serviços para desativar
-				 cat_enable_services :: list(binary()),		%% Lista de serviços para habilitar
-				 cat_disable_services_owner :: list(binary()),	%% Lista de owners dos serviços para desativar
+-record(config, {cat_host_alias :: map(),							%% Lista (Chave-Valor) com os names alternativos para os hosts. Ex.: ["negocio01", "192.168.0.103", "negocio02", "puebla"]
+				 cat_host_search,									%% Lista de hosts para pesquisar os serviços
+				 cat_node_search,									%% Lista de nodes para pesquisar os serviços
+				 cat_path_search :: list(tuple()),					%% Lista de tuplas com caminhos alternativos para catálogos
+				 cat_disable_services :: list(binary()),			%% Lista de serviços para desativar
+				 cat_enable_services :: list(binary()),				%% Lista de serviços para habilitar
+				 cat_disable_services_owner :: list(binary()),		%% Lista de owners dos serviços para desativar
 				 cat_enable_services_owner :: list(binary()),		%% Lista de owners de serviços para habilitar
-				 static_file_path :: list(string()),		%% Lista de diretórios para arquivos estáticos
-				 ems_hostname :: binary(),					%% Nome da maquina onde o barramento está sendo executado
-				 ems_host :: atom(),						%% Atom do name da maquina onde o barramento está sendo executado
-				 ems_file_dest :: string(),					%% Nome do arquivo de configuração (útil para saber o local do arquivo)
-				 ems_debug :: boolean(),
+				 cat_restricted_services_owner :: list(binary()),   %% Lista de owners de serviços restritos
+				 cat_restricted_services_admin :: list(binary()),	%% Lista de admins que podem consumir os serviços
+				 static_file_path :: list(string()),				%% Lista de diretórios para arquivos estáticos
+				 ems_hostname :: binary(),							%% Nome da maquina onde o barramento está sendo executado
+				 ems_host :: atom(),								%% Atom do name da maquina onde o barramento está sendo executado
+				 ems_file_dest :: string(),							%% Nome do arquivo de configuração (útil para saber o local do arquivo)
+				 ems_debug :: boolean(),							%% Habilita o modo debug
 				 ems_result_cache  :: non_neg_integer(),
 				 ems_datasources :: map(),
-				 show_debug_response_headers :: boolean,	%% Add debug headers in HTTP response headers
+				 show_debug_response_headers :: boolean,			%% Add debug headers in HTTP response headers
 				 tcp_listen_address :: list(),
 				 tcp_listen_address_t :: list(),
 				 tcp_listen_main_ip :: binary(),
