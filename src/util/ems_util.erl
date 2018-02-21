@@ -11,7 +11,8 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([version/0,
+-export([parse_querystring/1,
+		 version/0,
 		 server_name/0,
 		 sleep/1,
 		 json_encode/1,
@@ -1550,15 +1551,36 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 	try
 		Uri = iolist_to_binary(cowboy_req:uri(CowboyReq)),
 		Url = binary_to_list(cowboy_req:path(CowboyReq)),
-		io:format("aqui0 ~p   ~p\n", [Url, Uri]),
+		io:format("aqui0 url -> ~p \n", [Url]),
 		case Url of
 			"/erl.ms/" ++ UrlEncoded -> 
-				io:format("aqui ~p\n", [UrlEncoded]),
 				io:format("aqui 2 ~p\n", [binary_to_list(base64:decode(UrlEncoded))]),
-				Url1 = binary_to_list(base64:decode(UrlEncoded));
-			_ -> Url1 = Url
+				Url1 = binary_to_list(base64:decode(UrlEncoded)),
+				case string:find(Url1, "?") of
+					nomatch -> 
+						Url2 = remove_ult_backslash_url(Url1),
+						io:format("aqui3 nomatch\n"),
+						QuerystringBin = <<>>,
+						QuerystringMap0 = #{};
+					"?" ++ Querystring = Qs -> 
+						PosInterrogacao = string:chr(Url1, $?),
+						Url2 = remove_ult_backslash_url(string:slice(Url1, 0, PosInterrogacao-2)) ++ Qs,
+						io:format("aqui3 url is ~p and qs is ~p\n", [Url2, Querystring]),
+						QuerystringBin = list_to_binary(Querystring),
+						QuerystringMap0 = parse_querystring([Querystring])
+				end;
+			_ -> 
+				io:format("aqui ~p\n", [Url]),
+				QuerystringBin = cowboy_req:qs(CowboyReq),
+				case QuerystringBin of
+					<<>> -> 
+						Url2 = remove_ult_backslash_url(Url),
+						QuerystringMap0 = #{};
+					_ -> 
+						Url2 = remove_ult_backslash_url(Url) ++ "?" ++ binary_to_list(QuerystringBin),
+						QuerystringMap0 = parse_querystring([binary_to_list(QuerystringBin)])
+				end
 		end,
-		Url2 = remove_ult_backslash_url(Url1),
 		RID = erlang:system_time(),
 		Timestamp = calendar:local_time(),
 		T1 = trunc(RID / 1.0e6), % optimized: same that get_milliseconds()
@@ -1571,14 +1593,9 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			undefined -> ContentTypeIn = <<>>;
 			ContentTypeInValue -> ContentTypeIn = ContentTypeInValue
 		end,
-		QuerystringBin = cowboy_req:qs(CowboyReq),
 		ProtocolBin = cowboy_req:scheme(CowboyReq),
 		Protocol = parse_protocol(ProtocolBin),
 		Port = cowboy_req:port(CowboyReq),
-		case QuerystringBin of
-			<<>> -> QuerystringMap0 = #{};
-			_ -> QuerystringMap0 = parse_querystring([binary_to_list(QuerystringBin)])
-		end,
 		case cowboy_req:header(<<"accept">>, CowboyReq) of
 			undefined -> Accept = <<"*/*">>;
 			AcceptValue -> Accept = AcceptValue
