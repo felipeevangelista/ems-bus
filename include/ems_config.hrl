@@ -56,28 +56,28 @@
 -define(STATIC_FILE_PATH, ?PRIV_PATH ++ "/www").
 
 % Caminho do arquivo de clientes
--define(CLIENT_PATH, ?CONF_PATH ++ "/auth/clients.json").
+-define(CLIENT_PATH, ?CONF_PATH ++ "/clients.json").
 
 % Caminho do arquivo de usuários
--define(USER_PATH, ?CONF_PATH ++ "/auth/users.json").
+-define(USER_PATH, ?CONF_PATH ++ "/users.json").
 
 % Caminho do arquivo de dados funcionais dos usuários
--define(USER_DADOS_FUNCIONAIS_PATH, ?CONF_PATH ++ "/auth/user_dados_funcionais.json").
+-define(USER_DADOS_FUNCIONAIS_PATH, ?CONF_PATH ++ "/user_dados_funcionais.json").
 
 % Caminho do arquivo de dados funcionais dos usuários
--define(USER_EMAIL_PATH, ?CONF_PATH ++ "/auth/user_email.json").
+-define(USER_EMAIL_PATH, ?CONF_PATH ++ "/user_email.json").
 
 % Caminho do arquivo de perfis dos usuários
--define(USER_PERFIL_PATH, ?CONF_PATH ++ "/auth/user_perfil.json").
+-define(USER_PERFIL_PATH, ?CONF_PATH ++ "/user_perfil.json").
 
 % Caminho do arquivo de permissões dos usuários
--define(USER_PERMISSION_PATH, ?CONF_PATH ++ "/auth/user_permission.json").
+-define(USER_PERMISSION_PATH, ?CONF_PATH ++ "/user_permission.json").
 
 % Caminho do arquivo de endereços dos usuários
--define(USER_ENDERECO_PATH, ?CONF_PATH ++ "/auth/user_endereco.json").
+-define(USER_ENDERECO_PATH, ?CONF_PATH ++ "/user_endereco.json").
 
 % Caminho do arquivo de telefones dos usuários
--define(USER_TELEFONE_PATH, ?CONF_PATH ++ "/auth/user_telefone.json").
+-define(USER_TELEFONE_PATH, ?CONF_PATH ++ "/user_telefone.json").
 
 % Caminho inicial para os arquivos estáticos
 -define(WEBAPPS_PATH, ?PRIV_PATH ++ "/www").
@@ -202,7 +202,7 @@
 
 -define(HTTP_SERVER_PORT, 2381).
 -define(HTTP_MAX_CONNECTIONS, 100000).
--define(HTTP_MAX_CONTENT_LENGTH, 65536).  % Limite default do conteúdo do payload é de 64KB
+-define(HTTP_MAX_CONTENT_LENGTH, 65536 * 2).  % Limite default do conteúdo do payload é de 128KB
 -define(HTTP_MAX_CONTENT_LENGTH_BY_SERVICE, 1048576000).  % Permite enviar até 1G se especificado no contrato de serviço
 
 
