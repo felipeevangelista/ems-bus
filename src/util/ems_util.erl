@@ -152,7 +152,8 @@
 		 to_lower_and_remove_backslash/1,
 		 check_type_email/2,
 		 is_email_institucional/2,
-		 invoque_service/3
+		 invoque_service/3,
+		 url_mask/1
 		]).
 
 -spec version() -> string().
@@ -1541,13 +1542,23 @@ invoque_service(Type, Url, QuerystringBin, QuerystringMap, ContentTypeIn) ->
 		 Error -> Error
 	end.	
 
+-spec url_mask(string() | binary()) -> binary().
+url_mask(Url) -> iolist_to_binary([<<"/erl.ms/">>, base64:encode(Url)]). 
 
 -spec encode_request_cowboy(tuple(), pid(), map(), map(), boolean()) -> {ok, #request{}} | {error, atom()}.
 encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions, ShowDebugResponseHeaders) ->
 	try
-		Url = cowboy_req:path(CowboyReq),
-		Url2 = remove_ult_backslash_url(binary_to_list(Url)),
 		Uri = iolist_to_binary(cowboy_req:uri(CowboyReq)),
+		Url = binary_to_list(cowboy_req:path(CowboyReq)),
+		io:format("aqui0 ~p   ~p\n", [Url, Uri]),
+		case Url of
+			"/erl.ms/" ++ UrlEncoded -> 
+				io:format("aqui ~p\n", [UrlEncoded]),
+				io:format("aqui 2 ~p\n", [binary_to_list(base64:decode(UrlEncoded))]),
+				Url1 = binary_to_list(base64:decode(UrlEncoded));
+			_ -> Url1 = Url
+		end,
+		Url2 = remove_ult_backslash_url(Url1),
 		RID = erlang:system_time(),
 		Timestamp = calendar:local_time(),
 		T1 = trunc(RID / 1.0e6), % optimized: same that get_milliseconds()
