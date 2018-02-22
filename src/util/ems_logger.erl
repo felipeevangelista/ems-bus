@@ -22,7 +22,10 @@
 		 debug2/2, in_debug/0, sync/0, log_request/1, mode_debug/1, 
 		 set_level/1, 
 		 show_response/1, show_response/2, 
-		 show_payload/1, show_payload/2, log_file_tail/0, log_file_tail/1, 
+		 show_payload/1, show_payload/2, 
+		 show_response_url/2, show_payload_url/2,
+		 show_response_url/3, show_payload_url/3,
+		 log_file_tail/0, log_file_tail/1, 
 		 log_file_head/0, log_file_head/1, log_file_name/0, 
 		 format_info/1, format_info/2, format_warn/1, format_warn/2, 
 		 format_error/1, format_error/2, format_debug/1, 
@@ -50,6 +53,8 @@
 				log_show_response_max_length,				% show response if content length < show_response_max_length
 				log_show_payload = false,					% show payload of request
 				log_show_payload_max_length,				% show payload if content length < show_response_max_length
+				log_show_response_url_list = [],			% show response if url in 
+				log_show_payload_url_list = [],				% show payload if url in 
 				log_ult_msg,								% last print message
 				log_ult_reqhash 							% last reqhash of print message
  			   }). 
@@ -151,7 +156,6 @@ show_response(_, MaxLength) ->
 	info("ems_logger unset show response."),
 	gen_server:cast(?SERVER, {show_response, false, MaxLength}). 
 
-
 show_payload(true) -> 
 	info("ems_logger set show payload."),
 	gen_server:cast(?SERVER, {show_payload, true, ?LOG_SHOW_PAYLOAD_MAX_LENGTH});
@@ -165,6 +169,35 @@ show_payload(true, MaxLength) ->
 show_payload(_, MaxLength) -> 
 	info("ems_logger unset show payload."),
 	gen_server:cast(?SERVER, {show_payload, false, MaxLength}). 
+
+
+show_response_url(true, Url) -> 
+	info("ems_logger set show response."),
+	gen_server:cast(?SERVER, {show_response, true, ?LOG_SHOW_PAYLOAD_MAX_LENGTH, Url});
+show_response_url(_, Url) -> 
+	info("ems_logger unset show response."),
+	gen_server:cast(?SERVER, {show_response, false, ?LOG_SHOW_PAYLOAD_MAX_LENGTH, Url}). 
+
+show_payload_url(true, Url) -> 
+	info("ems_logger set show payload."),
+	gen_server:cast(?SERVER, {show_payload, true, ?LOG_SHOW_PAYLOAD_MAX_LENGTH, Url});
+show_payload_url(_, Url) -> 
+	info("ems_logger unset show payload."),
+	gen_server:cast(?SERVER, {show_payload, false, ?LOG_SHOW_PAYLOAD_MAX_LENGTH, Url}). 
+
+show_response_url(true, MaxLength, Url) -> 
+	info("ems_logger set show response."),
+	gen_server:cast(?SERVER, {show_response, true, MaxLength, Url});
+show_response_url(_, MaxLength, Url) -> 
+	info("ems_logger unset show response."),
+	gen_server:cast(?SERVER, {show_response, false, MaxLength, Url}). 
+
+show_payload_url(true, MaxLength, Url) -> 
+	info("ems_logger set show payload."),
+	gen_server:cast(?SERVER, {show_payload, true, MaxLength, Url});
+show_payload_url(_, MaxLength, Url) -> 
+	info("ems_logger unset show payload."),
+	gen_server:cast(?SERVER, {show_payload, false, MaxLength, Url}). 
 
 log_file_head() ->
 	gen_server:call(?SERVER, {log_file_head, 80}). 		
@@ -246,11 +279,35 @@ handle_cast({set_level, Level}, State) ->
 
 handle_cast({show_response, Value, MaxLength}, State) ->
 	{noreply, State#state{log_show_response = Value,
-						  log_show_response_max_length = MaxLength}};
+						  log_show_response_max_length = MaxLength,
+						  log_show_response_url_list = case Value of
+															true -> State#state.log_show_response_url_list;
+															_ -> []
+													   end}};
 
 handle_cast({show_payload, Value, MaxLength}, State) ->
 	{noreply, State#state{log_show_payload = Value,
-						  log_show_payload_max_length = MaxLength}};
+						  log_show_payload_max_length = MaxLength,
+						  log_show_payload_url_list = case Value of
+															true -> State#state.log_show_payload_url_list;
+															_ -> []
+													   end}};
+
+handle_cast({show_response, Value, MaxLength, Url}, State) ->
+	{noreply, State#state{log_show_response = Value,
+						  log_show_response_max_length = MaxLength,
+						  log_show_response_url_list = case Value of
+															true -> [Url|State#state.log_show_response_url_list];
+															_ -> lists:delete(Url, State#state.log_show_response_url_list)
+													   end}};
+
+handle_cast({show_payload, Value, MaxLength, Url}, State) ->
+	{noreply, State#state{log_show_payload = Value,
+						  log_show_payload_max_length = MaxLength,
+						  log_show_payload_url_list = case Value of
+														   true -> [Url|State#state.log_show_payload_url_list];
+														   _ -> lists:delete(Url, State#state.log_show_payload_url_list)
+													  end}};
 
 handle_cast(sync_log_buffer, State) ->
 	State2 = sync_log_buffer_screen(State),
@@ -556,7 +613,9 @@ do_log_request(#request{rid = RID,
 							 log_show_response_max_length = ShowResponseMaxLength, 
 							 log_show_payload = ShowPayload, 
 							 log_show_payload_max_length = ShowPayloadMaxLength, 
-							 log_ult_reqhash = UltReqHash}) ->
+							 log_ult_reqhash = UltReqHash,
+							 log_show_response_url_list = ShowResponseUrlList,					
+							 log_show_payload_url_list = ShowPayloadUrlList}) ->
 	try
 		case UltReqHash == undefined orelse UltReqHash =/= ReqHash of
 			true ->
@@ -596,7 +655,11 @@ do_log_request(#request{rid = RID,
 						<<"\n\tService: ">>, ServiceService,
 						<<"\n\tParams: ">>, ems_util:print_int_map(Params), 
 						<<"\n\tQuery: ">>, ems_util:print_str_map(Query), 
-						case (ShowPayload orelse Reason =/= ok orelse ShowPayloadService) andalso ContentLength > 0 of
+						case (ShowPayload orelse 
+							   Reason =/= ok orelse 
+							   ShowPayloadService orelse 
+							   (ShowPayloadUrlList =/= [] andalso lists:member(Url, ShowPayloadUrlList))
+							  ) andalso ContentLength > 0 of
 							true ->
 							   case ContentLength =< ShowPayloadMaxLength of
 									true ->
@@ -614,7 +677,11 @@ do_log_request(#request{rid = RID,
 								end;
 							false -> <<>>
 						end,
-						case ShowResponse orelse Reason =/= ok orelse ShowResponseService of
+						case (ShowResponse orelse
+							   Reason =/= ok orelse 
+							   ShowResponseService orelse
+							   (ShowResponseUrlList =/= [] andalso lists:member(Url, ShowResponseUrlList))
+							  ) of
 							true -> 
 								 ResponseData2 = case is_binary(ResponseData) of
 													true -> ResponseData;

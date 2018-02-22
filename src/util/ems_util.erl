@@ -25,7 +25,6 @@
 		 tuple_to_binlist/1, 
 		 binlist_to_atomlist/1,
 		 list_to_binlist/1,
-		 binary_to_integer/1,
 		 mes_extenso/1,
 		 binlist_to_list/1,
 		 join_binlist/2,
@@ -52,6 +51,8 @@
 		 get_querystring/3,
 		 get_querystring/4,
          get_querystring/2,
+         get_client_request_by_id_and_secret/1,
+         get_client_request_by_id/1,
          date_add_minute/2,
          date_dec_minute/2,
          date_add_second/2,
@@ -603,7 +604,6 @@ modernize([H|T]) ->
 	Lista = [name_case(S) || S <- Tokens],
 	string:join(Lista, " ").
 
-binary_to_integer(Bin) -> list_to_integer(binary_to_list(Bin)).
 
 %% @doc Retorna o mês por extenso a partir do ordinal
 mes_extenso(1) -> "Janeiro";
@@ -2031,27 +2031,36 @@ match_ip_address({O1, O2, O3, O4}, {X1, X2, X3, X4}) ->
 	
 -spec parse_basic_authorization_header(Header :: binary()) -> {ok, string(), string()} | {error, access_denied}.
 parse_basic_authorization_header(<<Basic:5/binary, _:1/binary, Secret/binary>>) ->
-	case Basic =:= <<"Basic">> of
-		true ->
-			Secret2 = base64:decode_to_string(binary_to_list(Secret)),
-			case string:tokens(Secret2, ":") of
-				[Login|[Password|_]] -> {ok, Login, Password};
-				_ -> {error, access_denied}
-			end;
-		false -> {error, access_denied}
+	try
+		case Basic =:= <<"Basic">> of
+			true ->
+				Secret2 = base64:decode_to_string(binary_to_list(Secret)),
+				case string:tokens(Secret2, ":") of
+					[Login|[Password|_]] -> {ok, Login, Password};
+					_ -> {error, access_denied}
+				end;
+			false -> {error, access_denied}
+		end
+	catch
+		_:_ -> {error, access_denied}
 	end;
 parse_basic_authorization_header(_) -> {error, access_denied}.
 	
 -spec parse_bearer_authorization_header(Header :: binary()) -> {ok, binary()} | {error, access_denied}.
 parse_bearer_authorization_header(Header) ->
-	case Header of 
-		<<Bearer:6/binary, _:1/binary, Secret/binary>> ->
-			case Bearer =:= <<"Bearer">> of
-				true ->	{ok, Secret};
-				false -> {error, access_denied}
-			end;
-		_ -> {error, access_denied}
+	try
+		case Header of 
+			<<Bearer:6/binary, _:1/binary, Secret/binary>> ->
+				case Bearer =:= <<"Bearer">> of
+					true ->	{ok, Secret};
+					false -> {error, access_denied}
+				end;
+			_ -> {error, access_denied}
+		end
+	catch
+		_:_ -> {error, access_denied}
 	end.
+		
 
 -spec parse_authorization_type(binary() | string() | oauth2 | basic | public | 0 | 1 | 2) -> atom().
 parse_authorization_type(<<"Basic">>) -> basic;
@@ -2693,3 +2702,73 @@ is_email_institucional(SufixoEmailInstitucional, Email) ->
 		false -> false
 	end.
 
+-spec get_client_request_by_id_and_secret(#request{}) -> #client{} | undefined.
+get_client_request_by_id_and_secret(Request = #request{authorization = Authorization}) ->
+    try
+		case get_querystring(<<"client_id">>, <<>>, Request) of
+			<<>> -> ClientId = 0;
+			undefined -> ClientId = 0;
+			ClientIdValue -> ClientId = binary_to_integer(ClientIdValue)
+		end,
+		case ClientId > 0 of
+			true ->
+				ClientSecret = ems_util:get_querystring(<<"client_secret">>, <<>>, Request),
+				case ems_client:find_by_id_and_secret(ClientId, ClientSecret) of
+					{ok, Client} -> Client;
+					_ -> undefined
+				end;
+			false ->
+				% O ClientId também pode ser passado via header Authorization
+				case Authorization =/= undefined of
+					true ->
+						case parse_basic_authorization_header(Authorization) of
+							{ok, ClientLogin, ClientSecret} ->
+								ClientId2 = list_to_integer(ClientLogin),
+								ClientSecret2 = list_to_binary(ClientSecret),
+								case ems_client:find_by_id_and_secret(ClientId2, ClientSecret2) of
+									{ok, Client} -> Client;
+									_ -> undefined
+								end;
+							_ -> undefined
+						end;
+					false -> undefined
+				end
+		end
+	catch
+		_:_ -> undefined
+	end.
+
+
+-spec get_client_request_by_id(#request{}) -> #client{} | undefined.
+get_client_request_by_id(Request = #request{authorization = Authorization}) ->
+    try
+		case get_querystring(<<"client_id">>, <<>>, Request) of
+			<<>> -> ClientId = 0;
+			undefined -> ClientId = 0;
+			ClientIdValue -> ClientId = binary_to_integer(ClientIdValue)
+		end,
+		case ClientId > 0 of
+			true ->
+				case ems_client:find_by_id(ClientId) of
+					{ok, Client} -> Client;
+					_ -> undefined
+				end;
+			false ->
+				% O ClientId também pode ser passado via header Authorization
+				case Authorization =/= undefined of
+					true ->
+						case parse_basic_authorization_header(Authorization) of
+							{ok, ClientLogin, _} ->
+								ClientId2 = list_to_integer(ClientLogin),
+								case ems_client:find_by_id(ClientId2) of
+									{ok, Client} -> Client;
+									_ -> undefined
+								end;
+							_ -> undefined
+						end;
+					false -> undefined
+				end
+		end
+	catch
+		_:_ -> undefined
+	end.
