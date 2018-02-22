@@ -178,8 +178,9 @@
 					  code = 200 :: non_neg_integer(), 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 					  reason = ok :: atom(),					%% Registra a mensagem de erro, quando status indicar um erro
 					  type :: binary(),							%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
-					  uri :: string(),							%% URI da requisição do serviço
+					  uri :: binary(),							%% URI da requisição do serviço
 					  url :: string(),							%% URL da requisição do serviço
+					  url_masked :: boolean(),					%% Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
 					  version :: string(),						%% Versão do cabeçalho HTTP
 					  payload :: binary(),						%% Corpo da requisição (aceita somente JSON)
 					  payload_map :: map(),						%% Corpo da requisição convertida para map após o parser e validação

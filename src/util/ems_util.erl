@@ -1551,34 +1551,28 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 	try
 		Uri = iolist_to_binary(cowboy_req:uri(CowboyReq)),
 		Url = binary_to_list(cowboy_req:path(CowboyReq)),
-		io:format("aqui0 url -> ~p \n", [Url]),
 		case Url of
 			"/erl.ms/" ++ UrlEncoded -> 
-				io:format("aqui 2 ~p\n", [binary_to_list(base64:decode(UrlEncoded))]),
+				UrlMasked = true,
 				Url1 = binary_to_list(base64:decode(UrlEncoded)),
 				case string:find(Url1, "?") of
 					nomatch -> 
 						Url2 = remove_ult_backslash_url(Url1),
-						io:format("aqui3 nomatch\n"),
 						QuerystringBin = <<>>,
 						QuerystringMap0 = #{};
-					"?" ++ Querystring = Qs -> 
+					"?" ++ Querystring -> 
 						PosInterrogacao = string:chr(Url1, $?),
-						Url2 = remove_ult_backslash_url(string:slice(Url1, 0, PosInterrogacao-2)) ++ Qs,
-						io:format("aqui3 url is ~p and qs is ~p\n", [Url2, Querystring]),
+						Url2 = remove_ult_backslash_url(string:slice(Url1, 0, PosInterrogacao-2)),
 						QuerystringBin = list_to_binary(Querystring),
 						QuerystringMap0 = parse_querystring([Querystring])
 				end;
 			_ -> 
-				io:format("aqui ~p\n", [Url]),
+				UrlMasked = false,
 				QuerystringBin = cowboy_req:qs(CowboyReq),
+				Url2 = remove_ult_backslash_url(Url),
 				case QuerystringBin of
-					<<>> -> 
-						Url2 = remove_ult_backslash_url(Url),
-						QuerystringMap0 = #{};
-					_ -> 
-						Url2 = remove_ult_backslash_url(Url) ++ "?" ++ binary_to_list(QuerystringBin),
-						QuerystringMap0 = parse_querystring([binary_to_list(QuerystringBin)])
+					<<>> -> QuerystringMap0 = #{};
+					_ -> QuerystringMap0 = parse_querystring([binary_to_list(QuerystringBin)])
 				end
 		end,
 		RID = erlang:system_time(),
@@ -1655,6 +1649,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			type = TypeLookup,
 			uri = Uri,
 			url = Url2,
+			url_masked = UrlMasked,
 			version = Version,
 			content_type_in = ContentTypeIn,
 			content_type_out = ContentTypeIn,  %% Igual ao content_type_in pois não se sabe o contrato ainda
