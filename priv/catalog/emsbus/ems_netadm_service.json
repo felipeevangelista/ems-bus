@@ -191,6 +191,34 @@
 	},
 	
 	{
+		"name": "/netadm/version",
+		"comment": "Get version of ErlangMS.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:version",
+		"url": "/netadm/version",
+		"result_cache" : 0,
+		"async": "false",
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+
+	{
+		"name": "/netadm/servername",
+		"comment": "Get server name of ErlangMS.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:servername",
+		"url": "/netadm/servername",
+		"result_cache" : 0,
+		"async": "false",
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+
+	{
 		"name": "/netadm/datasource/:id",
 		"comment": "Get datasource by id",
 		"owner": "netadm",

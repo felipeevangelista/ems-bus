@@ -42,7 +42,7 @@
 					   lower(rtrim(p.PesEmail)) as email,
   					   1 as Type,  
 					   0 as SubType,	
-					   1 as ActivePessoa  
+					   1 as Active 
 				from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 					 on u.UsuPesIdPessoa = p.PesCodigoPessoa 
 				",
@@ -73,7 +73,7 @@
 				   lower(rtrim(p.PesEmail)) as email,
 				   1 as Type,  
 				   0 as SubType,	
-				   1 as ActivePessoa  
+				   1 as Active 
 			from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 				 on u.UsuPesIdPessoa = p.PesCodigoPessoa  
 			where u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
