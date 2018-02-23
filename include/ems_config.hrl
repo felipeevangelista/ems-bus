@@ -184,7 +184,8 @@
 -define(EINVALID_JAVA_MESSAGE, <<"{\"error\": \"einvalid_java_message\"}"/utf8>>).
 -define(EMPTY_LIST_JSON, <<"[]"/utf8>>).
 -define(ACCESS_DENIED_JSON, <<"{\"error\": \"access_denied\"}"/utf8>>).
-
+-define(OAUTH2_DEFAULT_TOKEN_EXPIRY, 3600).  % 1 hour
+-define(OAUTH2_MAX_TOKEN_EXPIRY, 2592000).   % 30 days
 
 -define(HTTP_HEADERS_DEFAULT, #{<<"server">> => ?SERVER_NAME,
 							    <<"cache-control">> => ?CACHE_CONTROL_NO_CACHE,
@@ -237,6 +238,7 @@
 				 tcp_allowed_address :: list() | atom(),
 				 authorization :: binary(),
 				 oauth2_with_check_constraint :: boolean(),
+				 oauth2_refresh_token :: non_neg_integer(),
 				 config_file,
 				 http_port_offset :: non_neg_integer(),
 				 https_port_offset :: non_neg_integer(),

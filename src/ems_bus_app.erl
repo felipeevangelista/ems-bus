@@ -19,11 +19,12 @@ start(_StartType, StartArgs) ->
 	case ems_config:start() of
 		{ok, _Pid} ->
 			T1 = ems_util:get_milliseconds(),
+			Conf = ems_config:getConfig(),
+			application:set_env(oauth2, expiry_time, Conf#config.oauth2_refresh_token),
 			ems_dispatcher:start(),
 			ems_oauth2_backend:start(),
 			Ret = ems_bus_sup:start_link(StartArgs),
 			erlang:send_after(6000, spawn(fun() -> 
-					Conf = ems_config:getConfig(),
 					ems_logger:info("Hosts in the cluster: ~p.", [ case net_adm:host_file() of 
 																		{error, enoent} -> net_adm:localhost(); 
 																		Hosts -> Hosts 

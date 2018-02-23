@@ -53,6 +53,8 @@
          get_querystring/2,
          get_client_request_by_id_and_secret/1,
          get_client_request_by_id/1,
+         get_client_request_by_querystring/1,
+         get_user_request_by_login_and_password/1,
          date_add_minute/2,
          date_dec_minute/2,
          date_add_second/2,
@@ -2772,3 +2774,57 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 	catch
 		_:_ -> undefined
 	end.
+
+
+-spec get_client_request_by_querystring(#request{}) -> #client{} | undefined.
+get_client_request_by_querystring(Request) ->
+    try
+		case get_querystring(<<"client_id">>, <<>>, Request) of
+			<<>> -> ClientId = 0;
+			undefined -> ClientId = 0;
+			ClientIdValue -> ClientId = binary_to_integer(ClientIdValue)
+		end,
+		case ClientId > 0 of
+			true ->
+				ClientSecret = ems_util:get_querystring(<<"client_secret">>, <<>>, Request),
+				case ems_client:find_by_id_and_secret(ClientId, ClientSecret) of
+					{ok, Client} -> Client;
+					_ -> undefined
+				end;
+			false -> undefined
+		end
+	catch
+		_:_ -> undefined
+	end.
+
+
+-spec get_user_request_by_login_and_password(#request{}) -> #client{} | undefined.
+get_user_request_by_login_and_password(Request = #request{authorization = Authorization}) ->
+    try
+		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
+		case Username =/= <<>> of
+			true ->
+				Password = ems_util:get_querystring(<<"password">>, <<>>, Request),
+				case ems_user:find_by_login_and_password(Username, Password) of
+					{ok, User} -> User;
+					_ -> undefined
+				end;
+			false ->
+				% O user também pode ser passado via header Authorization
+				case Authorization =/= undefined of
+					true ->
+						case parse_basic_authorization_header(Authorization) of
+							{ok, Login, Password} ->
+								case ems_user:find_by_login_and_password(Login, Password) of
+									{ok, User} -> User;
+									_ -> undefined
+								end;
+							_ -> undefined
+						end;
+					false -> undefined
+				end
+		end
+	catch
+		_:_ -> undefined
+	end.
+
