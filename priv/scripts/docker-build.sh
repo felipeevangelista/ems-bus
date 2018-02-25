@@ -591,20 +591,20 @@ push_registry(){
 			echo
 			
 			# Check if deploy
-			DO_DEPLOY="y"
-			printf '\n\tYou want to deploy the app in this environment: [Y/n] '
-			while true; do
-				read DO_DEPLOY
-				if [[ ! $DO_DEPLOY =~ [yYnN] ]]; then
-					printf '\tOps, You want to deploy the app in this environment: [Y/n] '
-				else
-					break
-				fi
-			done
+			#DO_DEPLOY="y"
+			#printf '\n\tYou want to deploy the app in this environment: [Y/n] '
+			#while true; do
+			#	read DO_DEPLOY
+			#	if [[ ! $DO_DEPLOY =~ [yYnN] ]]; then
+			#		printf '\tOps, You want to deploy the app in this environment: [Y/n] '
+			#	else
+			#		break
+			#	fi
+			#done
 
-			if [[ "$DO_DEPLOY" = "Y" || "$DO_DEPLOY" = "y" ]]; then
-				echo deploy...
-			fi
+			#if [[ "$DO_DEPLOY" = "Y" || "$DO_DEPLOY" = "y" ]]; then
+			#	echo deploy...
+			#fi
 			
 		else
 			printf "\tError: Registry server daemon $REGISTRY_SERVER is out, you will not be able to push image.\n"
