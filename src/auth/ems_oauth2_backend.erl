@@ -69,23 +69,21 @@ stop() ->
 %%% OAuth2 backend functions
 %%%===================================================================
 
-authenticate_user({Login, Password}, _) ->
-    case ems_user:find_by_login_and_password(Login, Password) of
-		{ok, User} -> {ok, {<<>>, User}};
-		_ -> {error, unauthorized_user}
-	end.
+authenticate_user(undefined, _) -> unauthorized_user;
+authenticate_user(User, _) ->
+	{ok, {<<>>, User}}.
 	
-authenticate_client({ClientId, Secret},_) ->
-    case ems_client:find_by_id_and_secret(ClientId, Secret) of
-		{ok, Client} ->	 {ok, {<<>>, Client}};
-		_ -> {error, unauthorized_client}		
-    end.
-    
-get_client_identity(ClientId, _) ->
-    case ems_client:find_by_id(ClientId) of
-        {ok, Client} -> {ok, {[], Client}};
-        _ -> {error, unauthorized_client}
-    end.
+
+authenticate_client(undefined, _) ->
+	{error, unauthorized_client};
+authenticate_client(Client, _) ->
+	{ok, {[], Client}}.
+
+
+get_client_identity(undefined, _) ->
+	{error, unauthorized_client};
+get_client_identity(Client, _) ->
+	{ok, {[], Client}}.
         
 
 associate_access_code(AccessCode, Context, _AppContext) ->
@@ -126,8 +124,8 @@ revoke_access_token(AccessToken, _) ->
 revoke_refresh_token(_RefreshToken, _) ->
     {ok, []}.
 
-get_redirection_uri(ClientId, _) ->
-    case get_client_identity(ClientId, [])  of
+get_redirection_uri(Client, _) ->
+    case get_client_identity(Client, [])  of
         {ok, #client{redirect_uri = RedirectUri}} -> {ok, RedirectUri};
         _ -> {error, einvalid_uri} 
     end.
@@ -139,15 +137,6 @@ verify_redirection_uri(#client{redirect_uri = RedirUri}, ClientUri, _) ->
 			{ok, []};
 		_Error -> 
 			{error, unauthorized_client}
-    end;
-verify_redirection_uri(ClientId, ClientUri, _) ->
-    case get_client_identity(ClientId, []) of
-        {ok, {_, #client{redirect_uri = RedirUri}}} -> 
-			case ClientUri =:= RedirUri of
-				true ->	{ok, []};
-				_ -> {error, unauthorized_client}
-			end;
-        Error -> Error
     end.
 
 verify_client_scope(#client{id = ClientID}, Scope, _) ->
