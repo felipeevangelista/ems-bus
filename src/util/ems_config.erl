@@ -156,20 +156,21 @@ load_config() ->
 
 parse_cat_path_search([], Result) -> lists:reverse(Result);
 parse_cat_path_search([{CatName, CatFilename}|T], Result) -> 
+	CatNameStr = binary_to_list(CatName),
 	CatFilename2 = ems_util:parse_file_name_path(CatFilename, [], undefined),
 	case file:read_file_info(CatFilename2, [{time, universal}]) of
 		{ok, _} -> 
-			ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [binary_to_list(CatName), CatFilename2]),
+			ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilename2]),
 			parse_cat_path_search(T, [{CatName, CatFilename2}|Result]);
 		_ ->
 			CatFilenameDir = filename:dirname(CatFilename2),
 			CatFilenameZip = CatFilenameDir ++ ".zip",
 			case file:read_file_info(CatFilenameZip, [{time, universal}]) of
 				{ok, _} -> 
-					CatTempDir = ?TEMP_PATH ++ "/unzip_catalogs/",
+					CatTempDir = ?TEMP_PATH ++ "/unzip_catalogs/" ++ CatNameStr ++ "/",
 					zip:unzip(CatFilenameZip, [{cwd, CatTempDir}]),
 					CatFilename3 = CatTempDir ++ filename:basename(CatFilenameDir) ++ "/" ++ filename:basename(CatFilename2),
-					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [binary_to_list(CatName), CatFilenameZip]),
+					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilenameZip]),
 					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
 				_ ->
 					ems_logger:format_info("ems_config cannot read catalog ~p.\n", [CatFilename2]),
