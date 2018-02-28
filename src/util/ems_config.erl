@@ -123,16 +123,16 @@ get_config_data() ->
 		_:_ -> {error, enofile_config}
 	end.
 
-print_config_settings(Json = #config{ems_debug = true, config_file = Filename}) ->
-	ems_logger:format_alert("\nems_config loading configuration file ~p...\n", [Filename]),
+print_config_settings(Json = #config{ems_debug = true}) ->
 	ems_logger:format_debug("~p\n", [Json]);
-print_config_settings(#config{ems_debug = false, config_file = Filename}) ->
-	ems_logger:format_alert("\nems_config loading configuration file ~p...\n", [Filename]).
+print_config_settings(_) -> ok.
+	
 
 % Load the configuration file
 load_config() ->
 	case get_config_data() of
 		{ok, ConfigData, Filename} ->
+			ems_logger:format_alert("\nems_config loading configuration file ~p...\n", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Json} -> 
 					try
@@ -149,20 +149,44 @@ load_config() ->
 					get_default_config()
 			end;
 		{error, enofile_config} ->
-			ems_logger:format_warn("Configuration file does not exist or can not be read, using default settings.\n"),
+			ems_logger:format_warn("ems_config cannnot read configuration file emsbus.conf, using default settings.\n"),
 			get_default_config()
 	end.
 
-% parse path_search and return a list
+
+parse_cat_path_search([], Result) -> lists:reverse(Result);
+parse_cat_path_search([{CatName, CatFilename}|T], Result) -> 
+	CatFilename2 = ems_util:parse_file_name_path(CatFilename, [], undefined),
+	case file:read_file_info(CatFilename2, [{time, universal}]) of
+		{ok, _} -> 
+			ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [binary_to_list(CatName), CatFilename2]),
+			parse_cat_path_search(T, [{CatName, CatFilename2}|Result]);
+		_ ->
+			CatFilenameDir = filename:dirname(CatFilename2),
+			CatFilenameZip = CatFilenameDir ++ ".zip",
+			case file:read_file_info(CatFilenameZip, [{time, universal}]) of
+				{ok, _} -> 
+					CatTempDir = ?TEMP_PATH ++ "/unzip_catalogs/",
+					zip:unzip(CatFilenameZip, [{cwd, CatTempDir}]),
+					CatFilename3 = CatTempDir ++ filename:basename(CatFilenameDir) ++ "/" ++ filename:basename(CatFilename2),
+					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [binary_to_list(CatName), CatFilenameZip]),
+					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
+				_ ->
+					ems_logger:format_info("ems_config cannot read catalog ~p.\n", [CatFilename2]),
+					parse_cat_path_search(T, Result)
+			end
+	end.
+
+
 -spec parse_cat_path_search(map()) -> list().
 parse_cat_path_search(Json) ->
-	CatPathSearch = maps:get(<<"catalog_path">>, Json, #{}),
-	CatPathSearch2 = case maps:is_key(<<"ems-bus">>, CatPathSearch) of
-						true -> maps:to_list(CatPathSearch);
-						false -> maps:to_list(CatPathSearch) 
-					end,
-	[{K, binary_to_list(V)} || {K,V} <- CatPathSearch2] ++ [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}].
+	CatPathSearch = maps:to_list(maps:get(<<"catalog_path">>, Json, #{})),
+	CatPathSearch2 = parse_cat_path_search(CatPathSearch, []),
+	CatPathSearch2 ++ [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}].
 
+
+
+		
 
 -spec parse_static_file_path(map()) -> list().
 parse_static_file_path(Json) ->

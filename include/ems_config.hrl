@@ -31,6 +31,9 @@
 % Caminho do diretório de trabalho
 -define(WORKING_PATH, ems_util:get_working_dir()).
 
+% Caminho do diretório privado
+-define(TEMP_PATH, ?PRIV_PATH ++ "/tmp").
+
 % Caminho do catálogo de serviços
 -define(CONF_PATH, ?PRIV_PATH ++ "/conf").
 
