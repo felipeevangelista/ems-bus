@@ -284,7 +284,7 @@ parse_config(Json, NomeArqConfig) ->
 			 oauth2_refresh_token = ems_util:parse_range(maps:get(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
 			 config_file = NomeArqConfig,
 			 params = Json,
-			 client_path_search = select_config_file(<<"user_client.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
+			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
 			 user_path_search = select_config_file(<<"users.json">>, maps:get(<<"user_path_search">>, Json, ?USER_PATH)),
 			 user_dados_funcionais_path_search = select_config_file(<<"user_dados_funcionais.json">>, maps:get(<<"user_dados_funcionais_path">>, Json, ?USER_DADOS_FUNCIONAIS_PATH)),
 			 user_perfil_path_search = select_config_file(<<"user_perfil.json">>, maps:get(<<"user_perfil_path_search">>, Json, ?USER_PERFIL_PATH)),

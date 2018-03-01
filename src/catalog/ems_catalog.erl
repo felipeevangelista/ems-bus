@@ -485,39 +485,33 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		ServiceTimeoutMetricName = list_to_atom("service_" ++ integer_to_list(Rowid) ++ "_timeout"),
 		case UseRE of
 			true -> 
-				case Type of
-					<<"GET">> -> 
-						Service = new_service_re(Rowid, Id, Name, Url2, 
-												   ServiceImpl,
-												   ModuleName, 
-												   ModuleNameCanonical,
-												   FunctionName, Type, Enable, Comment, 
-												   Version, Owner, Async, 
-												   Querystring, QtdQuerystringRequired,
-												   Mapost, MapostName, ResultCache,
-												   Authorization, Node, Lang,
-												   Datasource, Debug, SchemaIn, SchemaOut, 
-												   PoolSize, PoolMax, Map, Page, 
-												   PageModule, Timeout, TimeoutAlertThreshold,
-												   Middleware, CacheControl, ExpiresMinute, 
-												   Public, ContentType, Path, Filename,
-												   RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, 
-												   AllowedAddress_t, Port, MaxConnections,
-												   IsSsl, SslCaCertFile, SslCertFile, SslKeyFile,
-												   OAuth2WithCheckConstraint, OAuth2TokenEncrypt, OAuth2AllowClientCredentials,
-												   Protocol,
-												   CtrlPath, CtrlFile, CtrlModified, StartTimeout, CtrlHash,
-												   ServiceExecMetricName, ServiceResultCacheHitMetricName, 
-												   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
-												   ServiceErrorMetricName, ServiceUnavailableMetricName, 
-												   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
-												   HttpMaxContentLength, HttpHeaders, 
-												   LogShowResponse, LogShowPayload,
-												   Restricted),
-						{ok, Service};
-					_ -> 
-						erlang:error(einvalid_re_service)
-				end;
+				Service = new_service_re(Rowid, Id, Name, Url2, 
+										   ServiceImpl,
+										   ModuleName, 
+										   ModuleNameCanonical,
+										   FunctionName, Type, Enable, Comment, 
+										   Version, Owner, Async, 
+										   Querystring, QtdQuerystringRequired,
+										   Mapost, MapostName, ResultCache,
+										   Authorization, Node, Lang,
+										   Datasource, Debug, SchemaIn, SchemaOut, 
+										   PoolSize, PoolMax, Map, Page, 
+										   PageModule, Timeout, TimeoutAlertThreshold,
+										   Middleware, CacheControl, ExpiresMinute, 
+										   Public, ContentType, Path, Filename,
+										   RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, 
+										   AllowedAddress_t, Port, MaxConnections,
+										   IsSsl, SslCaCertFile, SslCertFile, SslKeyFile,
+										   OAuth2WithCheckConstraint, OAuth2TokenEncrypt, OAuth2AllowClientCredentials,
+										   Protocol,
+										   CtrlPath, CtrlFile, CtrlModified, StartTimeout, CtrlHash,
+										   ServiceExecMetricName, ServiceResultCacheHitMetricName, 
+										   ServiceHostDeniedMetricName,	ServiceAuthDeniedMetricName, 
+										   ServiceErrorMetricName, ServiceUnavailableMetricName, 
+										   ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
+										   HttpMaxContentLength, HttpHeaders, 
+										   LogShowResponse, LogShowPayload,
+										   Restricted);
 			false -> 
 				Service = new_service(Rowid, Id, Name, Url2, 
 										ServiceImpl,
@@ -546,9 +540,9 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										ServiceTimeoutMetricName, AuthorizationPublicCheckCredential,
 										HttpMaxContentLength, HttpHeaders, 
 										LogShowResponse, LogShowPayload,
-										Restricted),
-				{ok, Service}
-		end
+										Restricted)
+		end,
+		{ok, Service}
 	catch
 		_Exception:Reason -> 
 			ems_db:inc_counter(edata_loader_invalid_catalog),
@@ -558,15 +552,15 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 
 -spec get_table(#service{}, boolean(), fs | db) -> catalog_get_db | catalog_post_db | catalog_put_db | catalog_delete_db | catalog_options_db |
 												   catalog_get_fs | catalog_post_fs | catalog_put_fs | catalog_delete_fs | catalog_options_fs.
-get_table(<<"GET">>, false, db) -> catalog_get_db;
-get_table(<<"GET">>, true, db) -> catalog_re_db;
+get_table(_, true, db) -> catalog_re_db;
+get_table(_, true, fs) -> catalog_re_fs;
+get_table(<<"GET">>, _, db) -> catalog_get_db;
 get_table(<<"POST">>, _, db) -> catalog_post_db;
 get_table(<<"PUT">>, _, db) -> catalog_put_db;
 get_table(<<"DELETE">>, _, db) -> catalog_delete_db;
 get_table(<<"OPTIONS">>, _, db) -> catalog_options_db;
 get_table(<<"KERNEL">>, _, db) -> catalog_kernel_db;
-get_table(<<"GET">>, false, fs) -> catalog_get_fs;
-get_table(<<"GET">>, true, fs) -> catalog_re_fs;
+get_table(<<"GET">>, _, fs) -> catalog_get_fs;
 get_table(<<"POST">>, _, fs) -> catalog_post_fs;
 get_table(<<"PUT">>, _, fs) -> catalog_put_fs;
 get_table(<<"DELETE">>, _, fs) -> catalog_delete_fs;

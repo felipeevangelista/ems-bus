@@ -8,8 +8,8 @@
 
 -module(ems_catalog_lookup).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
 
