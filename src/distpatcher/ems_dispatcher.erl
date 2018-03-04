@@ -8,8 +8,8 @@
 
 -module(ems_dispatcher).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 %% Client API
 -export([start/0, dispatch_request/3, dispatch_service_work/3]).
@@ -20,19 +20,76 @@ start() ->
 	ets:new(ctrl_node_dispatch, [set, named_table, public]).
 
 
-check_result_cache(ReqHash, Timestamp2) ->
+check_result_cache(ReqHash, Worker, Timestamp2) ->
 	case ets:lookup(ets_result_cache_get, ReqHash) of
 		[] -> false; 
-		[{_, {Timestamp, _, ResultCache}}] when Timestamp2 - Timestamp > ResultCache ->	false;
-		[{_, {_, Request, _}}] -> {true, Request}
+		[{_, {Timestamp, _, ResultCache, _, _}}] when Timestamp2 - Timestamp > ResultCache ->	false;
+		[{_, {_, Request, _, req_done, _}}] ->
+			%io:format("aqui 5\n"),
+			{true, Request};
+		[{_, {T1, Request, ResultCache, Status, WorkersWaiting}}] ->
+			%ets:update_element(ets_result_cache_get, ReqHash, {5, [Worker|WorkersWaiting]}),
+			%io:format("aqui 6\n"),
+			ets:insert(ets_result_cache_get, {ReqHash, {T1, Request, ResultCache, Status, [Worker | WorkersWaiting]}}),
+			receive 
+				Result -> 
+					io:format("aqui 8\n"),
+					Result
+				after 100 -> 
+					%io:format("aqui 9\n"),
+					check_result_cache2(ReqHash, Worker, Timestamp2)
+			end
 	end.
+
+check_result_cache2(ReqHash, Worker, Timestamp2) ->
+	case ets:lookup(ets_result_cache_get, ReqHash) of
+		[] -> false; 
+		[{_, {Timestamp, _, ResultCache, _, _}}] when Timestamp2 - Timestamp > ResultCache ->	false;
+		[{_, {_, Request, _, req_done, _}}] ->
+			%io:format("aqui 5\n"),
+			{true, Request};
+		[{_, {T1, Request, ResultCache, Status, WorkersWaiting}}] ->
+			%ets:update_element(ets_result_cache_get, ReqHash, {5, [Worker|WorkersWaiting]}),
+			%io:format("aqui 6\n"),
+			receive 
+				Result -> 
+					io:format("aqui 8\n"),
+					Result
+				after 100 -> 
+					%io:format("aqui 9\n"),
+					check_result_cache(ReqHash, Worker, Timestamp2)
+			end
+	end.
+	
+notity_workers_waiting_result_cache(ReqHash, RequestDone) ->
+	case ets:lookup(ets_result_cache_get, ReqHash) of
+		[] -> 
+			%io:format("aqui 1\n"),
+			ok; 
+		[{_, {T1, _, ResultCache, _, WorkersWaiting}}] ->
+			%io:format("aqui 2222 ~p\n", [WorkersWaiting]),
+			ets:insert(ets_result_cache_get, {ReqHash, {T1, RequestDone, ResultCache, req_done, []}}),
+			%ets:update_element(ets_result_cache_get, ReqHash, [{2, RequestDone}, {4, req_done}]),
+			%io:format("aqui 2.1\n"),
+			notity_workers_waiting_result_cache_(WorkersWaiting, RequestDone) 
+	end.
+
+notity_workers_waiting_result_cache_([], _) -> 
+	%io:format("aqui 3\n"),
+	ok;
+notity_workers_waiting_result_cache_([Worker|T], RequestDone) ->
+	%io:format("aqui 4\n"),
+	Worker ! {true, RequestDone},
+	notity_workers_waiting_result_cache_(T, RequestDone).
+
 
 dispatch_request(Request = #request{req_hash = ReqHash, 
 								     ip = Ip,
 								     type = Type,
 								     if_modified_since = IfModifiedSince,
 									 if_none_match = IfNoneMatch,
-								     t1 = T1},
+								     t1 = T1,
+								     worker_send = WorkerSend},
 				 Service = #service{tcp_allowed_address_t = AllowedAddress,
 									 result_cache = ResultCache,
 									 service_exec_metric_name = ServiceExecMetricName,
@@ -47,9 +104,9 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 			case ems_auth_user:authenticate(Service, Request) of
 				{ok, Client, User, AccessToken, Scope} -> 
 					Request2 = Request#request{client = Client,
-											   user = User,
-											   scope = Scope,
-											   access_token = AccessToken},
+											    user = User,
+											    scope = Scope,
+											    access_token = AccessToken},
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request2#request{code = 200, 
@@ -64,7 +121,7 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 						<<"GET">> ->
 							case ResultCache > 0 of
 								true ->
-									case check_result_cache(ReqHash, T1) of
+									case check_result_cache(ReqHash, WorkerSend, T1) of
 										{true, RequestCache} -> 
 											ems_db:inc_counter(ServiceResultCacheHitMetricName),								
 											case IfNoneMatch =/= <<>> orelse IfModifiedSince =/= <<>> of
@@ -91,7 +148,9 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 																					filename = RequestCache#request.filename,
 																					latency = ems_util:get_milliseconds() - T1}}
 											end;
-										false -> dispatch_service_work(Request2, Service, ShowDebugResponseHeaders)
+										false ->
+											ems_cache:add(ets_result_cache_get, ResultCache, ReqHash, {T1, Request2, ResultCache, req_wait_result, []}),
+											dispatch_service_work(Request2, Service, ShowDebugResponseHeaders)
 									end;
 								false -> dispatch_service_work(Request2, Service, ShowDebugResponseHeaders)
 							end;
@@ -365,7 +424,8 @@ dispatch_middleware_function(Request = #request{reason = ok,
 																	 latency = ems_util:get_milliseconds() - T1,
 																	 status = req_done}
 								end,
-								ems_cache:add(ets_result_cache_get, ResultCache, ReqHash, {T1, Request3, ResultCache}),
+								%ems_cache:add(ets_result_cache_get, ResultCache, ReqHash, {T1, Request3, ResultCache}),
+								notity_workers_waiting_result_cache(ReqHash, Request3),
 								{ok, request, Request3};
 							_ -> 
 								case ShowDebugResponseHeaders of

@@ -141,10 +141,10 @@
 		"version": "1.0.0",
 		"service" : "ems_netadm_service:memory",
 		"url": "/netadm/memory",
-		"result_cache" : 0,
+		"result_cache" : 10000,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
+		"authorization": "public",
 		"lang" : "erlang"
 	},
 	
