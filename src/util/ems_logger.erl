@@ -653,8 +653,8 @@ do_log_request(#request{rid = RID,
 																	end,
 						<<"\n\tUser-Agent: ">>, ems_util:user_agent_atom_to_binary(UserAgent), <<"  Version: ">>, UserAgentVersion,	
 						<<"\n\tService: ">>, ServiceService,
-						<<"\n\tParams: ">>, ems_util:print_int_map(Params), 
-						<<"\n\tQuery: ">>, ems_util:print_str_map(Query), 
+						<<"\n\tParams: ">>, list_to_binary(io_lib:format("~p", [Params])), 
+						<<"\n\tQuery: ">>, list_to_binary(io_lib:format("~p", [Query])), 
 						case (ShowPayload orelse 
 							   Reason =/= ok orelse 
 							   ShowPayloadService orelse 

@@ -31,6 +31,9 @@
 % Caminho do diretório de trabalho
 -define(WORKING_PATH, ems_util:get_working_dir()).
 
+% Caminho do diretório privado
+-define(TEMP_PATH, ?PRIV_PATH ++ "/tmp").
+
 % Caminho do catálogo de serviços
 -define(CONF_PATH, ?PRIV_PATH ++ "/conf").
 
@@ -184,6 +187,7 @@
 -define(EINVALID_JAVA_MESSAGE, <<"{\"error\": \"einvalid_java_message\"}"/utf8>>).
 -define(EMPTY_LIST_JSON, <<"[]"/utf8>>).
 -define(ACCESS_DENIED_JSON, <<"{\"error\": \"access_denied\"}"/utf8>>).
+-define(EINVALID_DATA_LOADER, <<"{\"error\": \"einvalid_data_loader\"}"/utf8>>).
 -define(OAUTH2_DEFAULT_TOKEN_EXPIRY, 3600).  % 1 hour
 -define(OAUTH2_MAX_TOKEN_EXPIRY, 2592000).   % 30 days
 

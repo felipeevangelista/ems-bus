@@ -47,7 +47,8 @@
 				disable_metric_name,
 				skip_metric_name,
 				source_type,
-				async
+				async,
+				loading
 			}).
 
 -define(SERVER, ?MODULE).
@@ -150,7 +151,8 @@ init(#service{name = Name,
 				   disable_metric_name = DisabledMetricName,
 				   skip_metric_name = SkipMetricName,
 				   source_type = SourceType,
-				   async = Async},
+				   async = Async,
+				   loading = true},
 	{ok, State, StartTimeout}.
     
 handle_cast(shutdown, State) ->
@@ -196,12 +198,13 @@ handle_info(check_sync_full, State = #state{name = Name,
 											update_checkpoint = UpdateCheckpoint,
 											timeout_on_error = TimeoutOnError,
 											sync_full_checkpoint_metric_name = SyncFullCheckpointMetricName,
-											error_checkpoint_metric_name = ErrorCheckpointMetricName
+											error_checkpoint_metric_name = ErrorCheckpointMetricName,
+											loading = Loading
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
 		case Hour >= 4 andalso Hour =< 6 of
 			true ->
-				case do_permission_to_execute(check_sync_full, Name, State) of
+				case not Loading andalso do_permission_to_execute(check_sync_full, Name, State) of
 					true ->
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
 						ems_logger:info("~s sync full checkpoint.", [Name]),
@@ -232,17 +235,18 @@ handle_info(timeout, State) ->
 
 handle_info(check_count_records, State = #state{name = Name,
 												update_checkpoint = UpdateCheckpoint,
-											    timeout_on_error = TimeoutOnError}) ->
-	case do_permission_to_execute(check_count_records, Name, State) of
+											    timeout_on_error = TimeoutOnError,
+											    loading = Loading}) ->
+	case not Loading andalso do_permission_to_execute(check_count_records, Name, State) of
 		true ->
 			case do_check_count_checkpoint(State) of
 				ok -> 
-					erlang:send_after(60000, self(), check_count_records),
 					ems_data_loader_ctl:notify_finish_work(check_count_records, Name),
+					erlang:send_after(60000, self(), check_count_records),
 					{noreply, State, UpdateCheckpoint};
 				_ -> 
-					erlang:send_after(60000, self(), check_count_records),
 					ems_data_loader_ctl:notify_finish_work(check_count_records, Name),
+					erlang:send_after(60000, self(), check_count_records),
 					{noreply, State, TimeoutOnError}
 			end;
 		false ->
@@ -266,23 +270,29 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 														 update_checkpoint = UpdateCheckpoint,
 														 timeout_on_error = TimeoutOnError,
 														 error_checkpoint_metric_name = ErrorCheckpointMetricName,
-														 last_update = LastUpdate}) ->
+														 last_update = LastUpdate,
+														 loading = Loading}) ->
 	case do_permission_to_execute(check_load_or_update_checkpoint, Name, State) of
 		true ->
 			case do_check_load_or_update_checkpoint(State) of
 				{ok, State2} ->
 					ems_data_loader_ctl:notify_finish_work(check_load_or_update_checkpoint, Name),
-					{noreply, State2, UpdateCheckpoint};
+					erlang:garbage_collect(),
+					case Loading of
+						true -> {noreply, State2, UpdateCheckpoint + 60000};
+						false -> {noreply, State2, UpdateCheckpoint}
+					end;
 				_Error -> 
+					ems_data_loader_ctl:notify_finish_work(check_load_or_update_checkpoint, Name),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
 					ems_logger:warn("~s wait ~p minutes for next checkpoint while has database connection error.", [Name, trunc(TimeoutOnError / 60000)]),
-					ems_data_loader_ctl:notify_finish_work(check_load_or_update_checkpoint, Name),
+					erlang:garbage_collect(),
 					{noreply, State, TimeoutOnError}
 			end;
 		false ->
-			case LastUpdate == undefined orelse do_is_empty(State) of
-				true -> {noreply, State, 300};
-				false -> {noreply, State, 600}	
+			case LastUpdate == undefined orelse do_is_empty(State) orelse Loading of
+				true -> {noreply, State, 1000};
+				false -> {noreply, State, 3000}	
 			end
 	end.
 	
@@ -354,7 +364,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 			case do_load(LastUpdateStr, Conf, State) of
 				ok -> 
 					ems_db:set_param(LastUpdateParamName, NextUpdate),
-					State2 = State#state{last_update = NextUpdate},
+					State2 = State#state{last_update = NextUpdate, loading = false},
 					{ok, State2};
 				Error -> Error
 			end;
@@ -363,7 +373,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 			case do_update(LastUpdate, LastUpdateStr, Conf, State) of
 				ok -> 
 					ems_db:set_param(LastUpdateParamName, NextUpdate),
-					State2 = State#state{last_update = NextUpdate},
+					State2 = State#state{last_update = NextUpdate, loading = false},
 					{ok, State2};
 				Error -> Error
 			end

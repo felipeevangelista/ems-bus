@@ -1,33 +1,11 @@
 [
 	{
 		"id" : 1,
-		"name": "geral",
-		"description": "erlangms",
-		"secret": "CPD",
-		"redirect_uri" : "",
-		"active": true,
-		"scope": ""
-	},
-	
-	{
-		"id" : 2,
-		"name": "logs",
-		"description": "logs",
-		"secret": "CPD",
-		"redirect_uri" : "/logs/index.html/",
-		"active": true,
-		"scope": ""
-	},
-	
-	{
-		"id" : 3,
-		"name": "portal",
-		"description": "Portal ErlangMs",
+		"name": "erlangms@unb.br",
+		"description": "erlangms@unb.br",
 		"secret": "CPD",
 		"redirect_uri" : "/portal/index.html",
 		"active": true,
 		"scope": ""
-	}
-	
-	
+	}	
 ]

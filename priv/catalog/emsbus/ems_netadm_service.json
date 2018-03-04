@@ -284,7 +284,39 @@
 					"comment": "Campos que devem ser ordenados"
 				}
 			]	
-	}
+	},
+	
+	{
+		"name": "/netadm/loader/client/sync",
+		"comment": "Sync data loader table",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_data_loader_service:sync",
+		"url": "/netadm/loader/(?<name>client|user|user/perfil|user/permission|user/email|user/telefone|user/dados_funcionais)/sync",
+		"use_re" : true,
+		"async": "false",
+		"type": "POST",
+		"lang" : "erlang",
+		"pool_size" : 1,
+		"pool_max" : 1,
+		"enable" : true
+	},
+	
+	{
+		"name": "/netadm/loader/client/sync/full",
+		"comment": "Sync data loader table",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_data_loader_service:sync_full",
+		"url": "/netadm/loader/(?<name>client|user|user/perfil|user/permission|user/email|user/telefone|user/dados_funcionais)/sync/full",
+		"use_re" : true,
+		"async": "false",
+		"type": "POST",
+		"lang" : "erlang",
+		"pool_size" : 1,
+		"pool_max" : 1,
+		"enable" : true
+	}	
 	
 	
 ]

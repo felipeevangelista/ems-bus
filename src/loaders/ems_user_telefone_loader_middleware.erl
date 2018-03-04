@@ -116,9 +116,9 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_hash = NewRecord#user_telefone.ctrl_hash
 											},
 								update_telefone_tabela_users(Record, case SourceType of
-																db -> user_db;
-																fs -> user_fs
-														  end, CodigoPessoa),
+																			db -> user_db;
+																			fs -> user_fs
+																	 end, CodigoPessoa),
 
 								{ok, Record, Table, update};
 							false -> {ok, skip}

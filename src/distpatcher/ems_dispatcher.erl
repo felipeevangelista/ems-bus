@@ -156,15 +156,16 @@ dispatch_service_work(Request = #request{type = Type,
 		Request2 -> Request2
 	end;
 dispatch_service_work(Request = #request{rid = Rid,
-										  type = Type,
-										  url = Url,
-										  payload = Payload,
-										  client = Client,
-										  user = User,
-										  scope = Scope,
-										  content_type_out = ContentType,  
-										  params_url = ParamsMap,
-										  querystring_map = QuerystringMap},
+										 type = Type,
+										 url = Url,
+										 payload = Payload,
+										 client = Client,
+										 user = User,
+										 scope = Scope,
+										 content_type_out = ContentType,  
+										 params_url = ParamsMap,
+										 querystring_map = QuerystringMap,
+										 t1 = T1},
 					  Service = #service{host = Host,
 										 host_name = HostName,
 										 module_name = ModuleName,
@@ -192,18 +193,51 @@ dispatch_service_work(Request = #request{rid = Rid,
 			end,
 			Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
 					ClientJson, UserJson, ems_catalog:get_metadata_json(Service), Scope, 
-					undefined, undefined}, self()
-				  },
+					undefined, undefined}, self()},
 			{Module, Node} ! Msg,
+			receive 
+				ok -> ok
+				after 500 -> 
+					{Module, Node} ! Msg,
+					receive 
+						ok -> 
+							io:format("RETRANSMITIDO 1 OK\n"),
+							ok
+						after 1000 -> 
+							io:format("RETRANSMITIDO 1 NAO OK\n"),
+							{Module, Node} ! Msg,
+							receive 
+								ok -> 
+									io:format("RETRANSMITIDO 2\n"),
+									ok
+								after 3000 -> 
+									io:format("RETRANSMITIDO 2 NAO OK\n"),
+									{Module, Node} ! Msg
+							end
+					end
+			end,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
-			dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0, ShowDebugResponseHeaders);
+			case dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0, ShowDebugResponseHeaders) of
+				{error, etimeoutservice} ->
+					{Module, Node} ! Msg,
+					ems_logger:warn("ems_dispatcher re-send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
+					case dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0, ShowDebugResponseHeaders) of
+						{error, etimeoutservice} ->
+							{error, request, Request#request{code = 503,
+															 reason = etimeout_service,
+															 content_type_out = ?CONTENT_TYPE_JSON,
+															 response_data = ?ETIMEOUT_SERVICE,
+															 latency = ems_util:get_milliseconds() - T1}};
+						Result2 -> Result2
+					end;
+				Result -> Result
+			end;
 		Error ->  
 			ems_db:inc_counter(ServiceUnavailableMetricName),
 			Error
 	end.
 		
-dispatch_service_work_receive(Request = #request{rid = Rid,
-												 t1 = T1},
+dispatch_service_work_receive(Request = #request{rid = Rid},
 							  Service = #service{module = Module,
 												 service_timeout_metric_name = ServiceTimeoutMetricName,
 												 timeout_alert_threshold = TimeoutAlertThreshold},
@@ -233,6 +267,7 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 									    response_data = ResponseData},
 			dispatch_middleware_function(Request2, ShowDebugResponseHeaders);
 		_UnknowMessage -> 
+			io:format("unkwnow message ~p\n", [_UnknowMessage]),
 			dispatch_service_work_receive(Request, Service, Node, Timeout, TimeoutWaited, ShowDebugResponseHeaders)
 		after TimeoutWait ->
 			TimeoutWaited2 = TimeoutWaited + TimeoutWait,
@@ -244,11 +279,7 @@ dispatch_service_work_receive(Request = #request{rid = Rid,
 						false -> ok
 					end,
 					ems_db:inc_counter(ServiceTimeoutMetricName),
-					{error, request, Request#request{code = 503,
-													  reason = etimeout_service,
-													  content_type_out = ?CONTENT_TYPE_JSON,
-													  response_data = ?ETIMEOUT_SERVICE,
-													  latency = ems_util:get_milliseconds() - T1}};
+					{error, etimeoutservice};
 				false when TimeoutAlertThreshold > 0 ->
 					ems_logger:warn("ems_dispatcher is waiting ~p for more than ~pms.", [{Module, Node}, TimeoutWaited2]),
 					dispatch_service_work_receive(Request, Service, Node, Timeout2, TimeoutWaited2, ShowDebugResponseHeaders);
