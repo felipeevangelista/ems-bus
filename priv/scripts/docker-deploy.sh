@@ -52,6 +52,7 @@ ERLANGMS_HTTPS_PORT_LISTENER="2344"
 ERLANGMS_BASE_URL=""
 ERLANGMS_AUTH_URL=""
 ERLANGMS_AUTH_PROTOCOL="oauth2"
+ERLANGMS_URL_MASK="false"
 
 
 # Imprime uma mensagem e termina o sistema
