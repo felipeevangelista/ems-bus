@@ -12,7 +12,7 @@
 # Data       |  Quem           |  Mensagem  
 # -----------------------------------------------------------------------------------------------------
 # 28/07/2017  Everton Agilar     Initial release
-#
+# 05/03/2018  Everton Agilar     Add url_mask option in conf file
 #
 #
 #
@@ -26,7 +26,7 @@ DOCKER_VERSION="17.03.2"
 
 
 # Parameters
-VERSION_SCRIPT="1.0.1"
+VERSION_SCRIPT="1.0.2"
 WORKING_DIR=$(pwd)
 
 # As configurações podem estar armazenadas no diretório /etc/default/erlangms-docker
@@ -102,6 +102,8 @@ le_all_settings () {
 		ERLANGMS_HTTPS_PORT_LISTENER=$(le_setting 'ERLANGMS_HTTPS_PORT' "$ERLANGMS_HTTPS_PORT")
 		ERLANGMS_AUTH_PROTOCOL=$(le_setting 'ERLANGMS_AUTH_PROTOCOL' "$ERLANGMS_AUTH_PROTOCOL")
 		ERLANGMS_BASE_URL=$(le_setting 'ERLANGMS_BASE_URL' "$ERLANGMS_BASE_URL")
+		ERLANGMS_URL_MASK = $(le_setting 'ERLANGMS_URL_MASK' "$ERLANGMS_URL_MASK")
+
 		
 		# E-mail settings
 		IMAP_SERVER=$(le_setting 'IMAP_SERVER' "imap.unb.br")
@@ -169,7 +171,7 @@ help() {
 # Se o arquivo for informado com --client_conf, então o arquivo não precisa ser gerado
 make_conf_file(){
 	if [ "$CLIENT_CONF_IN_MEMORY" = "true" ]; then
-		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app\":\"$APP_NAME\",\"version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\"}" > $CLIENT_CONF
+		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app\":\"$APP_NAME\",\"version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\",\"url_mask\":\"$ERLANGMS_URL_MASK\"}" > $CLIENT_CONF
 	fi
 }
 
