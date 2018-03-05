@@ -32,9 +32,14 @@ check_result_cache(ReqHash, Worker, Timestamp2) ->
 			%io:format("aqui 6\n"),
 			ets:insert(ets_result_cache_get, {ReqHash, {T1, Request, ResultCache, Status, [Worker | WorkersWaiting]}}),
 			receive 
-				Result -> 
-					io:format("aqui 8\n"),
-					Result
+				Msg -> 
+					case Msg of
+						{ReqHash, Result} -> 
+							%io:format("aqui 8\n"),
+							Result;
+						_ -> 
+							check_result_cache2(ReqHash, Worker, Timestamp2)
+					end
 				after 100 -> 
 					%io:format("aqui 9\n"),
 					check_result_cache2(ReqHash, Worker, Timestamp2)
@@ -46,18 +51,24 @@ check_result_cache2(ReqHash, Worker, Timestamp2) ->
 		[] -> false; 
 		[{_, {Timestamp, _, ResultCache, _, _}}] when Timestamp2 - Timestamp > ResultCache ->	false;
 		[{_, {_, Request, _, req_done, _}}] ->
-			%io:format("aqui 5\n"),
+			%io:format("aqui 55\n"),
 			{true, Request};
-		[{_, {T1, Request, ResultCache, Status, WorkersWaiting}}] ->
+		%[{_, {T1, Request, ResultCache, Status, WorkersWaiting}}] ->
+		_ ->
 			%ets:update_element(ets_result_cache_get, ReqHash, {5, [Worker|WorkersWaiting]}),
 			%io:format("aqui 6\n"),
 			receive 
-				Result -> 
-					io:format("aqui 8\n"),
-					Result
+				Msg -> 
+					case Msg of
+						{ReqHash, Result} -> 
+							%io:format("aqui 88\n"),
+							Result;
+						_ -> 
+							check_result_cache2(ReqHash, Worker, Timestamp2)
+					end
 				after 100 -> 
 					%io:format("aqui 9\n"),
-					check_result_cache(ReqHash, Worker, Timestamp2)
+					check_result_cache2(ReqHash, Worker, Timestamp2)
 			end
 	end.
 	
@@ -71,16 +82,16 @@ notity_workers_waiting_result_cache(ReqHash, RequestDone) ->
 			ets:insert(ets_result_cache_get, {ReqHash, {T1, RequestDone, ResultCache, req_done, []}}),
 			%ets:update_element(ets_result_cache_get, ReqHash, [{2, RequestDone}, {4, req_done}]),
 			%io:format("aqui 2.1\n"),
-			notity_workers_waiting_result_cache_(WorkersWaiting, RequestDone) 
+			notity_workers_waiting_result_cache_(WorkersWaiting, RequestDone, ReqHash) 
 	end.
 
-notity_workers_waiting_result_cache_([], _) -> 
+notity_workers_waiting_result_cache_([], _, _) -> 
 	%io:format("aqui 3\n"),
 	ok;
-notity_workers_waiting_result_cache_([Worker|T], RequestDone) ->
+notity_workers_waiting_result_cache_([Worker|T], RequestDone, ReqHash) ->
 	%io:format("aqui 4\n"),
-	Worker ! {true, RequestDone},
-	notity_workers_waiting_result_cache_(T, RequestDone).
+	Worker ! {ReqHash, {true, RequestDone}},
+	notity_workers_waiting_result_cache_(T, RequestDone, ReqHash).
 
 
 dispatch_request(Request = #request{req_hash = ReqHash, 
@@ -231,7 +242,10 @@ dispatch_service_work(Request = #request{rid = Rid,
 										 module = Module,
 										 function_name = FunctionName, 
 										 timeout = TimeoutService,
-										 service_unavailable_metric_name = ServiceUnavailableMetricName},
+										 service_unavailable_metric_name = ServiceUnavailableMetricName,
+										 service_resend_msg1 = ServiceResendMsg1,
+										 service_resend_msg2 = ServiceResendMsg2,
+										 service_resend_msg3 = ServiceResendMsg3},
 					  ShowDebugResponseHeaders) ->
 	case get_work_node(Host, Host, HostName, ModuleName) of
 		{ok, Node} ->
@@ -254,28 +268,25 @@ dispatch_service_work(Request = #request{rid = Rid,
 					ClientJson, UserJson, ems_catalog:get_metadata_json(Service), Scope, 
 					undefined, undefined}, self()},
 			{Module, Node} ! Msg,
+			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			receive 
 				ok -> ok
-				after 500 -> 
+				after 300 -> 
 					{Module, Node} ! Msg,
+					ems_db:inc_counter(ServiceResendMsg1),
 					receive 
-						ok -> 
-							io:format("RETRANSMITIDO 1 OK\n"),
-							ok
-						after 1000 -> 
-							io:format("RETRANSMITIDO 1 NAO OK\n"),
+						ok -> ok
+						after 300 -> 
 							{Module, Node} ! Msg,
+							ems_db:inc_counter(ServiceResendMsg2),
 							receive 
-								ok -> 
-									io:format("RETRANSMITIDO 2\n"),
-									ok
-								after 3000 -> 
-									io:format("RETRANSMITIDO 2 NAO OK\n"),
-									{Module, Node} ! Msg
+								ok -> ok
+								after 300 -> 
+									{Module, Node} ! Msg,
+									ems_db:inc_counter(ServiceResendMsg3)
 							end
 					end
 			end,
-			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			case dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0, ShowDebugResponseHeaders) of
 				{error, etimeoutservice} ->
 					{Module, Node} ! Msg,

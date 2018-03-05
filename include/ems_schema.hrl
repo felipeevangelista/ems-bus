@@ -354,6 +354,9 @@
 					service_error_metric_name :: atom(),
 					service_unavailable_metric_name :: atom(),
 					service_timeout_metric_name :: atom(),
+					service_resend_msg1 :: atom(),
+					service_resend_msg2 :: atom(),
+					service_resend_msg3 :: atom(),
 					http_max_content_length :: non_neg_integer(),
 					http_headers :: map(),
 					restricted = false :: boolean()				%% Serviços restrito para admins

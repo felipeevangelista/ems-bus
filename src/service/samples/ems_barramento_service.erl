@@ -21,7 +21,8 @@ execute(Request) ->
 										<<"\"https_port\":"/utf8>>, integer_to_binary(2344), <<","/utf8>>, 
 										<<"\"base_url\":\""/utf8>>, <<"http://"/utf8>>, Conf#config.tcp_listen_main_ip, <<":"/utf8>>, <<"2301"/utf8>>, <<"\","/utf8>>, 
 										<<"\"auth_url\":\""/utf8>>, <<"http://"/utf8>>, Conf#config.tcp_listen_main_ip, <<":"/utf8>>, <<"2301"/utf8>>, <<"/authorize\","/utf8>>, 
-										<<"\"auth_protocol\":\"auth2\""/utf8>>, 
+										<<"\"auth_protocol\":\"auth2\","/utf8>>, 
+										<<"\"url_mask\":false"/utf8>>, 
 									<<"}"/utf8>>]),
 	{ok, Request#request{code = 200, 
 						 response_data = ContentData}
