@@ -391,3 +391,15 @@
 							}).
 
 
+-record(auth_oauth2_access_token, { id :: binary(),
+									context :: binary()
+								  }).
+
+-record(auth_oauth2_access_code, { id :: binary(),
+								   context :: binary()
+								 }).
+
+-record(auth_oauth2_refresh_token, { id :: binary(),
+									 context :: binary()
+									}).
+
