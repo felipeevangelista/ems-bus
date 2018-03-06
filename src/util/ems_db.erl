@@ -9,7 +9,7 @@
 -module(ems_db).
 
 -export([start/0]).
--export([get/2, exist/2, all/1, insert/1, insert/2, update/1, delete/2, 
+-export([get/2, exist/2, all/1, insert/1, insert/2, update/1, delete/2, delete/1, 
 		 match/2, find/2, find/3, find/5, find_by_id/2, find_by_id/3, filter/2,
 		 find_first/2, find_first/3, find_first/4, field_position/3]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
@@ -263,12 +263,29 @@ create_database(Nodes) ->
 								    {attributes, record_info(fields, stat_counter_hist)},
 								    {record_name, stat_counter_hist}]),
 
-	
+
+    mnesia:create_table(auth_oauth2_access_token_table, [{type, set},
+														{disc_copies, Nodes},
+														{attributes, record_info(fields, auth_oauth2_access_token)},
+														{record_name, auth_oauth2_access_token}]),
+
+    mnesia:create_table(auth_oauth2_access_code_table, [{type, set},
+														{disc_copies, Nodes},
+														{attributes, record_info(fields, auth_oauth2_access_code)},
+														{record_name, auth_oauth2_access_code}]),
+
+    mnesia:create_table(auth_oauth2_refresh_token_table, [{type, set},
+														{disc_copies, Nodes},
+														{attributes, record_info(fields, auth_oauth2_refresh_token)},
+														{record_name, auth_oauth2_refresh_token}]),
+
+
 	mnesia:wait_for_tables([service_datasource, user_fs, user_dados_funcionais_fs, 
 							client_fs, sequence, user_email_fs, counter, ctrl_params, 
 							user_permission_fs, user_endereco_fs, catalog_options_fs,
 							catalog_get_fs, catalog_post_fs, catalog_put_fs, catalog_delete_fs,
-							catalog_re_fs, catalog_kernel_fs, user_db, client_db], 15000),
+							catalog_re_fs, catalog_kernel_fs, user_db, client_db,
+							auth_oauth2_access_token_table, auth_oauth2_access_code_table, auth_oauth2_refresh_token_table], 15000),
 	
 	ok.
 
@@ -302,8 +319,8 @@ insert(Record) ->
 	insert(RecordType, Record).
 
 update(Record) ->
-	Write = fun() -> mnesia:write(Record) end,
-	mnesia:transaction(Write),
+	F = fun() -> mnesia:write(Record) end,
+	mnesia:transaction(F),
 	ok.
 
 delete(RecordType, Id) when is_list(Id) ->
@@ -311,10 +328,14 @@ delete(RecordType, Id) when is_list(Id) ->
 	delete(RecordType, Id2);
 	
 delete(RecordType, Id) ->
-	Delete = fun() -> mnesia:delete({RecordType, Id}) end,
-	mnesia:transaction(Delete),
+	F = fun() -> mnesia:delete({RecordType, Id}) end,
+	mnesia:transaction(F),
 	ok.
 
+delete(Record) ->
+	F = fun() -> mnesia:delete(Record) end,
+	mnesia:transaction(F),
+	ok.
 	
 
 %% ************* Funções para gerar sequences *************
@@ -464,13 +485,9 @@ get_sqlite_connection_from_csv_file(Datasource = #service_datasource{driver = Dr
 %
 -spec get(atom() | list(atom()), non_neg_integer()) -> {ok, tuple()} | {error, enoent}.
 get(Tab, Id) when is_atom(Tab) ->
-	case Id > 0 of
-		true ->
-			case mnesia:dirty_read(Tab, Id) of
-				[] -> {error, enoent};
-				[Record|_] -> {ok, Record}
-			end;
-		false -> {error, enoent}
+	case mnesia:dirty_read(Tab, Id) of
+		[] -> {error, enoent};
+		[Record|_] -> {ok, Record}
 	end;
 get([], _) -> {error, enoent};
 get([Tab|TabT], Id) ->
@@ -487,13 +504,9 @@ get([Tab|TabT], Id) ->
 %
 -spec exist(atom() | list(atom()), non_neg_integer()) -> boolean().
 exist(Tab, Id) when is_atom(Tab) ->
-	case Id > 0 of
-		true ->
-			case mnesia:dirty_read(Tab, Id) of
-				[] -> false;
-				_ -> true
-			end;
-		false -> false
+	case mnesia:dirty_read(Tab, Id) of
+		[] -> false;
+		_ -> true
 	end;
 exist([], _) -> false;
 exist([Tab|TabT], Id) ->

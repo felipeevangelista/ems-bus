@@ -63,6 +63,7 @@
 		 date_to_string/1,
 		 date_to_binary/1,
  		 no_periodo/2,
+ 		 seconds_since_epoch/1,
  		 timestamp_str/0,
 		 timestamp_str/1,
 		 timestamp_binary/0,
@@ -2867,3 +2868,6 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 		_:_ -> undefined
 	end.
 
+seconds_since_epoch(Diff) ->
+    {Mega, Secs, _} = os:timestamp(),
+    Mega * 1000000 + Secs + Diff.

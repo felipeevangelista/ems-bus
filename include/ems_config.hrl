@@ -184,7 +184,6 @@
 -define(ENOENT_SERVICE_CONTRACT_JSON, <<"{\"error\": \"enoent_service_contract\"}"/utf8>>).
 -define(EINVALID_HTTP_REQUEST, <<"{\"error\": \"einvalid_request\"}"/utf8>>).
 -define(ETIMEOUT_SERVICE, <<"{\"error\": \"etimeout_service\"}"/utf8>>).
--define(EINVALID_JAVA_MESSAGE, <<"{\"error\": \"einvalid_java_message\"}"/utf8>>).
 -define(EMPTY_LIST_JSON, <<"[]"/utf8>>).
 -define(ACCESS_DENIED_JSON, <<"{\"error\": \"access_denied\"}"/utf8>>).
 -define(EINVALID_DATA_LOADER, <<"{\"error\": \"einvalid_data_loader\"}"/utf8>>).

@@ -1,5 +1,18 @@
 [
 	{
+		"name": "ems_oauth2_backend",
+		"comment": "ems_oauth2_backend",
+		"owner": "ems_bus",
+		"version": "1.0.0",
+		"service" : "ems_oauth2_backend:start",
+		"url": "/emsbus/ems_oauth2_backend",
+		"type": "KERNEL",
+		"lang" : "erlang",
+		"pool_size" : 1,
+		"pool_max" : 1
+	},
+	
+	{
 		"name" : "/authorize",
 		"comment": "Oauth 2.0",
 		"owner": "auth_user",
