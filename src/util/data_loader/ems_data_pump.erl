@@ -8,8 +8,8 @@
 
 -module(ems_data_pump).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 -export([data_pump/13]).
 

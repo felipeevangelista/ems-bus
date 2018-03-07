@@ -2234,7 +2234,7 @@ parse_querystring_def([H|T], Querystring, QtdRequired, RestDefaultQuerystring) -
 				[DefaultQuery] -> Q2 = maps:merge(DefaultQuery, Q)
 			end,
 			parse_querystring_def(T, [Q2 | Querystring], QtdRequired2, RestDefaultQuerystring);
-		M ->  
+		_ ->  
 			erlang:error(eduplicated_querystring_def)
 	end.
 	
@@ -2421,14 +2421,7 @@ load_from_file_req(Request = #request{url = Url,
 	end.
 
 
-save_from_file_req(Request = #request{url = Url,
-									  if_modified_since = IfModifiedSinceReq, 
-									  if_none_match = IfNoneMatchReq,
-									  timestamp = Timestamp,
-									  response_header = ResponseHeader,
-									  service = #service{cache_control = CacheControl,
-														 expires = ExpiresMinute,
-														 path = Path}}) ->
+save_from_file_req(Request = #request{url = _Url}) ->
 		io:format("saved...\n"),
 		{ok, Request#request{code = 200, 
 							 reason = ok,

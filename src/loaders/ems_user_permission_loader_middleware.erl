@@ -48,6 +48,7 @@ reset_sequence(fs) ->
 
 
 -spec check_remove_records(list(), fs | db) -> non_neg_integer().	
+check_remove_records([], _) -> 0;
 check_remove_records(Ids, SourceType) -> 
 	Table = ems_user_permission:get_table(SourceType),
 	F = fun() -> 
