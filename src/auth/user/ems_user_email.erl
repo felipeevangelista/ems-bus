@@ -21,7 +21,7 @@
 -spec new_from_map(map(), #config{}) -> {ok, #user_email{}} | {error, atom()}.
 new_from_map(Map, #config{sufixo_email_institucional = SufixoEmailInstitucional}) ->
 	try
-		Email = ems_util:parse_email(?UTF8_STRING(maps:get(<<"email">>, Map))),
+		Email = ?UTF8_STRING(maps:get(<<"email">>, Map)),
 		{ok, #user_email{
 					id = maps:get(<<"id">>, Map),
 					codigo = maps:get(<<"codigo">>, Map),

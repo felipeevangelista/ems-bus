@@ -13,7 +13,7 @@
 -include_lib("stdlib/include/qlc.hrl").
 
 
--export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2]).
+-export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, get_table/1]).
 
 
 -spec is_empty(fs | db) -> boolean().
@@ -38,6 +38,10 @@ clear_table(fs) ->
 		_ -> {error, efail_clear_ets_table}
 	end.
 	
+-spec get_table(fs | db) -> user_perfil_db | user_perfil_fs.
+get_table(db) -> user_perfil_db;
+get_table(fs) -> user_perfil_fs.
+	
 	
 -spec reset_sequence(fs | db) -> ok.
 reset_sequence(db) -> 
@@ -47,27 +51,6 @@ reset_sequence(fs) ->
 	ems_db:init_sequence(user_perfil_fs, 0),
 	ok.
 	
-	
--spec check_remove_records(list(), fs | db) -> non_neg_integer().	
-check_remove_records([], _) -> 0;
-check_remove_records(Ids, SourceType) -> 
-	Table = ems_user_perfil:get_table(SourceType),
-	F = fun() -> 
-				Q1 = qlc:q([R || R <- mnesia:table(Table), not lists:member(R#user_perfil.id, Ids)]),
-				qlc:e(Q1)
-		end,
-	{atomic, Records} = mnesia:transaction(F),
-	F2 = fun() -> remove_records_(Table, Records) end,
-	mnesia:activity(transaction, F2),
-	length(Records).
-
-remove_records_(_, []) -> ok;
-remove_records_(Table, [#user_perfil{id = Id}|T]) ->
-	mnesia:delete({Table, Id}),
-	remove_records_(Table, T).
-
-
-%% internal functions
 
 -spec get_filename() -> list(tuple()).
 get_filename() -> 
