@@ -11,7 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2]).
+-export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, get_table/1]).
 
 
 -spec is_empty(fs | db) -> boolean().
@@ -45,8 +45,9 @@ reset_sequence(fs) ->
 	ems_db:init_sequence(user_telefone_fs, 0),
 	ok.
 
--spec check_remove_records(list(), fs | db) -> non_neg_integer().	
-check_remove_records(_Codigos, _SourceType) -> 0.
+-spec get_table(fs | db) -> user_telefone_db | user_telefone_fs.
+get_table(db) -> user_telefone_db;
+get_table(fs) -> user_telefone_fs.
 	
 
 %% internal functions
@@ -77,11 +78,13 @@ update_telefone_tabela_users_([User|UserT],
 							 UserTable) -> 
 	case Telefone#user_telefone.type of
 		1 -> %% celular
-			User2 = User#user{celular = Telefone#user_telefone.numero};
+			User2 = User#user{celular = Telefone#user_telefone.numero},
+			mnesia:dirty_write(UserTable, User2);
 		3 -> %% telefone residencial
-			User2 = User#user{telefone = Telefone#user_telefone.numero}
+			User2 = User#user{telefone = Telefone#user_telefone.numero},
+			mnesia:dirty_write(UserTable, User2);
+		_ -> ok
 	end,
-	mnesia:dirty_write(UserTable, User2),
 	update_telefone_tabela_users_(UserT, Telefone, UserTable).
 		
 	
@@ -116,9 +119,9 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_hash = NewRecord#user_telefone.ctrl_hash
 											},
 								update_telefone_tabela_users(Record, case SourceType of
-																db -> user_db;
-																fs -> user_fs
-														  end, CodigoPessoa),
+																			db -> user_db;
+																			fs -> user_fs
+																	 end, CodigoPessoa),
 
 								{ok, Record, Table, update};
 							false -> {ok, skip}

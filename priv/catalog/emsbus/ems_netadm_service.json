@@ -141,7 +141,6 @@
 		"version": "1.0.0",
 		"service" : "ems_netadm_service:memory",
 		"url": "/netadm/memory",
-		"result_cache" : 0,
 		"async": "false",
 		"type": "GET",
 		"authorization": "basic",
@@ -284,7 +283,90 @@
 					"comment": "Campos que devem ser ordenados"
 				}
 			]	
+	},
+	
+	{
+		"name": "/netadm/loader/client/sync",
+		"comment": "Sync data loader table",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_data_loader_service:sync",
+		"url": "/netadm/loader/(?<name>client|user|user/perfil|user/permission|user/email|user/telefone|user/dados_funcionais)/sync",
+		"use_re" : true,
+		"async": "false",
+		"type": "POST",
+		"lang" : "erlang",
+		"pool_size" : 1,
+		"pool_max" : 1,
+		"enable" : true
+	},
+	
+	{
+		"name": "/netadm/loader/client/sync/full",
+		"comment": "Sync data loader table",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_data_loader_service:sync_full",
+		"url": "/netadm/loader/(?<name>client|user|user/perfil|user/permission|user/email|user/telefone|user/dados_funcionais)/sync/full",
+		"use_re" : true,
+		"async": "false",
+		"type": "POST",
+		"lang" : "erlang",
+		"pool_size" : 1,
+		"pool_max" : 1,
+		"enable" : true
+	},
+	
+	{
+		"name": "/netadm/result_cache",
+		"comment": "Get result_cache table",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_api_query_service:find",
+		"url": "/netadm/result_cache",
+		"type": "GET",
+		"authorization": "basic",
+		"datasource" : {
+			"type" : "mnesia",
+			"table_name" : "ets_result_cache_get"
+		},
+		"lang" : "erlang",
+		"querystring": [
+				{
+					"name": "filter",
+					"type": "string",
+					"default" : "",
+					"comment": "Filtro principal da pesquisa"
+				},
+				{
+					"name": "fields",
+					"type": "string",
+					"default" : "",
+					"comment": "Campos que devem ser retornados na pesquisa"
+				},
+				{
+					"name": "limit",
+					"type": "int",
+					"default" : "100",
+					"comment": "Quantidade máxima de registros retornados"
+				},
+				{
+					"name": "offset",
+					"type": "int",
+					"default" : "1",
+					"comment": "Offset retornado da consulta"
+				},
+				{
+					"name": "sort",
+					"type": "string",
+					"default" : "",
+					"comment": "Campos que devem ser ordenados"
+				}
+			]	
 	}
+	
+	
+	
 	
 	
 ]

@@ -63,6 +63,7 @@
 		 date_to_string/1,
 		 date_to_binary/1,
  		 no_periodo/2,
+ 		 seconds_since_epoch/1,
  		 timestamp_str/0,
 		 timestamp_str/1,
 		 timestamp_binary/0,
@@ -2233,7 +2234,7 @@ parse_querystring_def([H|T], Querystring, QtdRequired, RestDefaultQuerystring) -
 				[DefaultQuery] -> Q2 = maps:merge(DefaultQuery, Q)
 			end,
 			parse_querystring_def(T, [Q2 | Querystring], QtdRequired2, RestDefaultQuerystring);
-		M ->  
+		_ ->  
 			erlang:error(eduplicated_querystring_def)
 	end.
 	
@@ -2420,14 +2421,7 @@ load_from_file_req(Request = #request{url = Url,
 	end.
 
 
-save_from_file_req(Request = #request{url = Url,
-									  if_modified_since = IfModifiedSinceReq, 
-									  if_none_match = IfNoneMatchReq,
-									  timestamp = Timestamp,
-									  response_header = ResponseHeader,
-									  service = #service{cache_control = CacheControl,
-														 expires = ExpiresMinute,
-														 path = Path}}) ->
+save_from_file_req(Request = #request{url = _Url}) ->
 		io:format("saved...\n"),
 		{ok, Request#request{code = 200, 
 							 reason = ok,
@@ -2867,3 +2861,6 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 		_:_ -> undefined
 	end.
 
+seconds_since_epoch(Diff) ->
+    {Mega, Secs, _} = os:timestamp(),
+    Mega * 1000000 + Secs + Diff.

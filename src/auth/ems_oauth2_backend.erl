@@ -1,12 +1,26 @@
+%%********************************************************************
+%% @title ems_oauth2_backend
+%% @version 1.0.0
+%% @doc Backend of OAuth2 subsystem
+%% @author Alyssom Ribeiro <alyssonribeiro@unb.br>
+%% @author Everton de Vargas Agilar <evertonagilar@gmail.com>
+%% @copyright ErlangMS Team
+%%********************************************************************
+
 -module(ems_oauth2_backend).
 
 -behavior(oauth2_backend).
+-behavior(gen_server). 
 
--include("../../include/ems_config.hrl").
--include("../../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 %%% API
--export([start/0, stop/0]).
+-export([start/0, start/1, stop/0]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/1, handle_info/2, terminate/2, code_change/3]).
+
 
 -export([authenticate_user/2]).
 -export([authenticate_client/2]).
@@ -26,42 +40,66 @@
 -export([verify_client_scope/3]).
 -export([verify_resowner_scope/3]).
 -export([verify_scope/3]).
-
--define(ACCESS_TOKEN_TABLE, access_tokens).
--define(ACCESS_CODE_TABLE, access_codes).
--define(REFRESH_TOKEN_TABLE, refresh_tokens).
--define(SCOPE_TABLE, scopes).
-
-
--define(TABLES, [?ACCESS_TOKEN_TABLE,
-				 ?ACCESS_CODE_TABLE,
-                 ?REFRESH_TOKEN_TABLE]).
-
-% verificar: unificar os dois records ... %%%%%%%%%%%%%%%
-         
+        
 -record(a, { client   = undefined    :: undefined | term()
            , resowner = undefined    :: undefined | term()
            , scope                   :: oauth2:scope()
            , ttl      = 0            :: non_neg_integer()
            }).
 
+-record(state, {}). 
+
+-define(SERVER, ?MODULE).
+
 %%%===================================================================
 %%% Teste
 %%%===================================================================
 
-start() ->
-    application:set_env(oauth2, backend, ems_oauth2_backend),
-    %ems_user:insert(#user{login= <<"geral">>,password= ems_util:criptografia_sha1("123456")}),
-    %ems_user:insert(#user{login= <<"alyssondsr">>,password=ems_util:criptografia_sha1("123456")}),
-    %ems_client:insert(#client{codigo= <<"q1w2e3">>,secret=ems_util:criptografia_sha1("123456"), redirect_uri= <<"https://127.0.0.1:2302/callback">>, scope= <<"email">>}),
-    %ems_user:insert(#client{codigo= <<"man">>,secret=ems_util:criptografia_sha1("123456"), redirect_uri= <<"https://www.getpostman.com/oauth2/callback">>, scope= <<"email">>}),
-    lists:foreach(fun(Table) ->
-                          ets:new(Table, [named_table, public])
-                  end,
-                  ?TABLES).
+start() -> 
+	ok.
 
-stop() ->
-    lists:foreach(fun ets:delete/1, ?TABLES).
+start(_) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+stop() -> ok.
+  
+
+
+%%====================================================================
+%% gen_server callbacks
+%%====================================================================
+ 
+init([]) ->
+    Conf = ems_config:getConfig(),
+    application:set_env(oauth2, backend, ems_oauth2_backend),
+	application:set_env(oauth2, expiry_time, Conf#config.oauth2_refresh_token),
+	NewState = #state{},
+    {ok, NewState}. 
+    
+handle_cast(shutdown, State) ->
+    {stop, normal, State};
+
+handle_cast(_Msg, State) ->
+	{noreply, State}.
+    
+handle_call(_Msg, _From, State) ->
+	{reply, _Msg, State}.
+
+handle_info({expire, Table, Key}, State) ->
+	ems_db:delete(Table, Key),
+	{noreply, State};
+
+handle_info(_Msg, State) ->
+   {noreply, State}.
+
+handle_info(State) ->
+   {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+ 
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
     
 
 
@@ -87,41 +125,60 @@ get_client_identity(Client, _) ->
         
 
 associate_access_code(AccessCode, Context, _AppContext) ->
-    {put(?ACCESS_CODE_TABLE, AccessCode, Context), Context}.
+    mnesia:dirty_write(auth_oauth2_access_code_table, #auth_oauth2_access_code{id = AccessCode, context = Context}),
+	%TimeoutExpire = ExpiryTime - ems_util:seconds_since_epoch(0) + 11000,
+    %erlang:send_after(TimeoutExpire, ems_oauth2_backend, {expire, auth_oauth2_access_code_table, AccessCode}),
+    {ok, Context}.
 
 associate_refresh_token(RefreshToken, Context, _) ->
-    {put(?REFRESH_TOKEN_TABLE, RefreshToken, Context), Context}.
+    mnesia:dirty_write(auth_oauth2_refresh_token_table, #auth_oauth2_refresh_token{id = RefreshToken, context = Context}),
+    {ok, Context}.
 
 associate_access_token(AccessToken, Context, _) ->
-    {put(?ACCESS_TOKEN_TABLE, AccessToken, Context), Context}.
+    mnesia:dirty_write(auth_oauth2_access_token_table, #auth_oauth2_access_token{id = AccessToken, context = Context}),
+    {ok, Context}.
 
 resolve_access_code(AccessCode, _) ->
-	case get(?ACCESS_CODE_TABLE, AccessCode) of
-        {ok,Value} -> 	{ok,{[],Value}};
+	case ems_db:get(auth_oauth2_access_code_table, AccessCode) of
+        {ok, #auth_oauth2_access_code{context = Context}} -> 	
+			{ok, {[], Context}};
         _Error -> {error, invalid_code} 
     end.
 
 resolve_refresh_token(RefreshToken, _AppContext) ->
-    case get(?REFRESH_TOKEN_TABLE, RefreshToken) of
-       {ok,Value} -> {ok,{[], Value}};
+    case ems_db:get(auth_oauth2_refresh_token_table, RefreshToken) of
+       {ok, #auth_oauth2_refresh_token{context = Context}} -> 	{ok, {[], Context}};
         _Error -> {error, invalid_token} 
     end.
 
 resolve_access_token(AccessToken, _) ->
-    case get(?ACCESS_TOKEN_TABLE, AccessToken) of
-       {ok,Value} -> {ok,{[], Value}};
+    case ems_db:get(auth_oauth2_access_token_table, AccessToken) of
+       {ok, #auth_oauth2_access_token{context = Context}} -> 	{ok, {[], Context}};
         _Error -> {error, invalid_token} 
     end.
 
 revoke_access_code(AccessCode, _AppContext) ->
-    delete(?ACCESS_CODE_TABLE, AccessCode),
+    case ems_db:get(auth_oauth2_access_code_table, AccessCode) of
+		{ok, Record} -> 
+			ems_db:delete(Record);
+		_ -> ok
+	end,
     {ok, []}.
 
 revoke_access_token(AccessToken, _) ->
-    delete(?ACCESS_TOKEN_TABLE, AccessToken),
+    case ems_db:get(auth_oauth2_access_token_table, AccessToken) of
+		{ok, Record} -> 
+			ems_db:delete(Record);
+		_ -> ok
+	end,
     {ok, []}.
 
-revoke_refresh_token(_RefreshToken, _) ->
+revoke_refresh_token(RefreshToken, _) ->
+    case ems_db:get(auth_oauth2_refresh_token_table, RefreshToken) of
+		{ok, Record} -> 
+			ems_db:delete(Record);
+		_ -> ok
+	end,
     {ok, []}.
 
 get_redirection_uri(Client, _) ->
@@ -144,11 +201,12 @@ verify_client_scope(#client{id = ClientID}, Scope, _) ->
         {ok, #client{scope = Scope0}} ->     
 			case Scope =:= Scope0 of
 				true -> 
-					{ok, {[],Scope0}};
+					{ok, {[], Scope0}};
 				_ -> {error, unauthorized_client}
 			end;
         _ -> {error, invalid_scope}
     end.
+    
 verify_resowner_scope(_ResOwner, Scope, _) ->
     {ok, {[], Scope}}.
 
@@ -174,21 +232,3 @@ authorize_refresh_token(Client, RefreshToken, Scope) ->
 	end.
 
 
-%%%===================================================================
-%%% Funções internas
-%%%===================================================================
-
-get(Table, Key) ->
-    case ets:lookup(Table, Key) of
-        [] ->
-            {error, notfound};
-        [{_Key, Value}] ->
-            {ok, Value}
-    end.
-
-put(Table, Key, Value) ->
-    ets:insert(Table, {Key, Value}),
-    ok.
-
-delete(Table, Key) ->
-    ets:delete(Table, Key).

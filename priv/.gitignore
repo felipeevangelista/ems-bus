@@ -5,3 +5,4 @@
 *.dump
 /logs
 *.gz
+tmp

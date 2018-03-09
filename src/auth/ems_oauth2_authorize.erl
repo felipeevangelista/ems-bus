@@ -124,7 +124,8 @@ execute(Request = #request{type = Type,
 															}
 										}
 					};
-			_ ->
+			X ->
+				io:format("X is ~p\n", [X]),
 					{error, Request#request{code = 401, 
 											reason = access_denied,
 											oauth2_grant_type = GrantType,
