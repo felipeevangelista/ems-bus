@@ -337,9 +337,9 @@ parse_host_service(_Host, ModuleName, Node, Conf) ->
 				 end || X <- ListHost],
 	ListNode2 = lists:map(fun(X) -> binary_to_list(X) end, ListNode),
 	ClusterName = [case X of
-						[] -> ModuleNameCanonical ++ "@" ++ Y;
-						_  -> ModuleNameCanonical ++ "_" ++ X ++ "@" ++ Y 
-				   end || X <- ListNode2, Y <- ListHost2],
+						[] -> ModuleNameCanonical ++ K  ++ "@" ++ Y;
+						_  -> ModuleNameCanonical ++ K ++ "_" ++ X ++ "@" ++ Y 
+				   end || X <- ListNode2, Y <- ListHost2, K <- ["", "01", "02", "03"]],
 	ClusterNode = lists:map(fun(X) -> list_to_atom(X) end, ClusterName),
 	{ClusterNode, ClusterName}.
 

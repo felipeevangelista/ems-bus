@@ -238,22 +238,21 @@ dispatch_service_work(Request = #request{rid = Rid,
 	Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
 			ClientJson, UserJson, ems_catalog:get_metadata_json(Service), Scope, 
 			undefined, undefined}, self()},
-	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 10).
+	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 4).
 
 
 dispatch_service_work_send(_, #service{service_unavailable_metric_name = ServiceUnavailableMetricName}, _, _, 0) -> 
 	ems_db:inc_counter(ServiceUnavailableMetricName),
 	{error, eunavailable_service};
-dispatch_service_work_send(Request = #request{t1 = T1},
+dispatch_service_work_send(Request = #request{t1 = T1,
+											  type = Type},
 						   Service = #service{host = Host,
 							 				  host_name = HostName,
 											  module_name = ModuleName,
 											  module = Module,
 											  timeout = TimeoutService,
 											  service_unavailable_metric_name = ServiceUnavailableMetricName,
-											  service_resend_msg1 = ServiceResendMsg1,
-											  service_resend_msg2 = ServiceResendMsg2,
-											  service_resend_msg3 = ServiceResendMsg3},
+											  service_resend_msg1 = ServiceResendMsg},
 						   ShowDebugResponseHeaders,
 						   Msg,
 						   Count) ->
@@ -261,29 +260,12 @@ dispatch_service_work_send(Request = #request{t1 = T1},
 		{ok, Node} ->
 			{Module, Node} ! Msg,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
-			receive 
-				ok -> ok
-				after 300 -> 
-					{Module, Node} ! Msg,
-					ems_db:inc_counter(ServiceResendMsg1),
-					receive 
-						ok -> ok
-						after 300 -> 
-							{Module, Node} ! Msg,
-							ems_db:inc_counter(ServiceResendMsg2),
-							receive 
-								ok -> ok
-								after 300 -> 
-									{Module, Node} ! Msg,
-									ems_db:inc_counter(ServiceResendMsg3),
-									dispatch_service_work_send(Request, service, ShowDebugResponseHeaders, Msg, Count-1)
-							end
-					end
+			case Type of 
+				<<"GET">> -> TimeoutConfirmation = 300;
+				_ -> TimeoutConfirmation = 6000
 			end,
-			case dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0, ShowDebugResponseHeaders) of
-				{error, etimeoutservice} ->
-					{Module, Node} ! Msg,
-					ems_logger:warn("ems_dispatcher re-send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
+			receive 
+				ok -> 
 					case dispatch_service_work_receive(Request, Service, Node, TimeoutService, 0, ShowDebugResponseHeaders) of
 						{error, etimeoutservice} ->
 							{error, request, Request#request{code = 503,
@@ -291,9 +273,11 @@ dispatch_service_work_send(Request = #request{t1 = T1},
 															 content_type_out = ?CONTENT_TYPE_JSON,
 															 response_data = ?ETIMEOUT_SERVICE,
 															 latency = ems_util:get_milliseconds() - T1}};
-						Result2 -> Result2
-					end;
-				Result -> Result
+						Result -> Result
+					end
+				after TimeoutConfirmation -> 
+					ems_db:inc_counter(ServiceResendMsg),
+					dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, Count-1)
 			end;
 		Error ->  
 			ems_db:inc_counter(ServiceUnavailableMetricName),
