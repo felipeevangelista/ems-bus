@@ -264,7 +264,7 @@ dispatch_service_work_send(Request = #request{t1 = T1,
 			{Module, Node} ! Msg,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			case Type of 
-				<<"GET">> -> TimeoutConfirmation = 300;
+				<<"GET">> -> TimeoutConfirmation = 1000;
 				_ -> TimeoutConfirmation = 6000
 			end,
 			receive 
