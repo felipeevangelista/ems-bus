@@ -359,7 +359,8 @@
 					service_resend_msg3 :: atom(),
 					http_max_content_length :: non_neg_integer(),
 					http_headers :: map(),
-					restricted = false :: boolean()				%% Serviços restrito para admins
+					restricted = false :: boolean(),			%% Serviços restrito para admins
+					metadata :: binary()						%% Representação em json do que será enviado para o web service /catalog
 				}).
 
 

@@ -207,18 +207,21 @@ dispatch_service_work(Request = #request{type = Type,
 		Request2 -> Request2
 	end;
 dispatch_service_work(Request = #request{rid = Rid,
-										 type = Type,
-										 url = Url,
-										 payload = Payload,
-										 client = Client,
-										 user = User,
-										 scope = Scope,
-										 content_type_out = ContentType,  
-										 params_url = ParamsMap,
-										 querystring_map = QuerystringMap},
+										  type = Type,
+										  url = Url,
+										  payload = Payload,
+										  client = Client,
+										  user = User,
+										  scope = Scope,
+										  content_type_out = ContentType,  
+										  params_url = ParamsMap,
+										  querystring_map = QuerystringMap,
+										  t1 = T1},
 					  Service = #service{
 										 module_name = ModuleName,
-										 function_name = FunctionName},
+										 function_name = FunctionName,
+										 metadata = Metadata,
+										 timeout = Timeout},
 					  ShowDebugResponseHeaders) ->
 	case erlang:is_tuple(Client) of
 		false -> 
@@ -236,8 +239,8 @@ dispatch_service_work(Request = #request{rid = Rid,
 			end
 	end,
 	Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
-			ClientJson, UserJson, ems_catalog:get_metadata_json(Service), Scope, 
-			undefined, undefined}, self()},
+			ClientJson, UserJson, Metadata, Scope, 
+			T1, Timeout}, self()},
 	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 4).
 
 
