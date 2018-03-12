@@ -231,7 +231,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 								ems_data_loader_ctl:notify_finish_work(check_sync_full, Name),
 								ems_db:inc_counter(ErrorCheckpointMetricName),
 								erlang:send_after(86400 * 1000, self(), check_sync_full),
-								ems_logger:warn("~s sync full wait ~p minutes for next checkpoint while has database connection error.", [Name, trunc(TimeoutOnError / 60000)]),
+								ems_logger:warn("~s sync full wait ~pms for next checkpoint while has database connection error.", [Name, TimeoutOnError]),
 								{noreply, State, TimeoutOnError}
 						end;
 					false ->

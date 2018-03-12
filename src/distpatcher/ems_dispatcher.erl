@@ -264,8 +264,8 @@ dispatch_service_work_send(Request = #request{t1 = T1,
 			{Module, Node} ! Msg,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			case Type of 
-				<<"GET">> -> TimeoutConfirmation = 1000;
-				_ -> TimeoutConfirmation = 6000
+				<<"GET">> -> TimeoutConfirmation = 3000;
+				_ -> TimeoutConfirmation = 8000
 			end,
 			receive 
 				ok -> 
@@ -279,6 +279,7 @@ dispatch_service_work_send(Request = #request{t1 = T1,
 						Result -> Result
 					end
 				after TimeoutConfirmation -> 
+					ems_logger:info("ems_dispatcher dispatch_service_work_send timeout confirmation ~p.", [{Module, Node}]),
 					ems_db:inc_counter(ServiceResendMsg),
 					dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, Count-1)
 			end;
