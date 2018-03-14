@@ -159,7 +159,9 @@
 		 check_type_email/2,
 		 is_email_institucional/2,
 		 invoque_service/3,
-		 url_mask/1
+		 url_mask/1,
+		 list_map_to_list_tuple/1,
+		 list_tuple_to_list_map/1
 		]).
 
 -spec version() -> string().
@@ -2869,3 +2871,18 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 seconds_since_epoch(Diff) ->
     {Mega, Secs, _} = os:timestamp(),
     Mega * 1000000 + Secs + Diff.
+
+
+list_map_to_list_tuple(List) -> list_map_to_list_tuple(List, []).
+
+list_map_to_list_tuple([], Result) -> Result;	
+list_map_to_list_tuple([Map|MapT], Result) ->	
+	L = maps:to_list(Map),
+	list_map_to_list_tuple(MapT, [L | Result]).
+
+
+list_tuple_to_list_map(List) -> list_tuple_to_list_map(List, []).
+
+list_tuple_to_list_map([], Result) -> Result;	
+list_tuple_to_list_map([H|T], Result) ->	
+	list_tuple_to_list_map(T, [maps:from_list(H) | Result]).
