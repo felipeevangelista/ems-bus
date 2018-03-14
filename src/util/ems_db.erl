@@ -354,7 +354,7 @@ sequence(Name, Inc) -> mnesia:dirty_update_counter(sequence, Name, Inc).
 
 init_counter(Name, Value) ->
      {atomic, ok} =	mnesia:transaction(fun() ->
-						mnesia:write(#counter{key=Name, index=Value})
+						mnesia:write(#counter{key=Name, value=Value})
 					end),
      ok.
 inc_counter(Name) ->  mnesia:dirty_update_counter(counter, Name, 1).

@@ -10,7 +10,7 @@
 				   index :: non_neg_integer()}).
 
 -record(counter, {key :: atom(), 
-     			  index :: non_neg_integer()}).
+     			  value :: non_neg_integer()}).
 
 -record(user, {id :: non_neg_integer(), 					%% identificador do usuário (required) (Na UnB é o campo Tb_Usuario.UsuId)
 			   codigo :: non_neg_integer(),					%% código da pessoa se o usuário possui dados pessoais em outra tabela externa. (Na UnB é o campo Tb_Pessoa.PesCodigoPessoa)
@@ -387,7 +387,12 @@
 -record(stat_counter_hist, {  id :: non_neg_integer(),
 							  stat_name :: atom(),
 							  stat_value :: non_neg_integer,
-							  stat_timestamp
+							  stat_date :: binary(),
+							  stat_time :: binary(),
+							  stat_service_name :: binary(),
+							  stat_service_url :: binary(),
+							  stat_service_type :: binary(),
+							  stat_label :: binary()
 							}).
 
 

@@ -318,19 +318,43 @@
 	},
 	
 	{
-		"name": "/netadm/result_cache",
-		"comment": "Get result_cache table",
+		"name": "/netadm/stat/counter",
+		"comment": "Get counter table",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:stat_counter",
+		"url": "/netadm/stat/counter",
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+	
+	{
+		"name": "/netadm/stat/collect",
+		"comment": "Collect stats from ems-bus.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:stat_collect",
+		"url": "/netadm/stat/collect",
+		"type": "POST",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+
+	{
+		"name": "/netadm/stat/history",
+		"comment": "Get counter history table",
 		"owner": "netadm",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find",
-		"url": "/netadm/result_cache",
+		"url": "/netadm/stat/history",
 		"type": "GET",
 		"authorization": "basic",
+		"lang" : "erlang",
 		"datasource" : {
 			"type" : "mnesia",
-			"table_name" : "ets_result_cache_get"
+			"table_name" : "stat_counter_hist"
 		},
-		"lang" : "erlang",
 		"querystring": [
 				{
 					"name": "filter",
@@ -364,8 +388,6 @@
 				}
 			]	
 	}
-	
-	
 	
 	
 	

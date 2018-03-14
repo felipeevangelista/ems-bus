@@ -13,7 +13,17 @@
 
 -export([new_from_map/2, 
 		 get_metadata_json/1,
-		 get_table/3]).
+		 get_table/3,
+		 find_by_rowid/1]).
+		 
+		 
+-spec find_by_rowid(non_neg_integer()) -> {ok, #service{}} | {error, enoent}.
+find_by_rowid(RowId) -> 
+	case ems_db:get([catalog_get_fs, catalog_post_fs, catalog_put_fs, catalog_delete_fs, catalog_options_fs, catalog_kernel_fs,
+					 catalog_get_db, catalog_post_db, catalog_put_db, catalog_delete_db, catalog_options_db, catalog_kernel_db], RowId) of
+		{ok, Record} -> {ok, Record};
+		_ -> {error, enoent}
+	end.
 		 
 
 -spec get_metadata_json(#service{}) -> binary().

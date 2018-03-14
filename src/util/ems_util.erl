@@ -62,6 +62,7 @@
 		 date_add_day/2,
 		 date_to_string/1,
 		 date_to_binary/1,
+		 time_to_binary/1,
  		 no_periodo/2,
  		 seconds_since_epoch/1,
  		 timestamp_str/0,
@@ -444,6 +445,10 @@ date_to_binary({{Ano,Mes,Dia},{_Hora,_Min,_Seg}}) ->
     iolist_to_binary(io_lib:format("~2..0B/~2..0B/~4..0B", [Dia, Mes, Ano]));
 date_to_binary(_) -> <<>>.
     
+-spec time_to_binary(tuple()) -> binary().
+time_to_binary({{_Ano,_Mes,_Dia},{Hora,Min,Seg}}) ->
+    iolist_to_binary(io_lib:format("~2..0B:~2..0B:~2..0B", [Hora, Min, Seg]));
+time_to_binary(_) -> <<>>.
 
 
 tuple_to_binlist(T) ->
@@ -2334,8 +2339,8 @@ get_param_url(NomeParam, Default, Request) ->
 	maps:get(NomeParam2, ParamsUrl, Default).
 
 
-get_querystring(<<QueryName/binary>>, Servico) ->	
-	[Query] = [Q || Q <- maps:get(<<"querystring">>, Servico, <<>>), Q#service.comment == QueryName],
+get_querystring(<<QueryName/binary>>, Service) ->	
+	[Query] = [Q || Q <- maps:get(<<"querystring">>, Service, <<>>), Q#service.comment == QueryName],
 	Query.
 
 
