@@ -215,8 +215,7 @@ dispatch_service_work(Request = #request{rid = Rid,
 										  scope = Scope,
 										  content_type_out = ContentType,  
 										  params_url = ParamsMap,
-										  querystring_map = QuerystringMap,
-										  t1 = T1},
+										  querystring_map = QuerystringMap},
 					  Service = #service{
 										 module_name = ModuleName,
 										 function_name = FunctionName,
@@ -238,9 +237,10 @@ dispatch_service_work(Request = #request{rid = Rid,
 				false -> UserJson = ems_user:to_resource_owner(User)
 			end
 	end,
+	T2 = ems_util:get_milliseconds(),
 	Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
 			ClientJson, UserJson, Metadata, Scope, 
-			T1, Timeout}, self()},
+			T2, Timeout}, self()},
 	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 4).
 
 
@@ -264,8 +264,8 @@ dispatch_service_work_send(Request = #request{t1 = T1,
 			{Module, Node} ! Msg,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			case Type of 
-				<<"GET">> -> TimeoutConfirmation = 3000;
-				_ -> TimeoutConfirmation = 8000
+				<<"GET">> -> TimeoutConfirmation = 3500;
+				_ -> TimeoutConfirmation = 35000
 			end,
 			receive 
 				ok -> 
@@ -383,6 +383,7 @@ dispatch_middleware_function(Request = #request{reason = ok,
 												 req_hash = ReqHash,
 												 t1 = T1,
 												 type = Type,
+												 content_length = ContentLength,
 												 service = Service = #service{middleware = Middleware,
 												  							   result_cache = ResultCache,
 																			   service_error_metric_name = ServiceErrorMetricName}},
@@ -404,7 +405,7 @@ dispatch_middleware_function(Request = #request{reason = ok,
 			{ok, Request2 = #request{response_header = ResponseHeader}} ->
 				case Type =:= <<"GET">> of
 					true -> 
-						case ResultCache > 0 of
+						case ResultCache > 0 andalso ContentLength < ?RESULT_CACHE_MAX_SIZE_ENTRY of
 							true ->
 								case ShowDebugResponseHeaders of
 									false ->
@@ -418,7 +419,7 @@ dispatch_middleware_function(Request = #request{reason = ok,
 								%ems_cache:add(ets_result_cache_get, ResultCache, ReqHash, {T1, Request3, ResultCache}),
 								notity_workers_waiting_result_cache(ReqHash, Request3),
 								{ok, request, Request3};
-							_ -> 
+							false -> 
 								case ShowDebugResponseHeaders of
 									false ->
 										{ok, request, Request2#request{latency = ems_util:get_milliseconds() - T1,

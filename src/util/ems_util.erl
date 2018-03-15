@@ -1710,7 +1710,9 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 				case ContentLength > 0 of
 					true ->
 						case ContentLength > HttpMaxContentLengthService of
-							true ->	erlang:error(ehttp_max_content_length_error);
+							true ->	
+								ems_logger:warn("ems_http_handler ehttp_max_content_length_error exception. HttpMaxContentLengthService of the request ~s ~s is ~p bytes.", [binary_to_list(Type), Url, HttpMaxContentLengthService]),
+								erlang:error(ehttp_max_content_length_error);
 							false -> ok
 						end,
 						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 120000},
@@ -1844,7 +1846,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 						QuerystringMap2 = QuerystringMap,
 						CowboyReq2 = CowboyReq
 				end,
-				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, PayloadMap]),
+				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, Payload]),
 				Request2 = Request#request{
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
