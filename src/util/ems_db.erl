@@ -15,7 +15,7 @@
 		 find/1, find/2, find/3, find/4, find/5, 
 		 find_by_id/2, find_by_id/3, filter/2,
 		 find_first/2, find_first/3, find_first/4, 
-		 field_position/3]).
+		 field_position/3, sort/2]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
 -export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/3]).
@@ -605,8 +605,8 @@ sort(Records, SortList) ->
 	List = ems_util:list_map_to_list_tuple(Records),
 	%io:format("list is ~p\n", [List]),
 	List2 = lists:sort(fun(A, B) -> 
-			%io:format("a is ~p  \n", [A]),
-			%io:format("b is ~p  \n", [B]),
+			io:format("a is ~p  \n", [A]),
+			io:format("b is ~p  \n", [B]),
 			A < B end, List),
 	ems_util:list_tuple_to_list_map(List2).
 

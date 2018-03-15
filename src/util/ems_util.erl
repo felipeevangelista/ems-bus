@@ -1713,7 +1713,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 							true ->	erlang:error(ehttp_max_content_length_error);
 							false -> ok
 						end,
-						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 30000},
+						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 120000},
 						case ContentTypeIn of
 							<<"application/json">> ->
 								ems_db:inc_counter(http_content_type_in_application_json),
@@ -1844,7 +1844,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 						QuerystringMap2 = QuerystringMap,
 						CowboyReq2 = CowboyReq
 				end,
-				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2]),
+				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, PayloadMap]),
 				Request2 = Request#request{
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
@@ -2838,7 +2838,7 @@ get_client_request_by_querystring(Request) ->
 	end.
 
 
--spec get_user_request_by_login_and_password(#request{}) -> #client{} | undefined.
+-spec get_user_request_by_login_and_password(#request{}) -> #user{} | undefined.
 get_user_request_by_login_and_password(Request = #request{authorization = Authorization}) ->
     try
 		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
@@ -2883,6 +2883,8 @@ list_map_to_list_tuple([Map|MapT], Result) ->
 
 list_tuple_to_list_map(List) -> list_tuple_to_list_map(List, []).
 
-list_tuple_to_list_map([], Result) -> Result;	
+list_tuple_to_list_map([], Result) -> lists:reverse(Result);	
 list_tuple_to_list_map([H|T], Result) ->	
 	list_tuple_to_list_map(T, [maps:from_list(H) | Result]).
+
+
