@@ -601,14 +601,32 @@ filter_multi_tab([Tab|TabT], FilterList, Result) ->
 	end.
 
 
+sort_fields_table([Map|_]) -> [ binary_to_atom(R, utf8) || R <- maps:keys(Map)].
+
 sort(Records, SortList) -> 
+	FieldsTable = sort_fields_table(Records),
+	io:format("fields table is ~p\n", [FieldsTable]),
 	List = ems_util:list_map_to_list_tuple(Records),
 	%io:format("list is ~p\n", [List]),
-	List2 = lists:sort(fun(A, B) -> 
-			io:format("a is ~p  \n", [A]),
-			io:format("b is ~p  \n", [B]),
-			A < B end, List),
+	List2 = sort_(List, FieldsTable, SortList),
+	%List2 = lists:sort(fun(A, B) -> 
+%			io:format("a is ~p  \n", [A]),
+%			io:format("b is ~p  \n", [B]),
+%			A < B end, List),
 	ems_util:list_tuple_to_list_map(List2).
+
+sort_(List, _, []) -> List;
+sort_(List, FieldsTable, [SortField|SortFieldT]) ->
+	io:format("field_position(~p, ~p, 1),\n", [SortField, FieldsTable]),
+	FldPos = field_position(SortField, FieldsTable, 1),
+	List2 = lists:sort(fun(A, B) -> 
+			{_, FldValue1} = lists:nth(FldPos, A),
+			{_, FldValue2} = lists:nth(FldPos, B),
+			io:format("aqui ~p ~p \n", [FldPos, A]),
+			FldValue1 < FldValue2 
+		end, List),
+	sort_(List2, FieldsTable, SortFieldT).
+
 
 %
 % Find objects with limits

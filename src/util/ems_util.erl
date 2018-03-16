@@ -1715,7 +1715,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 								erlang:error(ehttp_max_content_length_error);
 							false -> ok
 						end,
-						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 120000},
+						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 180000},
 						case ContentTypeIn of
 							<<"application/json">> ->
 								ems_db:inc_counter(http_content_type_in_application_json),

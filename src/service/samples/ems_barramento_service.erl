@@ -14,7 +14,6 @@
 -export([execute/1]).
   
 execute(Request) -> 
-	Conf = ems_config:getConfig(),
 	ContentData = iolist_to_binary([<<"{"/utf8>>,
 										<<"\"ip\":\""/utf8>>, <<"127.0.0.1"/utf8>>, <<"\","/utf8>>, 
 										<<"\"http_port\":"/utf8>>, integer_to_binary(2301), <<","/utf8>>, 

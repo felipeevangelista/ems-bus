@@ -428,10 +428,10 @@ new_from_map(Map, Conf) ->
 		LoginBin = maps:get(<<"login">>, Map),
 		Login = ?UTF8_STRING(LoginBin),
 		{ok, #user{	id = maps:get(<<"id">>, Map),
-					codigo = maps:get(<<"codigo">>, Map, undefined),
+					codigo = maps:get(<<"codigo">>, Map),
 					login = Login,
 					name = ?UTF8_STRING(maps:get(<<"name">>, Map)),
-					cpf = maps:get(<<"cpf">>, Map, <<>>),
+					cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
 					password = case PasswdCrypto of
 									<<"SHA1">> -> ?UTF8_STRING(Password);
 									_ -> ems_util:criptografia_sha1(?UTF8_STRING(Password))
