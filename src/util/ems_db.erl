@@ -51,27 +51,33 @@ create_database(Nodes) ->
 
     mnesia:create_table(user_fs, [{type, set},
 								 {ram_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
     mnesia:create_table(user_db, [{type, set},
 								  {disc_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
     mnesia:create_table(user_aluno_ativo_db, [{type, set},
 								  {disc_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
     mnesia:create_table(user_aluno_inativo_db, [{type, set},
 								  {disc_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
+
+    mnesia:create_table(user_cache_lru, [{type, set},
+										  {ram_copies, Nodes},
+										  {index, [#user.login]},
+										  {attributes, record_info(fields, user)},
+										  {record_name, user}]),
 
     mnesia:create_table(user_dados_funcionais_fs, [{type, set},
 								  {ram_copies, Nodes},

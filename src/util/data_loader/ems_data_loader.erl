@@ -130,7 +130,7 @@ init(#service{name = Name,
 	SkipMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_skip">>]), utf8),
 	erlang:send_after(60000 * 60, self(), check_sync_full),
 	case CheckRemoveRecords andalso CheckRemoveRecordsCheckpoint > 0 of
-		true -> erlang:send_after(CheckRemoveRecordsCheckpoint + 60000, self(), check_count_records);
+		true -> erlang:send_after(CheckRemoveRecordsCheckpoint + 70000, self(), check_count_records);
 		false -> ok
 	end,
 	State = #state{name = binary_to_list(Name),
@@ -212,7 +212,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 											loading = Loading
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-		case Hour >= 4 andalso Hour =< 6 of
+		case Hour >= 3 andalso Hour =< 6 of
 			true ->
 				?DEBUG("~s handle check_sync_full execute.", [Name]),
 				case not Loading andalso do_permission_to_execute(check_sync_full, Name, State) of
@@ -220,7 +220,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
 						ems_logger:info("~s sync full checkpoint now.", [Name]),
 						State2 = State#state{last_update = undefined,
-											 allow_clear_table_full_sync = true},
+											  allow_clear_table_full_sync = true},
 						case do_check_load_or_update_checkpoint(State2) of
 							{ok, State3} ->
 								ems_logger:info("~s sync full checkpoint successfully", [Name]),
@@ -305,7 +305,7 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 				_Error -> 
 					ems_data_loader_ctl:notify_finish_work(check_load_or_update_checkpoint, Name),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
-					ems_logger:warn("~s wait ~p minutes for next checkpoint while has database connection error.", [Name, trunc(TimeoutOnError / 60000)]),
+					ems_logger:warn("~s wait ~pms for next checkpoint while has database connection error.", [Name, TimeoutOnError]),
 					erlang:garbage_collect(),
 					{noreply, State, TimeoutOnError}
 			end;

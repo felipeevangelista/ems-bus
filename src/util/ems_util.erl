@@ -855,7 +855,8 @@ criptografia_sha1(<<>>) -> <<>>;
 criptografia_sha1("") -> <<>>;	
 criptografia_sha1(undefined) -> <<>>;
 criptografia_sha1(null) -> <<>>;
-criptografia_sha1(Password) when is_binary(Password) ->	criptografia_sha1(binary_to_list(Password));
+criptografia_sha1(Password) when is_binary(Password) -> 
+	criptografia_sha1(binary_to_list(Password));
 criptografia_sha1(Password) -> base64:encode(sha1:binstring(Password)).
 
 boolean_to_binary(true) -> <<"true"/utf8>>;

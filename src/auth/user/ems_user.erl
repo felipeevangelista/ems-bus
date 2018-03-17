@@ -49,38 +49,11 @@ all() ->
 
 -spec authenticate_login_password(binary(), binary() | list()) -> ok | {error, access_denied}.
 authenticate_login_password(Login, Password) ->
-	case find_by_login_with_metric(Login) of
-		{ok, #user{password = PasswordUser}} -> 
-			PasswordBin = case is_list(Password) of
-								true -> list_to_binary(Password);
-								_ -> Password
-						  end,
-			case PasswordUser =:= ems_util:criptografia_sha1(Password) orelse PasswordUser =:= PasswordBin of
-				true -> ok;
-				false -> 
-					ems_db:inc_counter(ems_user_authenticate_invalid_password),
-					{error, access_denied}
-			end;
+	case find_by_login_and_password(Login, Password) of
+		{ok, _} -> ok;
 		_ -> {error, access_denied}
 	end.
-
--spec find_by_login_and_password(binary() | list(), binary() | list()) -> {ok, #user{}} | {error, enoent}.	
-find_by_login_and_password(Login, Password)  ->
-	case find_by_login_with_metric(Login) of
-		{ok, User = #user{password = PasswordUser}} -> 
-			PasswordBin = case is_list(Password) of
-								true -> list_to_binary(Password);
-								_ -> Password
-						  end,
-			case PasswordUser =:= ems_util:criptografia_sha1(Password) orelse PasswordUser =:= PasswordBin of
-				true -> {ok, User};
-				false -> 
-					ems_db:inc_counter(ems_user_authenticate_invalid_password),
-					{error, enoent}
-			end;
-		_ -> {error, enoent}
-	end.
-
+	
 
 -spec find_by_codigo_pessoa(non_neg_integer()) -> {ok, list(#user{})} | {error, enoent}.
 find_by_codigo_pessoa(Codigo) ->
@@ -112,6 +85,62 @@ find_by_codigo_pessoa(Table, Codigo) ->
 	end.
 
 
+-spec find_by_login_and_password(binary() | list(), binary() | list()) -> {ok, #user{}} | {error, enoent}.	
+find_by_login_and_password(_, <<>>) -> {error, enoent};
+find_by_login_and_password(<<>>, _) -> {error, enoent};
+find_by_login_and_password(Login, Password)  ->
+	LoginStr = case is_list(Login) of
+					true -> string:to_lower(Login);
+					false -> string:to_lower(binary_to_list(Login))
+			   end,
+	LoginBin = list_to_binary(LoginStr),
+	PasswordBin = case is_list(Password) of
+						true -> list_to_binary(Password);
+						_ -> Password
+				  end,
+	PassowrdBinCrypto = ems_util:criptografia_sha1(Password),
+	IndexFind = fun(Table) ->
+		case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
+			[User = #user{password = PasswordUser}|_] -> 
+				case PasswordUser =:= PassowrdBinCrypto orelse PasswordUser =:= PasswordBin of
+					true -> {ok, User};
+					false -> {error, enoent}
+				end;
+			_ -> {error, enoent}
+		end
+	end,
+	case IndexFind(user_cache_lru) of
+		{error, enoent} -> 
+			case IndexFind(user_db) of
+				{error, enoent} -> 
+					case IndexFind(user_aluno_ativo_db) of
+						{error, enoent} -> 
+							case IndexFind(user_aluno_inativo_db) of
+								{error, enoent} -> 
+									case IndexFind(user_fs) of
+										{error, enoent} -> {error, enoent};
+										{ok, Record} ->
+											mnesia:dirty_write(user_cache_lru, Record),
+											{ok, Record}
+									end;
+								{ok, Record} -> 
+									mnesia:dirty_write(user_cache_lru, Record),
+									{ok, Record}
+							end;
+						{ok, Record} -> 
+							mnesia:dirty_write(user_cache_lru, Record),
+							{ok, Record}
+					end;
+				{ok, Record} -> 
+					mnesia:dirty_write(user_cache_lru, Record),
+					{ok, Record}
+			end;
+		{ok, Record} -> 
+			{ok, Record}
+	end.
+	
+
+
 -spec find_by_login(binary() | string()) -> #user{} | {error, enoent}.
 find_by_login(<<>>) -> {error, enoent};	
 find_by_login("") -> {error, enoent};	
@@ -122,25 +151,46 @@ find_by_login(Login) ->
 		false -> LoginStr = string:to_lower(binary_to_list(Login))
 	end,
 	LoginBin = list_to_binary(LoginStr),
-	case mnesia:dirty_index_read(user_db, LoginBin, #user.login) of
+	case mnesia:dirty_index_read(user_cache_lru, LoginBin, #user.login) of
 		[] -> 
-			case mnesia:dirty_index_read(user_aluno_ativo_db, LoginBin, #user.login) of
+			case mnesia:dirty_index_read(user_db, LoginBin, #user.login) of
 				[] -> 
-					case mnesia:dirty_index_read(user_aluno_inativo_db, LoginBin, #user.login) of
+					case mnesia:dirty_index_read(user_aluno_ativo_db, LoginBin, #user.login) of
 						[] -> 
-							case mnesia:dirty_index_read(user_fs, LoginBin, #user.login) of
+							case mnesia:dirty_index_read(user_aluno_inativo_db, LoginBin, #user.login) of
 								[] -> 
-									case find_by_email(LoginBin) of
-										{ok, Record} -> {ok, Record};
-										_ -> find_by_cpf(Login)
+									case mnesia:dirty_index_read(user_fs, LoginBin, #user.login) of
+										[] -> 
+											case find_by_email(LoginBin) of
+												{ok, Record} -> 
+													mnesia:dirty_write(user_cache_lru, Record),
+													{ok, Record};
+												_ -> 
+													case find_by_cpf(Login) of
+														{ok, Record} -> 
+															mnesia:dirty_write(user_cache_lru, Record),
+															{ok, Record};
+														_ -> {error, enoent}
+													end
+											end;
+										[Record|_] ->
+											mnesia:dirty_write(user_cache_lru, Record),
+											{ok, Record}
 									end;
-								[Record|_] -> {ok, Record}
+								[Record|_] ->
+									mnesia:dirty_write(user_cache_lru, Record),
+									{ok, Record}
 							end;
-						[Record|_] -> {ok, Record}
+						[Record|_] -> 
+							mnesia:dirty_write(user_cache_lru, Record),
+							{ok, Record}
 					end;
-				[Record|_] -> {ok, Record}
+				[Record|_] -> 
+					mnesia:dirty_write(user_cache_lru, Record),
+					{ok, Record}
 			end;
-		[Record|_] -> {ok, Record}
+		[Record|_] -> 
+			{ok, Record}
 	end.
 
 
@@ -154,40 +204,52 @@ find_by_login_with_metric(Login) ->
 		false -> LoginStr = string:to_lower(binary_to_list(Login))
 	end,
 	LoginBin = list_to_binary(LoginStr),
-	case mnesia:dirty_index_read(user_db, LoginBin, #user.login) of
+	case mnesia:dirty_index_read(user_cache_lru, LoginBin, #user.login) of
 		[] -> 
-			case mnesia:dirty_index_read(user_aluno_ativo_db, LoginBin, #user.login) of
+			case mnesia:dirty_index_read(user_db, LoginBin, #user.login) of
 				[] -> 
-					case mnesia:dirty_index_read(user_aluno_inativo_db, LoginBin, #user.login) of
+					case mnesia:dirty_index_read(user_aluno_ativo_db, LoginBin, #user.login) of
 						[] -> 
-							case mnesia:dirty_index_read(user_fs, LoginBin, #user.login) of
+							case mnesia:dirty_index_read(user_aluno_inativo_db, LoginBin, #user.login) of
 								[] -> 
-									case find_by_email(LoginBin) of
-										{ok, Record} -> 
-											ems_db:inc_counter(ems_user_authenticate_login_with_email),
-											{ok, Record};
-										_ -> 
-											case find_by_cpf(Login) of
+									case mnesia:dirty_index_read(user_fs, LoginBin, #user.login) of
+										[] -> 
+											case find_by_email(LoginBin) of
 												{ok, Record} -> 
-													ems_db:inc_counter(ems_user_authenticate_login_with_cpf),
+													ems_db:inc_counter(ems_user_authenticate_login_with_email),
+													mnesia:dirty_write(user_cache_lru, Record),
 													{ok, Record};
-												_ -> {error, enoent}
-											end
+												_ -> 
+													case find_by_cpf(Login) of
+														{ok, Record} -> 
+															ems_db:inc_counter(ems_user_authenticate_login_with_cpf),
+															mnesia:dirty_write(user_cache_lru, Record),
+															{ok, Record};
+														_ -> {error, enoent}
+													end
+											end;
+										[Record|_] -> 
+											ems_db:inc_counter(ems_user_authenticate_login_user_fs),
+											mnesia:dirty_write(user_cache_lru, Record),
+											{ok, Record}
 									end;
 								[Record|_] -> 
-									ems_db:inc_counter(ems_user_authenticate_login_user_fs),
+									ems_db:inc_counter(ems_user_authenticate_login_user_aluno_inativo_db),
+									mnesia:dirty_write(user_cache_lru, Record),
 									{ok, Record}
 							end;
 						[Record|_] -> 
-							ems_db:inc_counter(ems_user_authenticate_login_user_aluno_inativo_db),
+							ems_db:inc_counter(ems_user_authenticate_login_user_aluno_db),
+							mnesia:dirty_write(user_cache_lru, Record),
 							{ok, Record}
 					end;
 				[Record|_] -> 
-					ems_db:inc_counter(ems_user_authenticate_login_user_aluno_db),
+					ems_db:inc_counter(ems_user_authenticate_login_user_db),
+					mnesia:dirty_write(user_cache_lru, Record),
 					{ok, Record}
 			end;
 		[Record|_] -> 
-			ems_db:inc_counter(ems_user_authenticate_login_user_db),
+			ems_db:inc_counter(ems_user_authenticate_login_user_cache_lru),
 			{ok, Record}
 	end.
 

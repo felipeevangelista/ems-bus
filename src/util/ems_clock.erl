@@ -10,7 +10,7 @@
 
 -behaviour(gen_server).
 
--include("../include/ems_config.hrl").
+-include("include/ems_config.hrl").
 
 
 %% Server API

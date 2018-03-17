@@ -9,6 +9,14 @@
 # How to use: sudo ./ldap_client.sh 1 localhost geral 123456 --sendemail --auto_restart
 #
 
+# Test if ldap-utils package is intalled
+ldapsearch --version 2>> /dev/null 2>$1
+if "$1" = "1" ; then
+	echo "Error: Requires ldap-utils package to execute this command."
+	exit
+fi
+
+
 # locale
 LANG=en_US.UTF-8
 
