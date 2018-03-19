@@ -94,17 +94,23 @@ find_by_login_and_password(Login, Password)  ->
 					false -> string:to_lower(binary_to_list(Login))
 			   end,
 	LoginBin = list_to_binary(LoginStr),
-	PasswordBin = case is_list(Password) of
-						true -> list_to_binary(Password);
-						_ -> Password
-				  end,
-	PassowrdBinCrypto = ems_util:criptografia_sha1(Password),
+	PasswordStr = case is_list(Password) of
+					true -> Password;
+					false -> binary_to_list(Password)
+			   end,
+	PasswordStrLower = string:to_lower(PasswordStr),
+	PasswordBin = list_to_binary(PasswordStr),
+	PassowrdBinCrypto = ems_util:criptografia_sha1(PasswordStr),
+	PassowrdBinLowerCrypto = ems_util:criptografia_sha1(PasswordStrLower),
 	IndexFind = fun(Table) ->
 		case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
 			[User = #user{password = PasswordUser}|_] -> 
-				case PasswordUser =:= PassowrdBinCrypto orelse PasswordUser =:= PasswordBin of
-					true -> {ok, User};
-					false -> {error, enoent}
+				case PasswordUser =:= PassowrdBinCrypto 
+					 orelse PasswordUser =:= PasswordBin 
+					 orelse PasswordUser =:= PassowrdBinLowerCrypto 
+					 orelse PasswordUser =:= PasswordStrLower of
+						true -> {ok, User};
+						false -> {error, enoent}
 				end;
 			_ -> {error, enoent}
 		end
@@ -496,7 +502,7 @@ new_from_map(Map, Conf) ->
 					cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
 					password = case PasswdCrypto of
 									<<"SHA1">> -> ?UTF8_STRING(Password);
-									_ -> ems_util:criptografia_sha1(?UTF8_STRING(Password))
+									_ -> ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
 							   end,
 					passwd_crypto = <<"SHA1">>,
 					endereco = ?UTF8_STRING(maps:get(<<"endereco">>, Map, <<>>)),

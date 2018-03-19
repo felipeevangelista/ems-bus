@@ -62,8 +62,6 @@ memory(Request) ->
 																												K =/= atom_used andalso 
 																												K =/= code andalso 
 																												K =/= binary],
-	io:format("execute service!!!\n"),
-	ems_util:sleep(10),
 	{ok, Request#request{code = 200, 
 						 response_data = ems_schema:to_json(ContentData)}
 	}.
