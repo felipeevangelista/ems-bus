@@ -38,6 +38,48 @@
 		"authorization": "basic",
 		"lang" : "erlang"
 	},
+	
+	{
+		"name": "/netadm/avgcpu",
+		"comment": "Get average cpu usage.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:avgcpu",
+		"url": "/netadm/avgcpu",
+		"async": "false",
+		"result_cache" : 0,
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+
+	{
+		"name": "/netadm/cpus",
+		"comment": "Get cpus usage.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:cpus",
+		"url": "/netadm/cpus",
+		"async": "false",
+		"result_cache" : 0,
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+	
+	{
+		"name": "/netadm/cpudetailed",
+		"comment": "Get cpus usage.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:cpudetailed",
+		"url": "/netadm/cpudetailed",
+		"async": "false",
+		"result_cache" : 0,
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
 
 	{
 		"name": "/netadm/tasks",
