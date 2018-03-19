@@ -12,7 +12,8 @@
 -include("include/ems_schema.hrl").
 
 -export([names/1, world/1, hostfile/1, hostname/1, localhost/1, memory/1, timestamp/1, 
-		 threads/1, info/1, config/1, restart/1, pid/1, uptime/1, tasks/1, avgcpu/1, cpus/1, cpudetailed/1]).
+		 threads/1, info/1, config/1, restart/1, pid/1, uptime/1, tasks/1, 
+	 	 avgcpu/1, cpus/1, cpudetailed/1, version/1, servername/1]).	
   
 names(Request) -> 
 	ContentData = case net_adm:names() of
@@ -55,14 +56,8 @@ hostname(Request) ->
 						 response_data = ems_schema:to_json(ContentData)}
 	}.
 	
-memory(Request) -> 
-	ContentData = [{erlang:atom_to_binary(K, utf8), erlang:trunc(V / 1024 / 1024)} || {K,V} <- erlang:memory(), K =/= system andalso 
-																												K =/= atom andalso 
-																												K =/= atom_used andalso 
-																												K =/= code andalso 
-																												K =/= binary],
-	io:format("execute service!!!\n"),
-	ems_util:sleep(10),
+memory(Request) ->
+	ContentData = [{erlang:atom_to_binary(K, utf8), case V=<1048576 of true -> integer_to_list(erlang:trunc(V / 1024)) ++ " kB"; false -> integer_to_list(erlang:trunc(V / 1024 / 1024)) ++ " MB" end} || {K,V} <- erlang:memory()],
 	{ok, Request#request{code = 200, 
 						 response_data = ems_schema:to_json(ContentData)}
 	}.
