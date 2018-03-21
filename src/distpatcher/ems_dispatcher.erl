@@ -25,7 +25,7 @@ start() ->
 check_result_cache(ReqHash, Worker, Timestamp2) ->
 	case ets:lookup(ets_result_cache_get, ReqHash) of
 		[] -> false; 
-		[{_, {Timestamp, _, ResultCache, _, _}}] when Timestamp2 - Timestamp > ResultCache ->	false;
+		[{_, {Timestamp, _, ResultCache, _, _}}] when Timestamp2 - Timestamp > ResultCache -> false;
 		[{_, {Timestamp, Request, _, req_done, _}}] ->
 			[{post_time, PostTime}] = ets:lookup(ems_dispatcher_post_time, post_time),
 			case PostTime < Timestamp of
@@ -40,17 +40,18 @@ check_result_cache(ReqHash, Worker, Timestamp2) ->
 						{ReqHash, Result} -> 
 							Result;
 						_ -> 
-							check_result_cache2(ReqHash, Worker, Timestamp2)
+							false
 					end
-				after 100 -> 
-					check_result_cache2(ReqHash, Worker, Timestamp2)
+				after 300 -> 
+					check_result_cache2(ReqHash, Worker, Timestamp2, 6)
 			end
 	end.
 
-check_result_cache2(ReqHash, Worker, Timestamp2) ->
+check_result_cache2(_, _, _, 0) -> false;
+check_result_cache2(ReqHash, Worker, Timestamp2, Count) ->
 	case ets:lookup(ets_result_cache_get, ReqHash) of
 		[] -> false; 
-		[{_, {Timestamp, _, ResultCache, _, _}}] when Timestamp2 - Timestamp > ResultCache ->	false;
+		[{_, {Timestamp, _, ResultCache, _, _}}] when Timestamp2 - Timestamp > ResultCache -> false;
 		[{_, {_, Request, _, req_done, _}}] ->
 			{true, Request};
 		_ ->
@@ -60,10 +61,10 @@ check_result_cache2(ReqHash, Worker, Timestamp2) ->
 						{ReqHash, Result} -> 
 							Result;
 						_ -> 
-							check_result_cache2(ReqHash, Worker, Timestamp2)
+							false
 					end
 				after 100 -> 
-					check_result_cache2(ReqHash, Worker, Timestamp2)
+					check_result_cache2(ReqHash, Worker, Timestamp2, Count - 1)
 			end
 	end.
 	

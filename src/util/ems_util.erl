@@ -1847,7 +1847,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 						QuerystringMap2 = QuerystringMap,
 						CowboyReq2 = CowboyReq
 				end,
-				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, Payload]),
+				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, ServiceAuthorization, IpBin, UserAgent, Payload]),
 				Request2 = Request#request{
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
