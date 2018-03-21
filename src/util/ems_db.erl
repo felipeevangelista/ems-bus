@@ -40,7 +40,7 @@ start() ->
 -spec create_database(list()) -> ok.	
 create_database(Nodes) ->
 	% Define a pasta de armazenamento dos databases
-	filelib:ensure_dir(?DATABASE_PATH ++ "/"),
+	filelib:ensure_dir(?DATABASE_PATH),
 	application:set_env(mnesia, dir, ?DATABASE_PATH),
 	mnesia:create_schema(Nodes),
 	mnesia:start(),
@@ -48,6 +48,33 @@ create_database(Nodes) ->
     mnesia:create_table(service_datasource, [{type, set},
 											 {ram_copies, Nodes},
 											 {attributes, record_info(fields, service_datasource)}]),
+
+    mnesia:create_table(counter, [{type, set},
+								  {ram_copies, Nodes},
+								  {attributes, record_info(fields, sequence)}]),
+
+    mnesia:create_table(stat_counter_hist, [{type, set},
+								    {disc_copies, Nodes},
+								    {attributes, record_info(fields, stat_counter_hist)},
+								    {record_name, stat_counter_hist}]),
+
+    mnesia:create_table(sequence, [{type, set},
+								   {disc_copies, Nodes},
+								   {attributes, record_info(fields, sequence)}]),
+
+    mnesia:create_table(ctrl_sqlite_table, [{type, set},
+											{disc_copies, Nodes},
+											{attributes, record_info(fields, ctrl_sqlite_table)}]),
+
+    mnesia:create_table(ctrl_params, [{type, set},
+									  {disc_copies, Nodes},
+									  {attributes, record_info(fields, ctrl_params)}]),
+
+    mnesia:create_table(user_cache_lru, [{type, set},
+										  {disc_copies, Nodes},
+										  {index, [#user.login]},
+										  {attributes, record_info(fields, user)},
+										  {record_name, user}]),
 
     mnesia:create_table(user_fs, [{type, set},
 								 {ram_copies, Nodes},
@@ -72,12 +99,6 @@ create_database(Nodes) ->
 								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
-
-    mnesia:create_table(user_cache_lru, [{type, set},
-										  {ram_copies, Nodes},
-										  {index, [#user.login]},
-										  {attributes, record_info(fields, user)},
-										  {record_name, user}]),
 
     mnesia:create_table(user_dados_funcionais_fs, [{type, set},
 								  {ram_copies, Nodes},
@@ -153,19 +174,6 @@ create_database(Nodes) ->
 									{attributes, record_info(fields, client)},
 									{record_name, client}]),
 
-    mnesia:create_table(sequence, [{type, set},
-								   {disc_copies, Nodes},
-								   {attributes, record_info(fields, sequence)}]),
-
-    mnesia:create_table(request, [{type, set},
-								  {ram_copies, Nodes},
-								  {attributes, record_info(fields, request)},
-								  {index, [#request.timestamp]}]),
-
-    mnesia:create_table(ctrl_sqlite_table, [{type, set},
-											{disc_copies, Nodes},
-											{attributes, record_info(fields, ctrl_sqlite_table)}]),
-
     mnesia:create_table(catalog_schema, [{type, set},
 										 {disc_copies, Nodes},
 										 {attributes, record_info(fields, catalog_schema)}]),
@@ -177,11 +185,6 @@ create_database(Nodes) ->
     mnesia:create_table(service_owner, [{type, set},
 	 							  {disc_copies, Nodes},
 								  {attributes, record_info(fields, service_owner)}]),
-
-    mnesia:create_table(ctrl_params, [{type, set},
-									  {disc_copies, Nodes},
-									  {attributes, record_info(fields, ctrl_params)}]),
-									  
 
     mnesia:create_table(catalog_get_fs, [{type, set},
 									  {ram_copies, Nodes},
@@ -267,16 +270,6 @@ create_database(Nodes) ->
 										  {attributes, record_info(fields, service)},
 										  {record_name, service}]),
 
-    mnesia:create_table(counter, [{type, set},
-								  {ram_copies, Nodes},
-								  {attributes, record_info(fields, sequence)}]),
-
-    mnesia:create_table(stat_counter_hist, [{type, set},
-								    {disc_copies, Nodes},
-								    {attributes, record_info(fields, stat_counter_hist)},
-								    {record_name, stat_counter_hist}]),
-
-
     mnesia:create_table(auth_oauth2_access_token_table, [{type, set},
 														{disc_copies, Nodes},
 														{attributes, record_info(fields, auth_oauth2_access_token)},
@@ -292,14 +285,53 @@ create_database(Nodes) ->
 														{attributes, record_info(fields, auth_oauth2_refresh_token)},
 														{record_name, auth_oauth2_refresh_token}]),
 
-
-	mnesia:wait_for_tables([service_datasource, user_fs, user_dados_funcionais_fs, 
-							client_fs, sequence, user_email_fs, counter, ctrl_params, 
-							user_permission_fs, user_endereco_fs, catalog_options_fs,
-							catalog_get_fs, catalog_post_fs, catalog_put_fs, catalog_delete_fs,
-							catalog_re_fs, catalog_kernel_fs, user_db, client_db,
-							auth_oauth2_access_token_table, auth_oauth2_access_code_table, auth_oauth2_refresh_token_table], 15000),
-	
+	mnesia:wait_for_tables([service_datasource,
+							sequence,
+							counter,
+							ctrl_params,
+							user_fs, 
+							user_db,
+							user_aluno_ativo_db,
+							user_aluno_inativo_db,
+							user_cache_lru,
+							user_dados_funcionais_fs,
+							user_dados_funcionais_db,
+							user_email_fs,
+							user_email_db,
+							user_endereco_fs,
+							user_endereco_db,
+							user_telefone_fs,
+							user_telefone_db,
+							user_perfil_fs,
+							user_perfil_db,
+							user_permission_fs,
+							user_permission_db,
+							client_db,
+							client_fs,
+							ctrl_sqlite_table,
+							catalog_schema,
+							produto,
+							service_owner,
+							catalog_get_fs,
+							catalog_post_fs,
+							catalog_put_fs,
+							catalog_delete_fs,
+							catalog_options_fs,
+							catalog_kernel_fs,
+							catalog_re_fs,
+							catalog_get_db,
+							catalog_post_db,
+							catalog_put_db,
+							catalog_delete_db,
+							catalog_options_db,
+							catalog_kernel_db,
+							catalog_re_db,
+							stat_counter_hist,
+							auth_oauth2_access_token_table,
+							auth_oauth2_access_code_table,
+							auth_oauth2_refresh_token_table
+							], 120000),
+	ems_util:sleep(2000),
 	ok.
 
 

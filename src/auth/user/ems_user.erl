@@ -93,26 +93,47 @@ find_by_login_and_password(Login, Password)  ->
 					true -> string:to_lower(Login);
 					false -> string:to_lower(binary_to_list(Login))
 			   end,
+	LoginStrSemBarra = re:replace(LoginStr, "/", "", [{return, list}]),
 	LoginBin = list_to_binary(LoginStr),
+	LoginSemBarraBin = list_to_binary(LoginStrSemBarra),
 	PasswordStr = case is_list(Password) of
 					true -> Password;
 					false -> binary_to_list(Password)
 			   end,
 	PasswordStrLower = string:to_lower(PasswordStr),
+	PasswordStrUpper = string:to_upper(PasswordStr),
 	PasswordBin = list_to_binary(PasswordStr),
 	PassowrdBinCrypto = ems_util:criptografia_sha1(PasswordStr),
 	PassowrdBinLowerCrypto = ems_util:criptografia_sha1(PasswordStrLower),
+	PassowrdBinUpperCrypto = ems_util:criptografia_sha1(PasswordStrUpper),
 	IndexFind = fun(Table) ->
 		case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
 			[User = #user{password = PasswordUser}|_] -> 
 				case PasswordUser =:= PassowrdBinCrypto 
 					 orelse PasswordUser =:= PasswordBin 
 					 orelse PasswordUser =:= PassowrdBinLowerCrypto 
-					 orelse PasswordUser =:= PasswordStrLower of
+					 orelse PasswordUser =:= PasswordStrLower 
+					 orelse PasswordUser =:= PassowrdBinUpperCrypto 
+					 orelse PasswordUser =:= PasswordStrUpper of
 						true -> {ok, User};
-						false -> {error, enoent}
+						false -> 
+							{error, enoent}
 				end;
-			_ -> {error, enoent}
+			_ -> 
+				case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
+					[User = #user{password = PasswordUser}|_] -> 
+						case PasswordUser =:= PassowrdBinCrypto 
+							 orelse PasswordUser =:= PasswordBin 
+							 orelse PasswordUser =:= PassowrdBinLowerCrypto 
+							 orelse PasswordUser =:= PasswordStrLower 
+							 orelse PasswordUser =:= PassowrdBinUpperCrypto 
+							 orelse PasswordUser =:= PasswordStrUpper of
+								true -> {ok, User};
+								false -> 
+									{error, enoent}
+						end;
+					_ -> {error, enoent}
+				end
 		end
 	end,
 	case IndexFind(user_cache_lru) of

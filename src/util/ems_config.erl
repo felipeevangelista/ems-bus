@@ -10,8 +10,8 @@
 
 -behavior(gen_server). 
 
--include("../../include/ems_config.hrl").
--include("../../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 %% Server API
 -export([start/0, stop/0]).
@@ -167,9 +167,9 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 			CatFilenameZip = CatFilenameDir ++ ".zip",
 			case file:read_file_info(CatFilenameZip, [{time, universal}]) of
 				{ok, _} -> 
-					CatTempDir = ?TEMP_PATH ++ "/unzip_catalogs/" ++ CatNameStr ++ "/",
+					CatTempDir = filename:join([?TEMP_PATH, "unzip_catalogs", CatNameStr]),
 					zip:unzip(CatFilenameZip, [{cwd, CatTempDir}]),
-					CatFilename3 = CatTempDir ++ filename:basename(CatFilenameDir) ++ "/" ++ filename:basename(CatFilename2),
+					CatFilename3 = filename:join([CatTempDir, filename:basename(CatFilenameDir), filename:basename(CatFilename2)]),
 					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilenameZip]),
 					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
 				_ ->
@@ -186,14 +186,11 @@ parse_cat_path_search(Json) ->
 	CatPathSearch2 ++ [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}].
 
 
-
-		
-
 -spec parse_static_file_path(map()) -> list().
 parse_static_file_path(Json) ->
 	StaticFilePath = maps:get(<<"static_file_path">>, Json, #{}),
 	StaticFilePathList = maps:to_list(StaticFilePath),
-	StaticFilePathList2 = [{<<"login_path">>, list_to_binary(?STATIC_FILE_PATH ++ "/login")} | StaticFilePathList],
+	StaticFilePathList2 = [{<<"login_path">>, list_to_binary(filename:join(?STATIC_FILE_PATH, "login"))} | StaticFilePathList],
 	StaticFilePathList3 = [{<<"www_path">>, list_to_binary(?STATIC_FILE_PATH)} | StaticFilePathList2],
 	[{K, ems_util:remove_ult_backslash_url(binary_to_list(V))} || {K, V} <- StaticFilePathList3].
 	
@@ -373,7 +370,7 @@ select_config_file(ConfigFile, ConfigFileDefault) ->
 				  	 false -> ConfigFileDefault
 				  end,
 	HomePath = ems_util:get_home_dir(),
-	Filename = lists:concat([HomePath, "/.erlangms/", ConfigFile2]),
+	Filename = filename:join([HomePath, ".erlangms", ConfigFile2]),
 	case file:read_file(Filename) of 
 		{ok, _Arq} -> 
 			?DEBUG("ems_config checking if node file configuration ~p exist: Ok", [Filename]),

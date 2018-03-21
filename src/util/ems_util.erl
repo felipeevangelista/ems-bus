@@ -2576,7 +2576,7 @@ compile_modulo_erlang(Path, ModuleNameCanonical) when is_binary(ModuleNameCanoni
 compile_modulo_erlang(Path, ModuleNameCanonical) ->
 	case filelib:is_dir(Path) of
 		true ->
-			Filename = Path ++ "/" ++ ModuleNameCanonical ++ ".erl",
+			Filename = filename:join(Path, ModuleNameCanonical) ++ ".erl",
 			case filelib:is_regular(Filename) of
 				true ->
 					ems_logger:info("Compile file ~p ", [Filename]),
@@ -2614,9 +2614,9 @@ print_str_map(Map, [Key|TKey], [Value|TValue], Sep, Result) ->
 
 
 -spec binlist_to_atomlist(list(binary()) | binary()) -> list(atom()) | atom().
-binlist_to_atomlist([])  -> undefined;
-binlist_to_atomlist(undefined)  -> undefined;
-binlist_to_atomlist(<<>>)  -> undefined;
+binlist_to_atomlist([])  -> [];
+binlist_to_atomlist(undefined)  -> [];
+binlist_to_atomlist(<<>>)  -> [];
 binlist_to_atomlist(Value) when is_list(Value) ->
 	binlist_to_atomlist_(Value, []);
 binlist_to_atomlist(Value)  ->

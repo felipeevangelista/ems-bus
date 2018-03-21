@@ -13,7 +13,7 @@
 
 -export([names/1, world/1, hostfile/1, hostname/1, localhost/1, memory/1, timestamp/1, 
 		 threads/1, info/1, config/1, restart/1, pid/1, uptime/1, tasks/1,
-		 version/1, servername/1, stat_counter/1, stat_collect/1]).
+		 version/1, servername/1, stat_counter/1, stat_collect/1, stat_dataloader/1]).
   
 names(Request) -> 
 	ContentData = case net_adm:names() of
@@ -142,6 +142,12 @@ stat_collect(Request = #request{payload_map = PayloadMap}) ->
 	ems_stat_collector:collect(Label),
 	{ok, Request#request{code = 200, 
 						 response_data = ?OK_JSON}
+	}.
+
+stat_dataloader(Request) -> 
+	ContentData = ems_schema:to_json(ets:tab2list(ets_dataloader_working_ctl)),
+	{ok, Request#request{code = 200, 
+						 response_data = ContentData}
 	}.
 
 

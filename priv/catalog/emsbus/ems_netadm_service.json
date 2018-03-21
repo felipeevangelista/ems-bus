@@ -286,6 +286,19 @@
 	},
 	
 	{
+		"name": "/netadm/loader/stat",
+		"comment": "Get ets_dataloader_working_ctl table",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_netadm_service:stat_dataloader",
+		"url": "/netadm/loader/stat",
+		"type": "GET",
+		"result_cache" : 0,
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+
+	{
 		"name": "/netadm/loader/client/sync",
 		"comment": "Sync data loader table",
 		"owner": "netadm",

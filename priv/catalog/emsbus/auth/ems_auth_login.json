@@ -26,8 +26,8 @@
 		"path" : "{{ login_path }}",
 		"type": "GET",
 		"authorization" : "public",
-		"cache_control" : "max-age=86400, private",
-		"expires_minute" : 1440,
+		"cache_control" : "max-age=31536000, private, no-cache, no-store, must-revalidate",
+		"expires_minute" : 0,
 		"lang" : "erlang"
 	}
 ]
