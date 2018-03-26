@@ -169,9 +169,9 @@ Login.LoginSistemas = (function() {
 		e.preventDefault();
 		var urlBase = '';
 		var protocol = window.location.protocol;
-		var baseUrl = protocol + '//' + window.location.hostname +':' + window.location.port; 
+		var baseUrl = protocol + '//' + window.location.hostname + ':' + window.location.port; 
 		var querystring = getQuerystring();
-		var url = baseUrl + '/code_request?'+
+		var url = baseUrl + '/dados/code_request?'+
 				 'client_id=' + querystring['client_id']+
 				 '&state=' + querystring['state']+
 				 '&redirect_uri=' + querystring['redirect_uri'];
