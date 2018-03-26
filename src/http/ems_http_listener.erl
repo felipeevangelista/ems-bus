@@ -68,6 +68,9 @@ init({IpAddress,
 	  ]),
 	ProtocolStr = binary_to_list(Protocol),
 	IpAddressStr = inet_parse:ntoa(IpAddress),
+	%io:format("aqui1  ~p\n", [binary_to_list(SslCaCertFile)]),
+	%io:format("aqui2  ~p\n", [binary_to_list(SslCertFile)]),
+	%io:format("aqui3  ~p\n", [binary_to_list(SslKeyFile)]),
 	case IsSsl of
 		true -> 
 			Ret = cowboy:start_tls(ListenerName, [  {ip, IpAddress},
@@ -75,7 +78,10 @@ init({IpAddress,
 													{max_connections, MaxConnections},
 													{cacertfile, binary_to_list(SslCaCertFile)},
 													{certfile, binary_to_list(SslCertFile)},
-													{keyfile, binary_to_list(SslKeyFile)}
+													{keyfile, binary_to_list(SslKeyFile)},
+													{depth, 4},
+													{fail_if_no_peer_cert, false}
+													
 												  ], #{compress => true, 
 													   env => #{dispatch => Dispatch}});
 		false ->

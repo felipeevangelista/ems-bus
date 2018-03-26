@@ -1566,21 +1566,30 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			"/erl.ms/" ++ UrlEncoded -> 
 				UrlMasked = true,
 				Url1 = binary_to_list(base64:decode(UrlEncoded)),
-				case string:find(Url1, "?") of
+				case Url1 of
+					"/dados" ++ UrlRest -> UrlSemPrefix = UrlRest;
+					_ -> UrlSemPrefix = Url1
+				end,
+				case string:find(UrlSemPrefix, "?") of
 					nomatch -> 
-						Url2 = remove_ult_backslash_url(Url1),
+						Url2 = remove_ult_backslash_url(UrlSemPrefix),
 						QuerystringBin = <<>>,
 						QuerystringMap0 = #{};
 					"?" ++ Querystring -> 
-						PosInterrogacao = string:chr(Url1, $?),
-						Url2 = remove_ult_backslash_url(string:slice(Url1, 0, PosInterrogacao-1)),
+						PosInterrogacao = string:chr(UrlSemPrefix, $?),
+						Url2 = remove_ult_backslash_url(string:slice(UrlSemPrefix, 0, PosInterrogacao-1)),
 						QuerystringBin = list_to_binary(Querystring),
 						QuerystringMap0 = parse_querystring([Querystring])
 				end;
 			_ -> 
 				UrlMasked = false,
+				case Url of
+					"/dados" ++ UrlRest -> UrlSemPrefix = UrlRest;
+					_ -> UrlSemPrefix = Url
+				end,
 				QuerystringBin = cowboy_req:qs(CowboyReq),
-				Url2 = remove_ult_backslash_url(Url),
+				Url2 = remove_ult_backslash_url(UrlSemPrefix),
+				io:format("url2 is ~p\n", [Url2]),
 				case QuerystringBin of
 					<<>> -> QuerystringMap0 = #{};
 					_ -> QuerystringMap0 = parse_querystring([binary_to_list(QuerystringBin)])
