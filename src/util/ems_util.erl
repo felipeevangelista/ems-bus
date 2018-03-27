@@ -1589,7 +1589,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 				end,
 				QuerystringBin = cowboy_req:qs(CowboyReq),
 				Url2 = remove_ult_backslash_url(UrlSemPrefix),
-				io:format("url2 is ~p\n", [Url2]),
 				case QuerystringBin of
 					<<>> -> QuerystringMap0 = #{};
 					_ -> QuerystringMap0 = parse_querystring([binary_to_list(QuerystringBin)])
@@ -1725,7 +1724,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 								erlang:error(ehttp_max_content_length_error);
 							false -> ok
 						end,
-						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 180000},
+						ReadBodyOpts = #{length => HttpMaxContentLengthService + 8000, period => 190000, timeout => 180000},
 						case ContentTypeIn of
 							<<"application/json">> ->
 								ems_db:inc_counter(http_content_type_in_application_json),

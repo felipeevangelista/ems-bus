@@ -39,7 +39,7 @@ stop() ->
  
 
 permission_to_execute(DataLoader, []) -> 
-	ems_logger:info("ems_data_loader_ctl ~s begin work now.", [DataLoader]),
+	?DEBUG("ems_data_loader_ctl ~s begin work now.", [DataLoader]),
 	ets:insert(ets_dataloader_working_ctl, {DataLoader, true}),
 	true;
 permission_to_execute(DataLoader, [DataLoaderGroup|T]) ->
@@ -50,7 +50,7 @@ permission_to_execute(DataLoader, [DataLoaderGroup|T]) ->
 	end.
  
 notify_finish_work(DataLoader) ->
-	ems_logger:info("ems_data_loader_ctl ~s finish work.", [DataLoader]),
+	?DEBUG("ems_data_loader_ctl ~s finish work.", [DataLoader]),
 	ets:insert(ets_dataloader_working_ctl, {DataLoader, false}).
  
  
