@@ -1153,11 +1153,12 @@ replacenth(ReplaceIndex,Value,[V|List],Acc,Index) ->
 ip_list()->
 	 case inet:getifaddrs() of
 		{ok, List} ->
-			CheckIfUpFunc = fun(P) ->
-				{flags, Flags} = lists:keyfind(flags, 1, P),
+			CheckIfUpFunc = fun(Params) ->
+				{flags, Flags} = lists:keyfind(flags, 1, Params),
 				lists:member(running, Flags) andalso lists:member(up, Flags)
 			end,
-			List2 = [ lists:keyfind(addr, 1, P) || {_, P} <- List, CheckIfUpFunc(P) ],
+			List2 = [ lists:keyfind(addr, 1, P) || {InterfaceName, P} <- List, CheckIfUpFunc(P) andalso 
+																			   lists:any(fun(Prefix) -> lists:prefix(Prefix, InterfaceName) end, ["enp", "lo", "eth", "wla"]) ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};
