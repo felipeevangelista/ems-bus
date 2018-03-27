@@ -1151,7 +1151,20 @@ replacenth(ReplaceIndex,Value,[V|List],Acc,Index) ->
 
 
 -spec ip_list() -> {ok, list(tuple())} | {error, atom()}.
-ip_list()->	ip_list(["lo", "enp", "eth", "wla"]).
+ip_list()->
+	 case inet:getifaddrs() of
+		{ok, List} ->
+			CheckIfUpFunc = fun(Params) ->
+				{flags, Flags} = lists:keyfind(flags, 1, Params),
+				lists:member(running, Flags) andalso lists:member(up, Flags)
+			end,
+			List2 = [ lists:keyfind(addr, 1, P) || {_InterfaceName, P} <- List, CheckIfUpFunc(P) ],
+			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
+			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
+			{ok, List4};
+		Error -> Error
+	end.
+
 
 -spec ip_list(list(string())) -> {ok, list(tuple())} | {error, atom()}.
 ip_list(TcpListenPrefixInterfaceNames)->

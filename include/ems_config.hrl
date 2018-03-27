@@ -199,7 +199,14 @@
 
 -define(TCP_PORT_MIN, 1024).
 -define(TCP_PORT_MAX, 99999).
--define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"lo">>, <<"enp">>, <<"eth">>, <<"wla">>]).
+
+
+-ifdef(win32_plataform).
+	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"//">>]).
+-else.
+	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"lo">>, <<"enp">>, <<"eth">>, <<"wla">>]).
+-endif.
+
 
 -define(SUFIXO_EMAIL_INSTITUCIONAL, "@unb.br").
 
