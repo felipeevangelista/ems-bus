@@ -331,6 +331,7 @@
 					redirect_url :: binary(),					%% redirect url						
 					tcp_listen_address,
 					tcp_listen_address_t,
+					tcp_listen_prefix_interface_names :: list(string()),
 					tcp_allowed_address,
 					tcp_allowed_address_t,
 					tcp_max_connections :: non_neg_integer(),

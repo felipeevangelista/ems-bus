@@ -82,6 +82,7 @@
 		 is_cpf_valid/1, 
 		 is_cnpj_valid/1, 
 		 ip_list/0,
+		 ip_list/1,
 		 is_url_valido/1,
  		 is_email_valido/1, 
  		 is_range_valido/3,
@@ -104,7 +105,7 @@
  		 parse_bool/1,
 		 parse_authorization_type/1,
 		 parse_bearer_authorization_header/1,
-		 parse_tcp_listen_address/1,
+		 parse_tcp_listen_address/2,
 		 parse_allowed_address_t/1,
 		 parse_allowed_address/1,
 		 parse_tcp_port/1,
@@ -1150,7 +1151,10 @@ replacenth(ReplaceIndex,Value,[V|List],Acc,Index) ->
 
 
 -spec ip_list() -> {ok, list(tuple())} | {error, atom()}.
-ip_list()->
+ip_list()->	ip_list(["lo", "enp", "eth", "wla"]).
+
+-spec ip_list(list(string())) -> {ok, list(tuple())} | {error, atom()}.
+ip_list(TcpListenPrefixInterfaceNames)->
 	 case inet:getifaddrs() of
 		{ok, List} ->
 			CheckIfUpFunc = fun(Params) ->
@@ -1158,7 +1162,7 @@ ip_list()->
 				lists:member(running, Flags) andalso lists:member(up, Flags)
 			end,
 			List2 = [ lists:keyfind(addr, 1, P) || {InterfaceName, P} <- List, CheckIfUpFunc(P) andalso 
-																			   lists:any(fun(Prefix) -> lists:prefix(Prefix, InterfaceName) end, ["enp", "lo", "eth", "wla"]) ],
+																			   lists:any(fun(Prefix) -> lists:prefix(Prefix, InterfaceName) end, TcpListenPrefixInterfaceNames) ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};
@@ -2259,42 +2263,42 @@ parse_querystring_def([H|T], Querystring, QtdRequired, RestDefaultQuerystring) -
 	
 
 	
--spec parse_tcp_listen_address(list(string()) | list(binary()) |  list(tuple()) | string() | binary() | undefined | null) -> list(tuple()). 
-parse_tcp_listen_address(undefined) -> [];
-parse_tcp_listen_address(null) -> [];
-parse_tcp_listen_address(<<>>) -> [];
-parse_tcp_listen_address("") -> [];
-parse_tcp_listen_address([{_,_,_,_}|_] = ListenAddress) -> ListenAddress;
-parse_tcp_listen_address([H|_] = ListenAddress) when is_binary(H) -> 
-	parse_tcp_listen_address_t(ListenAddress, []);
-parse_tcp_listen_address([H|_] = ListenAddress) when is_list(H) -> 
-	parse_tcp_listen_address_t(ListenAddress, []);
-parse_tcp_listen_address(ListenAddress) when is_binary(ListenAddress) ->
-	parse_tcp_listen_address(binary_to_list(ListenAddress));
-parse_tcp_listen_address(ListenAddress) ->
+-spec parse_tcp_listen_address(list(string()) | list(binary()) |  list(tuple()) | string() | binary() | undefined | null, list(string())) -> list(tuple()). 
+parse_tcp_listen_address(undefined, _) -> [];
+parse_tcp_listen_address(null, _) -> [];
+parse_tcp_listen_address(<<>>, _) -> [];
+parse_tcp_listen_address("", _) -> [];
+parse_tcp_listen_address([{_,_,_,_}|_] = ListenAddress, _) -> ListenAddress;
+parse_tcp_listen_address([H|_] = ListenAddress, TcpListenPrefixInterfaceNames) when is_binary(H) -> 
+	parse_tcp_listen_address_t(ListenAddress, TcpListenPrefixInterfaceNames, []);
+parse_tcp_listen_address([H|_] = ListenAddress, TcpListenPrefixInterfaceNames) when is_list(H) -> 
+	parse_tcp_listen_address_t(ListenAddress, TcpListenPrefixInterfaceNames, []);
+parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) when is_binary(ListenAddress) ->
+	parse_tcp_listen_address(binary_to_list(ListenAddress), TcpListenPrefixInterfaceNames);
+parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) ->
 	ListenAddress2 = string:trim(ListenAddress),
 	case ListenAddress2 =/= "" of
 		true ->	
 			ListenAddress3 = [string:trim(IP) || IP <- string:split(ListenAddress2, ",")],
-			parse_tcp_listen_address_t(ListenAddress3, []);
+			parse_tcp_listen_address_t(ListenAddress3, TcpListenPrefixInterfaceNames, []);
 		false -> []
 	end.
 
--spec parse_tcp_listen_address_t(list(string()) | list(binary()), list(tuple())) -> list(tuple()). 
-parse_tcp_listen_address_t([], Result) -> Result;
-parse_tcp_listen_address_t([H|T], Result) when is_binary(H) ->
-	parse_tcp_listen_address_t([binary_to_list(H) | T], Result);
-parse_tcp_listen_address_t([H|T], Result) ->
+-spec parse_tcp_listen_address_t(list(string()) | list(binary()), list(tuple()), list(string())) -> list(tuple()). 
+parse_tcp_listen_address_t([], _, Result) -> Result;
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
+	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
 	case inet:parse_address(H) of
 		{ok, {0, 0, 0, 0}} ->
-			case ip_list() of
+			case ip_list(TcpListenPrefixInterfaceNames) of
 				{ok, IpList} -> IpList;
 				_Error -> []
 			end;
 		{ok, L2} -> 
 			case lists:member(L2, Result) of
-				true -> parse_tcp_listen_address_t(T, Result);
-				false -> parse_tcp_listen_address_t(T, [L2|Result])
+				true -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result);
+				false -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, [L2|Result])
 			end;
 		{error, einval} -> erlang:error(einvalid_tcp_listen_address)
 	end.

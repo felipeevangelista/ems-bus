@@ -199,6 +199,7 @@
 
 -define(TCP_PORT_MIN, 1024).
 -define(TCP_PORT_MAX, 99999).
+-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"lo">>, <<"enp">>, <<"eth">>, <<"wla">>]).
 
 -define(SUFIXO_EMAIL_INSTITUCIONAL, "@unb.br").
 
@@ -228,6 +229,7 @@
 				 tcp_listen_address_t :: list(),
 				 tcp_listen_main_ip :: binary(),
 				 tcp_listen_main_ip_t :: tuple(),
+				 tcp_listen_prefix_interface_names :: list(string()),
 				 tcp_allowed_address :: list() | atom(),
 				 authorization :: binary(),
 				 oauth2_with_check_constraint :: boolean(),
