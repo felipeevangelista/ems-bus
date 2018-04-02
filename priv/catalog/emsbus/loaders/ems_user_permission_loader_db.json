@@ -5,14 +5,19 @@
 	"version": "1.0.0",
 	"service" : "ems_data_loader:start",
 	"url": "/emsbus/ems_user_permission_loader_db",
-	"async": true,
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 20000,
+	"update_checkpoint" : 45000,
 	"check_remove_records" : true,
-	"check_remove_records_checkpoint" : 30000,
+	"check_remove_records_checkpoint" : 65000,
+	"group" : ["ems_user_loader_db", "ems_user_perfil_loader_db", 
+			   "ems_user_permission_loader_db", "ems_user_email_loader_db", 
+			   "ems_user_telefone_loader_db", "ems_user_endereco_loader_db",
+			   "ems_user_dados_funcionais_loader_db", 
+			   "ems_user_aluno_ativo_loader_db", 
+			   "ems_user_aluno_inativo_loader_db"],
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 2000,
+	"start_timeout" : 5000,
 	"middleware" : "ems_user_permission_loader_middleware",
 	"pool_size" : 1,
 	"pool_max" : 1,
@@ -27,7 +32,8 @@
 					pt.PTrExcluir as GrantDelete,
 					t.TraNomeFrm as url,
 					t.TraNomeMenu as name,
-					up.APePerId as perfil_id 
+					up.APePerId as perfil_id,
+					t.TraOrdem as position  
 			from BDAcesso.dbo.TB_Usuario u join BDAcesso.dbo.TB_Acessos_Perfil up  
 							  on u.UsuId = up.APeUsuId 
 					join BDAcesso.dbo.TB_Perfil_Transacao pt 
@@ -48,7 +54,8 @@
 					pt.PTrExcluir as GrantDelete, 
 					t.TraNomeFrm as url, 
 					t.TraNomeMenu as name,
-					up.APePerId as perfil_id 
+					up.APePerId as perfil_id,
+					t.TraOrdem as position  
 			from BDAcesso.dbo.TB_Usuario u join BDAcesso.dbo.TB_Acessos_Perfil up  
 							  on u.UsuId = up.APeUsuId 
 					join BDAcesso.dbo.TB_Perfil_Transacao pt 
@@ -61,5 +68,5 @@
 				  pt.PTrDataAlteracao >= ? or pt.PTrDataCadastramento >= ? or 
 				  t.TraDataAlteracao >= ? or t.TraDataCadastramento >= ?
 			",
-	"fields" : ["id", "user_id", "client_id", "grant_get", "grant_post", "grant_put", "grant_delete", "url", "name", "perfil_id"]
+	"fields" : ["id", "user_id", "client_id", "grant_get", "grant_post", "grant_put", "grant_delete", "url", "name", "perfil_id", "position"]
 }

@@ -114,7 +114,7 @@ execute(Request = #request{type = Type,
 					ClientIdBin = integer_to_binary(ClientId),
 					ems_db:inc_counter(binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_client_">>, ClientIdBin]), utf8)),
 					LocationPath = iolist_to_binary([Protocol, <<"://"/utf8>>, Host, <<":"/utf8>>, integer_to_binary(Port), 
-													 <<"/login/index.html?response_type=code&client_id=">>, ClientIdBin, 
+													 <<"/dados/login/index.html?response_type=code&client_id=">>, ClientIdBin, 
 													 <<"&redirect_uri=">>, RedirectUri]),
 					{ok, Request#request{code = 302, 
 										 oauth2_grant_type = GrantType,
@@ -124,8 +124,7 @@ execute(Request = #request{type = Type,
 															}
 										}
 					};
-			X ->
-				io:format("X is ~p\n", [X]),
+			_ ->
 					{error, Request#request{code = 401, 
 											reason = access_denied,
 											oauth2_grant_type = GrantType,

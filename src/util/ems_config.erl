@@ -10,8 +10,8 @@
 
 -behavior(gen_server). 
 
--include("../../include/ems_config.hrl").
--include("../../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 %% Server API
 -export([start/0, stop/0]).
@@ -167,9 +167,9 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 			CatFilenameZip = CatFilenameDir ++ ".zip",
 			case file:read_file_info(CatFilenameZip, [{time, universal}]) of
 				{ok, _} -> 
-					CatTempDir = ?TEMP_PATH ++ "/unzip_catalogs/" ++ CatNameStr ++ "/",
+					CatTempDir = filename:join([?TEMP_PATH, "unzip_catalogs", CatNameStr]),
 					zip:unzip(CatFilenameZip, [{cwd, CatTempDir}]),
-					CatFilename3 = CatTempDir ++ filename:basename(CatFilenameDir) ++ "/" ++ filename:basename(CatFilename2),
+					CatFilename3 = filename:join([CatTempDir, filename:basename(CatFilenameDir), filename:basename(CatFilename2)]),
 					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilenameZip]),
 					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
 				_ ->
@@ -186,14 +186,11 @@ parse_cat_path_search(Json) ->
 	CatPathSearch2 ++ [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}].
 
 
-
-		
-
 -spec parse_static_file_path(map()) -> list().
 parse_static_file_path(Json) ->
 	StaticFilePath = maps:get(<<"static_file_path">>, Json, #{}),
 	StaticFilePathList = maps:to_list(StaticFilePath),
-	StaticFilePathList2 = [{<<"login_path">>, list_to_binary(?STATIC_FILE_PATH ++ "/login")} | StaticFilePathList],
+	StaticFilePathList2 = [{<<"login_path">>, list_to_binary(filename:join(?STATIC_FILE_PATH, "login"))} | StaticFilePathList],
 	StaticFilePathList3 = [{<<"www_path">>, list_to_binary(?STATIC_FILE_PATH)} | StaticFilePathList2],
 	[{K, ems_util:remove_ult_backslash_url(binary_to_list(V))} || {K, V} <- StaticFilePathList3].
 	
@@ -245,8 +242,9 @@ parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Result) ->
 parse_config(Json, NomeArqConfig) ->
 	{ok, Hostname} = inet:gethostname(),
 	Hostname2 = list_to_binary(Hostname),
+ 	TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
 	TcpListenAddress = maps:get(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
-	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress),
+	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
  	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, false)),
 	HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers">>, Json, #{})),
@@ -276,6 +274,7 @@ parse_config(Json, NomeArqConfig) ->
 			 tcp_listen_address_t = TcpListenAddress_t,
 			 tcp_listen_main_ip = TcpListenMainIp,
 			 tcp_listen_main_ip_t = TcpListenMainIp_t,
+			 tcp_listen_prefix_interface_names = TcpListenPrefixInterfaceNames,
 			 tcp_allowed_address = parse_tcp_allowed_address(maps:get(<<"tcp_allowed_address">>, Json, all)),
 			 http_max_content_length = ems_util:parse_range(maps:get(<<"http_max_content_length">>, Json, ?HTTP_MAX_CONTENT_LENGTH), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
 			 http_headers = HttpHeaders,
@@ -334,6 +333,7 @@ get_default_config() ->
 			 tcp_listen_address_t		= TcpListenAddress_t,
 			 tcp_listen_main_ip 		= TcpListenMainIp,
 			 tcp_listen_main_ip_t 		= TcpListenMainIp_t,
+			 tcp_listen_prefix_interface_names = ems_util:binlist_to_list(?TCP_LISTEN_PREFIX_INTERFACE_NAMES),
 			 tcp_allowed_address		= all,
 			 authorization				= oauth2,
 			 oauth2_with_check_constraint = false,
@@ -373,7 +373,7 @@ select_config_file(ConfigFile, ConfigFileDefault) ->
 				  	 false -> ConfigFileDefault
 				  end,
 	HomePath = ems_util:get_home_dir(),
-	Filename = lists:concat([HomePath, "/.erlangms/", ConfigFile2]),
+	Filename = filename:join([HomePath, ".erlangms", ConfigFile2]),
 	case file:read_file(Filename) of 
 		{ok, _Arq} -> 
 			?DEBUG("ems_config checking if node file configuration ~p exist: Ok", [Filename]),

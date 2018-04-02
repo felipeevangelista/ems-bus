@@ -93,6 +93,10 @@ clean(){
 	rm -Rf ems_bus
 	rm -f *.tar.gz
 	rm -f *.tar
+	rm -f ../priv/scripts/*.log
+	rm -rf ../priv/db
+	rm -rf ../priv/log
+	rm -rf ../priv/tmp
 	
 	# Loop pelas pastas de templates dos pacotes rpm
 	for SKEL_RPM_PACKAGE in `find ./rpm/* -maxdepth 0 -type d`; do
@@ -216,8 +220,10 @@ make_release(){
 	cd ems-bus
 	ln -sf lib/ems_bus-$VERSION_RELEASE/priv/ priv || die "The symbolic priv link could not be created for lib/ems_bus-$VERSION_RELEASE/priv!"
 	# Faz algumas limpezas para não ir lixo no pacote
-	rm -Rf log || die 'Could not remove log folder in cleanup!'
+	rm -rf log || die 'Could not remove log folder in cleanup!'
 	rm -rf priv/db || die 'Unable to remove db folder in cleanup!'
+	rm -rf priv/log || die 'Unable to remove log folder in cleanup!'
+	rm -rf priv/tmp || die 'Unable to remove tmp folder in cleanup!'
 	cd ..
 
 

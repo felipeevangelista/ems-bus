@@ -62,6 +62,7 @@
 		 date_add_day/2,
 		 date_to_string/1,
 		 date_to_binary/1,
+		 time_to_binary/1,
  		 no_periodo/2,
  		 seconds_since_epoch/1,
  		 timestamp_str/0,
@@ -81,6 +82,7 @@
 		 is_cpf_valid/1, 
 		 is_cnpj_valid/1, 
 		 ip_list/0,
+		 ip_list/1,
 		 is_url_valido/1,
  		 is_email_valido/1, 
  		 is_range_valido/3,
@@ -103,7 +105,7 @@
  		 parse_bool/1,
 		 parse_authorization_type/1,
 		 parse_bearer_authorization_header/1,
-		 parse_tcp_listen_address/1,
+		 parse_tcp_listen_address/2,
 		 parse_allowed_address_t/1,
 		 parse_allowed_address/1,
 		 parse_tcp_port/1,
@@ -158,7 +160,9 @@
 		 check_type_email/2,
 		 is_email_institucional/2,
 		 invoque_service/3,
-		 url_mask/1
+		 url_mask/1,
+		 list_map_to_list_tuple/1,
+		 list_tuple_to_list_map/1
 		]).
 
 -spec version() -> string().
@@ -444,6 +448,10 @@ date_to_binary({{Ano,Mes,Dia},{_Hora,_Min,_Seg}}) ->
     iolist_to_binary(io_lib:format("~2..0B/~2..0B/~4..0B", [Dia, Mes, Ano]));
 date_to_binary(_) -> <<>>.
     
+-spec time_to_binary(tuple()) -> binary().
+time_to_binary({{_Ano,_Mes,_Dia},{Hora,Min,Seg}}) ->
+    iolist_to_binary(io_lib:format("~2..0B:~2..0B:~2..0B", [Hora, Min, Seg]));
+time_to_binary(_) -> <<>>.
 
 
 tuple_to_binlist(T) ->
@@ -848,7 +856,8 @@ criptografia_sha1(<<>>) -> <<>>;
 criptografia_sha1("") -> <<>>;	
 criptografia_sha1(undefined) -> <<>>;
 criptografia_sha1(null) -> <<>>;
-criptografia_sha1(Password) when is_binary(Password) ->	criptografia_sha1(binary_to_list(Password));
+criptografia_sha1(Password) when is_binary(Password) -> 
+	criptografia_sha1(binary_to_list(Password));
 criptografia_sha1(Password) -> base64:encode(sha1:binstring(Password)).
 
 boolean_to_binary(true) -> <<"true"/utf8>>;
@@ -1145,11 +1154,28 @@ replacenth(ReplaceIndex,Value,[V|List],Acc,Index) ->
 ip_list()->
 	 case inet:getifaddrs() of
 		{ok, List} ->
-			CheckIfUpFunc = fun(P) ->
-				{flags, Flags} = lists:keyfind(flags, 1, P),
+			CheckIfUpFunc = fun(Params) ->
+				{flags, Flags} = lists:keyfind(flags, 1, Params),
 				lists:member(running, Flags) andalso lists:member(up, Flags)
 			end,
-			List2 = [ lists:keyfind(addr, 1, P) || {_, P} <- List, CheckIfUpFunc(P) ],
+			List2 = [ lists:keyfind(addr, 1, P) || {_InterfaceName, P} <- List, CheckIfUpFunc(P) ],
+			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
+			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
+			{ok, List4};
+		Error -> Error
+	end.
+
+
+-spec ip_list(list(string())) -> {ok, list(tuple())} | {error, atom()}.
+ip_list(TcpListenPrefixInterfaceNames)->
+	 case inet:getifaddrs() of
+		{ok, List} ->
+			CheckIfUpFunc = fun(Params) ->
+				{flags, Flags} = lists:keyfind(flags, 1, Params),
+				lists:member(running, Flags) andalso lists:member(up, Flags)
+			end,
+			List2 = [ lists:keyfind(addr, 1, P) || {InterfaceName, P} <- List, CheckIfUpFunc(P) andalso 
+																			   lists:any(fun(Prefix) -> lists:prefix(Prefix, InterfaceName) end, TcpListenPrefixInterfaceNames) ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};
@@ -1558,21 +1584,29 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			"/erl.ms/" ++ UrlEncoded -> 
 				UrlMasked = true,
 				Url1 = binary_to_list(base64:decode(UrlEncoded)),
-				case string:find(Url1, "?") of
+				case Url1 of
+					"/dados" ++ UrlRest -> UrlSemPrefix = UrlRest;
+					_ -> UrlSemPrefix = Url1
+				end,
+				case string:find(UrlSemPrefix, "?") of
 					nomatch -> 
-						Url2 = remove_ult_backslash_url(Url1),
+						Url2 = remove_ult_backslash_url(UrlSemPrefix),
 						QuerystringBin = <<>>,
 						QuerystringMap0 = #{};
 					"?" ++ Querystring -> 
-						PosInterrogacao = string:chr(Url1, $?),
-						Url2 = remove_ult_backslash_url(string:slice(Url1, 0, PosInterrogacao-1)),
+						PosInterrogacao = string:chr(UrlSemPrefix, $?),
+						Url2 = remove_ult_backslash_url(string:slice(UrlSemPrefix, 0, PosInterrogacao-1)),
 						QuerystringBin = list_to_binary(Querystring),
 						QuerystringMap0 = parse_querystring([Querystring])
 				end;
 			_ -> 
 				UrlMasked = false,
+				case Url of
+					"/dados" ++ UrlRest -> UrlSemPrefix = UrlRest;
+					_ -> UrlSemPrefix = Url
+				end,
 				QuerystringBin = cowboy_req:qs(CowboyReq),
-				Url2 = remove_ult_backslash_url(Url),
+				Url2 = remove_ult_backslash_url(UrlSemPrefix),
 				case QuerystringBin of
 					<<>> -> QuerystringMap0 = #{};
 					_ -> QuerystringMap0 = parse_querystring([binary_to_list(QuerystringBin)])
@@ -1703,10 +1737,12 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 				case ContentLength > 0 of
 					true ->
 						case ContentLength > HttpMaxContentLengthService of
-							true ->	erlang:error(ehttp_max_content_length_error);
+							true ->	
+								ems_logger:warn("ems_http_handler ehttp_max_content_length_error exception. HttpMaxContentLengthService of the request ~s ~s is ~p bytes.", [binary_to_list(Type), Url, HttpMaxContentLengthService]),
+								erlang:error(ehttp_max_content_length_error);
 							false -> ok
 						end,
-						ReadBodyOpts = #{length => HttpMaxContentLengthService, timeout => 30000},
+						ReadBodyOpts = #{length => HttpMaxContentLengthService + 8000, period => 190000, timeout => 180000},
 						case ContentTypeIn of
 							<<"application/json">> ->
 								ems_db:inc_counter(http_content_type_in_application_json),
@@ -1837,7 +1873,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 						QuerystringMap2 = QuerystringMap,
 						CowboyReq2 = CowboyReq
 				end,
-				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2]),
+				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, ServiceAuthorization, IpBin, UserAgent, Payload]),
 				Request2 = Request#request{
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
@@ -2240,42 +2276,42 @@ parse_querystring_def([H|T], Querystring, QtdRequired, RestDefaultQuerystring) -
 	
 
 	
--spec parse_tcp_listen_address(list(string()) | list(binary()) |  list(tuple()) | string() | binary() | undefined | null) -> list(tuple()). 
-parse_tcp_listen_address(undefined) -> [];
-parse_tcp_listen_address(null) -> [];
-parse_tcp_listen_address(<<>>) -> [];
-parse_tcp_listen_address("") -> [];
-parse_tcp_listen_address([{_,_,_,_}|_] = ListenAddress) -> ListenAddress;
-parse_tcp_listen_address([H|_] = ListenAddress) when is_binary(H) -> 
-	parse_tcp_listen_address_t(ListenAddress, []);
-parse_tcp_listen_address([H|_] = ListenAddress) when is_list(H) -> 
-	parse_tcp_listen_address_t(ListenAddress, []);
-parse_tcp_listen_address(ListenAddress) when is_binary(ListenAddress) ->
-	parse_tcp_listen_address(binary_to_list(ListenAddress));
-parse_tcp_listen_address(ListenAddress) ->
+-spec parse_tcp_listen_address(list(string()) | list(binary()) |  list(tuple()) | string() | binary() | undefined | null, list(string())) -> list(tuple()). 
+parse_tcp_listen_address(undefined, _) -> [];
+parse_tcp_listen_address(null, _) -> [];
+parse_tcp_listen_address(<<>>, _) -> [];
+parse_tcp_listen_address("", _) -> [];
+parse_tcp_listen_address([{_,_,_,_}|_] = ListenAddress, _) -> ListenAddress;
+parse_tcp_listen_address([H|_] = ListenAddress, TcpListenPrefixInterfaceNames) when is_binary(H) -> 
+	parse_tcp_listen_address_t(ListenAddress, TcpListenPrefixInterfaceNames, []);
+parse_tcp_listen_address([H|_] = ListenAddress, TcpListenPrefixInterfaceNames) when is_list(H) -> 
+	parse_tcp_listen_address_t(ListenAddress, TcpListenPrefixInterfaceNames, []);
+parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) when is_binary(ListenAddress) ->
+	parse_tcp_listen_address(binary_to_list(ListenAddress), TcpListenPrefixInterfaceNames);
+parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) ->
 	ListenAddress2 = string:trim(ListenAddress),
 	case ListenAddress2 =/= "" of
 		true ->	
 			ListenAddress3 = [string:trim(IP) || IP <- string:split(ListenAddress2, ",")],
-			parse_tcp_listen_address_t(ListenAddress3, []);
+			parse_tcp_listen_address_t(ListenAddress3, TcpListenPrefixInterfaceNames, []);
 		false -> []
 	end.
 
--spec parse_tcp_listen_address_t(list(string()) | list(binary()), list(tuple())) -> list(tuple()). 
-parse_tcp_listen_address_t([], Result) -> Result;
-parse_tcp_listen_address_t([H|T], Result) when is_binary(H) ->
-	parse_tcp_listen_address_t([binary_to_list(H) | T], Result);
-parse_tcp_listen_address_t([H|T], Result) ->
+-spec parse_tcp_listen_address_t(list(string()) | list(binary()), list(tuple()), list(string())) -> list(tuple()). 
+parse_tcp_listen_address_t([], _, Result) -> Result;
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
+	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
 	case inet:parse_address(H) of
 		{ok, {0, 0, 0, 0}} ->
-			case ip_list() of
+			case ip_list(TcpListenPrefixInterfaceNames) of
 				{ok, IpList} -> IpList;
 				_Error -> []
 			end;
 		{ok, L2} -> 
 			case lists:member(L2, Result) of
-				true -> parse_tcp_listen_address_t(T, Result);
-				false -> parse_tcp_listen_address_t(T, [L2|Result])
+				true -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result);
+				false -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, [L2|Result])
 			end;
 		{error, einval} -> erlang:error(einvalid_tcp_listen_address)
 	end.
@@ -2334,8 +2370,8 @@ get_param_url(NomeParam, Default, Request) ->
 	maps:get(NomeParam2, ParamsUrl, Default).
 
 
-get_querystring(<<QueryName/binary>>, Servico) ->	
-	[Query] = [Q || Q <- maps:get(<<"querystring">>, Servico, <<>>), Q#service.comment == QueryName],
+get_querystring(<<QueryName/binary>>, Service) ->	
+	[Query] = [Q || Q <- maps:get(<<"querystring">>, Service, <<>>), Q#service.comment == QueryName],
 	Query.
 
 
@@ -2566,7 +2602,7 @@ compile_modulo_erlang(Path, ModuleNameCanonical) when is_binary(ModuleNameCanoni
 compile_modulo_erlang(Path, ModuleNameCanonical) ->
 	case filelib:is_dir(Path) of
 		true ->
-			Filename = Path ++ "/" ++ ModuleNameCanonical ++ ".erl",
+			Filename = filename:join(Path, ModuleNameCanonical) ++ ".erl",
 			case filelib:is_regular(Filename) of
 				true ->
 					ems_logger:info("Compile file ~p ", [Filename]),
@@ -2604,9 +2640,9 @@ print_str_map(Map, [Key|TKey], [Value|TValue], Sep, Result) ->
 
 
 -spec binlist_to_atomlist(list(binary()) | binary()) -> list(atom()) | atom().
-binlist_to_atomlist([])  -> undefined;
-binlist_to_atomlist(undefined)  -> undefined;
-binlist_to_atomlist(<<>>)  -> undefined;
+binlist_to_atomlist([])  -> [];
+binlist_to_atomlist(undefined)  -> [];
+binlist_to_atomlist(<<>>)  -> [];
 binlist_to_atomlist(Value) when is_list(Value) ->
 	binlist_to_atomlist_(Value, []);
 binlist_to_atomlist(Value)  ->
@@ -2831,7 +2867,7 @@ get_client_request_by_querystring(Request) ->
 	end.
 
 
--spec get_user_request_by_login_and_password(#request{}) -> #client{} | undefined.
+-spec get_user_request_by_login_and_password(#request{}) -> #user{} | undefined.
 get_user_request_by_login_and_password(Request = #request{authorization = Authorization}) ->
     try
 		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
@@ -2864,3 +2900,20 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 seconds_since_epoch(Diff) ->
     {Mega, Secs, _} = os:timestamp(),
     Mega * 1000000 + Secs + Diff.
+
+
+list_map_to_list_tuple(List) -> list_map_to_list_tuple(List, []).
+
+list_map_to_list_tuple([], Result) -> Result;	
+list_map_to_list_tuple([Map|MapT], Result) ->	
+	L = maps:to_list(Map),
+	list_map_to_list_tuple(MapT, [L | Result]).
+
+
+list_tuple_to_list_map(List) -> list_tuple_to_list_map(List, []).
+
+list_tuple_to_list_map([], Result) -> lists:reverse(Result);	
+list_tuple_to_list_map([H|T], Result) ->	
+	list_tuple_to_list_map(T, [maps:from_list(H) | Result]).
+
+

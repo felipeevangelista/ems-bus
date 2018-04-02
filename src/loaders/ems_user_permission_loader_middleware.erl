@@ -82,6 +82,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 grant_post = NewRecord#user_permission.grant_post,
 												 grant_put = NewRecord#user_permission.grant_put,
 												 grant_delete = NewRecord#user_permission.grant_delete,
+												 position = NewRecord#user_permission.position,
 												 ctrl_path = NewRecord#user_permission.ctrl_path,
 												 ctrl_file = NewRecord#user_permission.ctrl_file,
 												 ctrl_update = CtrlDate,

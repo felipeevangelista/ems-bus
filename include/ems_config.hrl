@@ -32,73 +32,64 @@
 -define(WORKING_PATH, ems_util:get_working_dir()).
 
 % Caminho do diretório privado
--define(TEMP_PATH, ?PRIV_PATH ++ "/tmp").
+-define(TEMP_PATH, filename:join(?PRIV_PATH, "tmp")).
 
 % Caminho do catálogo de serviços
--define(CONF_PATH, ?PRIV_PATH ++ "/conf").
+-define(CONF_PATH, filename:join(?PRIV_PATH, "conf")).
 
 % Caminho da pasta log
--define(LOG_PATH, ?PRIV_PATH ++ "/log").
+-define(LOG_PATH, filename:join(?PRIV_PATH, "log")).
 
 % Caminho do favicon
--define(FAVICON_PATH, ?PRIV_PATH ++ "/favicon.ico").
+-define(FAVICON_PATH, filename:join(?PRIV_PATH, "favicon.ico")).
 
 % Caminho do catálogo de serviços
--define(CATALOGO_PATH, ?PRIV_PATH ++ "/catalog").
+-define(CATALOGO_PATH, filename:join(?PRIV_PATH, "catalog")).
 
 % Caminho do catálogo de serviços
--define(CATALOGO_ESB_PATH, ?CATALOGO_PATH  ++ "/catalog.json").
+-define(CATALOGO_ESB_PATH, filename:join(?CATALOGO_PATH, "catalog.json")).
 
 % Caminho da pasta de databases
--define(DATABASE_PATH, ?PRIV_PATH ++ "/db").
+-define(DATABASE_PATH, filename:join(?PRIV_PATH, "db")).
 
 % Caminho do arquivo de configuração padrão (Pode ser incluído também na pasta ~/.erlangms do usuário)
--define(CONF_FILE_PATH, ?CONF_PATH ++ "/emsbus.conf").
+-define(CONF_FILE_PATH, filename:join(?CONF_PATH, "emsbus.conf")).
 
 % Caminho inicial para os arquivos estáticos
--define(STATIC_FILE_PATH, ?PRIV_PATH ++ "/www").
+-define(STATIC_FILE_PATH, filename:join(?PRIV_PATH, "www")).
 
 % Caminho do arquivo de clientes
--define(CLIENT_PATH, ?CONF_PATH ++ "/clients.json").
+-define(CLIENT_PATH, filename:join(?CONF_PATH, "clients.json")).
 
 % Caminho do arquivo de usuários
--define(USER_PATH, ?CONF_PATH ++ "/users.json").
+-define(USER_PATH, filename:join(?CONF_PATH, "users.json")).
 
 % Caminho do arquivo de dados funcionais dos usuários
--define(USER_DADOS_FUNCIONAIS_PATH, ?CONF_PATH ++ "/user_dados_funcionais.json").
+-define(USER_DADOS_FUNCIONAIS_PATH, filename:join(?CONF_PATH, "user_dados_funcionais.json")).
 
 % Caminho do arquivo de dados funcionais dos usuários
--define(USER_EMAIL_PATH, ?CONF_PATH ++ "/user_email.json").
+-define(USER_EMAIL_PATH, filename:join(?CONF_PATH, "user_email.json")).
 
 % Caminho do arquivo de perfis dos usuários
--define(USER_PERFIL_PATH, ?CONF_PATH ++ "/user_perfil.json").
+-define(USER_PERFIL_PATH, filename:join(?CONF_PATH, "user_perfil.json")).
 
 % Caminho do arquivo de permissões dos usuários
--define(USER_PERMISSION_PATH, ?CONF_PATH ++ "/user_permission.json").
+-define(USER_PERMISSION_PATH, filename:join(?CONF_PATH, "user_permission.json")).
 
 % Caminho do arquivo de endereços dos usuários
--define(USER_ENDERECO_PATH, ?CONF_PATH ++ "/user_endereco.json").
+-define(USER_ENDERECO_PATH, filename:join(?CONF_PATH, "user_endereco.json")).
 
 % Caminho do arquivo de telefones dos usuários
--define(USER_TELEFONE_PATH, ?CONF_PATH ++ "/user_telefone.json").
+-define(USER_TELEFONE_PATH, filename:join(?CONF_PATH, "user_telefone.json")).
 
 % Caminho inicial para os arquivos estáticos
--define(WEBAPPS_PATH, ?PRIV_PATH ++ "/www").
+-define(WEBAPPS_PATH, filename:join(?PRIV_PATH, "www")).
 
 % Caminho inicial para os arquivos de carga de dados em formato CSV
--define(CSV_FILE_PATH, ?PRIV_PATH ++ "/csv").
+-define(CSV_FILE_PATH, filename:join(?PRIV_PATH, "csv")).
 
 % Caminho dos certificados ssl
--define(SSL_PATH, ?PRIV_PATH ++ "/ssl").
-
-% Propriedade TCP Timeout para envio do response
--define(TCP_SEND_TIMEOUT, 30000).
-
-% Number of TCP connections that have completed the SYN/ACK handshake and not yet been accepted by user
--define(TCP_BACKLOG, 128).
-
-% Armazena em cache as novas requisições por REQ_CACHE_SYNC_CHECKPOINT ms antes de persistir no banco
--define(REQ_CACHE_SYNC_CHECKPOINT, 6000).
+-define(SSL_PATH, filename:join(?PRIV_PATH, "ssl")).
 
 % Armazena o buffer do log a cada LOG_FILE_CHECKPOINT ms (Aumente este valor se existir muita contenção na escrita em disco)
 -define(LOG_FILE_CHECKPOINT, 6000).  
@@ -112,7 +103,6 @@
 -define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 4000).
 -define(LOG_SHOW_RESPONSE_MAX_LENGTH, 4000).
 
-
 % Quantos workers HTTP instanciar se não especificado no arquivo de configuração
 -define(MIN_HTTP_WORKER, 1).
 
@@ -122,9 +112,6 @@
 % Quantos workers HTTP são permitidos especificar no arquivo de configuração (1 até MAX_HTTP_WORKER_RANGE)
 -define(MAX_HTTP_WORKER_RANGE, 1000).  % a cada 4 horas
 
-% Quanto tempo o listener vai aguardar uma conexão antes de ocorrer um timeout
--define(TCP_ACCEPT_CONNECT_TIMEOUT, 1000 * 60). % 1 minuto
-
 % Quanto tempo o dispatcher aguardar um serviço
 -define(SERVICE_TIMEOUT, 60000). 		 % 1 minuto é o tempo padrão que o dispatcher aguarda um serviço executar
 -define(SERVICE_MIN_TIMEOUT, 1000). 	 % 1 segundo é o tempo mínimo que o dispatcher aguarda um serviço executar
@@ -133,7 +120,7 @@
 -define(SERVICE_MAX_EXPIRE_MINUTE, 525601). % 1 ano
 
 % Caminho do utilitário que importa dados csv para um banco sqlite
--define(CSV2SQLITE_PATH, ?PRIV_PATH ++ "/scripts/csv2sqlite.py"). 
+-define(CSV2SQLITE_PATH, filename:join([?PRIV_PATH, "scripts", "csv2sqlite.py"])). 
 
 % Quanto tempo uma parsed query mnesia fica em cache para reutilização (módulo ems_db)
 -define(LIFE_TIME_PARSED_QUERY, 60000 * 15). % 15 minutos
@@ -206,14 +193,24 @@
 
 -define(HTTP_SERVER_PORT, 2381).
 -define(HTTP_MAX_CONNECTIONS, 100000).
--define(HTTP_MAX_CONTENT_LENGTH, 65536 * 2).  % Limite default do conteúdo do payload é de 128KB
+-define(HTTP_MAX_CONTENT_LENGTH, 524288).  % Limite default do conteúdo do payload é de 512KB
 -define(HTTP_MAX_CONTENT_LENGTH_BY_SERVICE, 1048576000).  % Permite enviar até 1G se especificado no contrato de serviço
 
 
 -define(TCP_PORT_MIN, 1024).
 -define(TCP_PORT_MAX, 99999).
 
+
+-ifdef(win32_plataform).
+	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"//">>]).
+-else.
+	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"lo">>, <<"enp">>, <<"eth">>, <<"wl">>]).
+-endif.
+
+
 -define(SUFIXO_EMAIL_INSTITUCIONAL, "@unb.br").
+
+-define(RESULT_CACHE_MAX_SIZE_ENTRY, 524288). % 512KB
 
 
 %  Definição para o arquivo de configuração
@@ -239,6 +236,7 @@
 				 tcp_listen_address_t :: list(),
 				 tcp_listen_main_ip :: binary(),
 				 tcp_listen_main_ip_t :: tuple(),
+				 tcp_listen_prefix_interface_names :: list(string()),
 				 tcp_allowed_address :: list() | atom(),
 				 authorization :: binary(),
 				 oauth2_with_check_constraint :: boolean(),
@@ -270,7 +268,4 @@
 				 log_show_payload_max_length :: boolean(),	%% show payload if content length < show_response_max_length
 				 rest_default_querystring :: map()			%% querystring default
 		 }). 	
-
-
-
 

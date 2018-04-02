@@ -19,6 +19,7 @@
 		"version": "1.0.0",
 		"service" : "ems_oauth2_authorize:execute",
 		"url": "/authorize",
+		"result_cache" : 0,
 		"type": "GET",
 		"authorization" : "public",
 		"querystring": [
@@ -80,6 +81,7 @@
 		"service" : "ems_oauth2_authorize:execute",
 		"url": "/authorize",
 		"type": "POST",
+		"result_cache" : 0,
 		"authorization" : "public",
 		"querystring": [
 			{
@@ -150,6 +152,7 @@
 		"service" : "ems_oauth2_authorize:code_request",
 		"url": "/code_request",
 		"type": "GET",
+		"result_cache" : 0,
 		"authorization" : "public",
 		"querystring": [
 			{
@@ -199,6 +202,7 @@
 		"service" : "ems_oauth2_client:callback",
 		"url": "/callback",
 		"type": "GET",
+		"result_cache" : 0,
 		"querystring": [
 			{
 				"name": "code",
@@ -217,6 +221,7 @@
 		"service" : "ems_oauth2_recurso:execute",
 		"url": "/resource",
 		"type": "POST",
+		"result_cache" : 0,
 		"authorization": "oauth2",
 		"querystring": [
 			{
@@ -236,6 +241,7 @@
 		"service" : "ems_oauth2_recurso:execute",
 		"url": "/recurso",
 		"type": "POST",
+		"result_cache" : 0,
 		"authorization": "oauth2",
 		"querystring": [
 			{

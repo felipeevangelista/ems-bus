@@ -9,13 +9,20 @@
 -module(ems_db).
 
 -export([start/0]).
--export([get/2, exist/2, all/1, insert/1, insert/2, update/1, delete/2, delete/1, 
-		 match/2, find/2, find/3, find/5, find_by_id/2, find_by_id/3, filter/2,
-		 find_first/2, find_first/3, find_first/4, field_position/3]).
+-export([get/2, exist/2, all/1, 
+		 insert/1, insert/2, update/1, delete/2, delete/1, 
+		 match/2, 
+		 find/1, find/2, find/3, find/4, find/5, 
+		 find_by_id/2, find_by_id/3, filter/2,
+		 find_first/2, find_first/3, find_first/4, 
+		 field_position/3, sort/2]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
 -export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/3]).
 -export([get_param/1, get_param/2, set_param/2, get_re_param/2]).
+
+-export([filter_with_sort/2]).
+
 
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
@@ -33,7 +40,7 @@ start() ->
 -spec create_database(list()) -> ok.	
 create_database(Nodes) ->
 	% Define a pasta de armazenamento dos databases
-	filelib:ensure_dir(?DATABASE_PATH ++ "/"),
+	filelib:ensure_dir(?DATABASE_PATH),
 	application:set_env(mnesia, dir, ?DATABASE_PATH),
 	mnesia:create_schema(Nodes),
 	mnesia:start(),
@@ -42,27 +49,54 @@ create_database(Nodes) ->
 											 {ram_copies, Nodes},
 											 {attributes, record_info(fields, service_datasource)}]),
 
+    mnesia:create_table(counter, [{type, set},
+								  {ram_copies, Nodes},
+								  {attributes, record_info(fields, sequence)}]),
+
+    mnesia:create_table(stat_counter_hist, [{type, set},
+								    {disc_copies, Nodes},
+								    {attributes, record_info(fields, stat_counter_hist)},
+								    {record_name, stat_counter_hist}]),
+
+    mnesia:create_table(sequence, [{type, set},
+								   {disc_copies, Nodes},
+								   {attributes, record_info(fields, sequence)}]),
+
+    mnesia:create_table(ctrl_sqlite_table, [{type, set},
+											{disc_copies, Nodes},
+											{attributes, record_info(fields, ctrl_sqlite_table)}]),
+
+    mnesia:create_table(ctrl_params, [{type, set},
+									  {disc_copies, Nodes},
+									  {attributes, record_info(fields, ctrl_params)}]),
+
+    mnesia:create_table(user_cache_lru, [{type, set},
+										  {disc_copies, Nodes},
+										  {index, [#user.login]},
+										  {attributes, record_info(fields, user)},
+										  {record_name, user}]),
+
     mnesia:create_table(user_fs, [{type, set},
 								 {ram_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
     mnesia:create_table(user_db, [{type, set},
 								  {disc_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
     mnesia:create_table(user_aluno_ativo_db, [{type, set},
 								  {disc_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
     mnesia:create_table(user_aluno_inativo_db, [{type, set},
 								  {disc_copies, Nodes},
-								  {index, [#user.codigo, #user.login, #user.cpf, #user.email]},
+								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
@@ -140,19 +174,6 @@ create_database(Nodes) ->
 									{attributes, record_info(fields, client)},
 									{record_name, client}]),
 
-    mnesia:create_table(sequence, [{type, set},
-								   {disc_copies, Nodes},
-								   {attributes, record_info(fields, sequence)}]),
-
-    mnesia:create_table(request, [{type, set},
-								  {ram_copies, Nodes},
-								  {attributes, record_info(fields, request)},
-								  {index, [#request.timestamp]}]),
-
-    mnesia:create_table(ctrl_sqlite_table, [{type, set},
-											{disc_copies, Nodes},
-											{attributes, record_info(fields, ctrl_sqlite_table)}]),
-
     mnesia:create_table(catalog_schema, [{type, set},
 										 {disc_copies, Nodes},
 										 {attributes, record_info(fields, catalog_schema)}]),
@@ -164,11 +185,6 @@ create_database(Nodes) ->
     mnesia:create_table(service_owner, [{type, set},
 	 							  {disc_copies, Nodes},
 								  {attributes, record_info(fields, service_owner)}]),
-
-    mnesia:create_table(ctrl_params, [{type, set},
-									  {disc_copies, Nodes},
-									  {attributes, record_info(fields, ctrl_params)}]),
-									  
 
     mnesia:create_table(catalog_get_fs, [{type, set},
 									  {ram_copies, Nodes},
@@ -254,16 +270,6 @@ create_database(Nodes) ->
 										  {attributes, record_info(fields, service)},
 										  {record_name, service}]),
 
-    mnesia:create_table(counter, [{type, set},
-								  {ram_copies, Nodes},
-								  {attributes, record_info(fields, sequence)}]),
-
-    mnesia:create_table(stat_counter_hist, [{type, set},
-								    {disc_copies, Nodes},
-								    {attributes, record_info(fields, stat_counter_hist)},
-								    {record_name, stat_counter_hist}]),
-
-
     mnesia:create_table(auth_oauth2_access_token_table, [{type, set},
 														{disc_copies, Nodes},
 														{attributes, record_info(fields, auth_oauth2_access_token)},
@@ -279,14 +285,53 @@ create_database(Nodes) ->
 														{attributes, record_info(fields, auth_oauth2_refresh_token)},
 														{record_name, auth_oauth2_refresh_token}]),
 
-
-	mnesia:wait_for_tables([service_datasource, user_fs, user_dados_funcionais_fs, 
-							client_fs, sequence, user_email_fs, counter, ctrl_params, 
-							user_permission_fs, user_endereco_fs, catalog_options_fs,
-							catalog_get_fs, catalog_post_fs, catalog_put_fs, catalog_delete_fs,
-							catalog_re_fs, catalog_kernel_fs, user_db, client_db,
-							auth_oauth2_access_token_table, auth_oauth2_access_code_table, auth_oauth2_refresh_token_table], 15000),
-	
+	mnesia:wait_for_tables([service_datasource,
+							sequence,
+							counter,
+							ctrl_params,
+							user_fs, 
+							user_db,
+							user_aluno_ativo_db,
+							user_aluno_inativo_db,
+							user_cache_lru,
+							user_dados_funcionais_fs,
+							user_dados_funcionais_db,
+							user_email_fs,
+							user_email_db,
+							user_endereco_fs,
+							user_endereco_db,
+							user_telefone_fs,
+							user_telefone_db,
+							user_perfil_fs,
+							user_perfil_db,
+							user_permission_fs,
+							user_permission_db,
+							client_db,
+							client_fs,
+							ctrl_sqlite_table,
+							catalog_schema,
+							produto,
+							service_owner,
+							catalog_get_fs,
+							catalog_post_fs,
+							catalog_put_fs,
+							catalog_delete_fs,
+							catalog_options_fs,
+							catalog_kernel_fs,
+							catalog_re_fs,
+							catalog_get_db,
+							catalog_post_db,
+							catalog_put_db,
+							catalog_delete_db,
+							catalog_options_db,
+							catalog_kernel_db,
+							catalog_re_db,
+							stat_counter_hist,
+							auth_oauth2_access_token_table,
+							auth_oauth2_access_code_table,
+							auth_oauth2_refresh_token_table
+							], 120000),
+	ems_util:sleep(2000),
 	ok.
 
 
@@ -354,7 +399,7 @@ sequence(Name, Inc) -> mnesia:dirty_update_counter(sequence, Name, Inc).
 
 init_counter(Name, Value) ->
      {atomic, ok} =	mnesia:transaction(fun() ->
-						mnesia:write(#counter{key=Name, index=Value})
+						mnesia:write(#counter{key=Name, value=Value})
 					end),
      ok.
 inc_counter(Name) ->  mnesia:dirty_update_counter(counter, Name, 1).
@@ -548,35 +593,77 @@ find_by_id(Tab, Id, FieldList) ->
 	end.
 
 
+-spec find(atom()) -> {ok, tuple()} | {error, enoent}.
+find(Tab) -> all(Tab).
+
+
 %
 % Find objects. Return all fields.
 % Ex.: ems_db:find(catalog_schema, [{id, "==", 1}]).
 % Sample result is [[{<<"id">>,1},{<<"name">>,<<"exemplo">>}]]
 %
 -spec find(atom(), list()) -> {ok, tuple()} | {error, enoent}.
-find(Tab, FilterList) -> find(Tab, [], FilterList).
+find(Tab, FilterList) -> find(Tab, [], FilterList, []).
+
 
 %
 % Find objects
 % Ex.: ems_db:find(catalog_schema, [id, name], [{id, "==", 1}]).
 % Sample result is [[{<<"id">>,1},{<<"name">>,<<"exemplo">>}]]
 %
+-spec find(atom() | list(atom()), list(), list(), list()) -> {ok, tuple()} | {ok, map()} | {error, enoent}.
+find(Tab, FieldList, FilterList, SortList) when is_atom(Tab) ->
+    Records = filter(Tab, FilterList),
+	{ok, Records2} = select_fields(Records, FieldList),
+	sort(Records2, SortList);
+find(TabList, FieldList, FilterList, SortList) ->
+    Records = filter_multi_tab(TabList, FilterList, []),
+    {ok, Records2} = select_fields(Records, FieldList),
+    sort(Records2, SortList).
+
 -spec find(atom() | list(atom()), list(), list()) -> {ok, tuple()} | {ok, map()} | {error, enoent}.
 find(Tab, FieldList, FilterList) when is_atom(Tab) ->
     Records = filter(Tab, FilterList),
 	select_fields(Records, FieldList);
 find(TabList, FieldList, FilterList) ->
-    find_(TabList, FieldList, FilterList, []).
+    Records = filter_multi_tab(TabList, FilterList, []),
+    select_fields(Records, FieldList).
 
-find_([], FieldList, _, Result) -> 
-	select_fields(Result, FieldList);
-find_([Tab|TabT], FieldList, FilterList, Result) ->
+
+filter_multi_tab([], _, Result) -> Result;
+filter_multi_tab([Tab|TabT], FilterList, Result) ->
     Records = filter(Tab, FilterList),
 	case Records =/= [] of
-		true -> find_(TabT, FieldList, FilterList, Result ++ Records);
-		false -> find_(TabT, FieldList, FilterList, Result)
+		true -> filter_multi_tab(TabT, FilterList, Result ++ Records);
+		false -> filter_multi_tab(TabT, FilterList, Result)
 	end.
-	
+
+
+sort_fields_table([Map|_]) -> [ binary_to_atom(R, utf8) || R <- maps:keys(Map)].
+
+sort(Records, SortList) -> 
+	FieldsTable = sort_fields_table(Records),
+	io:format("fields table is ~p\n", [FieldsTable]),
+	List = ems_util:list_map_to_list_tuple(Records),
+	%io:format("list is ~p\n", [List]),
+	List2 = sort_(List, FieldsTable, SortList),
+	%List2 = lists:sort(fun(A, B) -> 
+%			io:format("a is ~p  \n", [A]),
+%			io:format("b is ~p  \n", [B]),
+%			A < B end, List),
+	ems_util:list_tuple_to_list_map(List2).
+
+sort_(List, _, []) -> List;
+sort_(List, FieldsTable, [SortField|SortFieldT]) ->
+	io:format("field_position(~p, ~p, 1),\n", [SortField, FieldsTable]),
+	FldPos = field_position(SortField, FieldsTable, 1),
+	List2 = lists:sort(fun(A, B) -> 
+			{_, FldValue1} = lists:nth(FldPos, A),
+			{_, FldValue2} = lists:nth(FldPos, B),
+			io:format("aqui ~p ~p \n", [FldPos, A]),
+			FldValue1 < FldValue2 
+		end, List),
+	sort_(List2, FieldsTable, SortFieldT).
 
 
 %
@@ -590,6 +677,7 @@ find(Tab, FieldList, FilterList, Limit, Offset) when is_atom(Tab) ->
 	select_fields(Records, FieldList);
 find(Tab, FieldList, FilterList, Limit, Offset) -> 
 	find_(Tab, FieldList, FilterList, Limit, Offset, []).
+
 
 find_([], FieldList, _, Limit, Offset, Result) -> 
 	{ok, Result2} = select_fields(Result, FieldList),
@@ -702,6 +790,17 @@ filter(Tab, FilterList) when is_list(FilterList) ->
 filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
 	filter(Tab, [FilterTuple]).
 
+
+
+filter_with_sort(Tab, []) -> 
+	F = fun() ->
+		  qlc:e(
+			qlc:sort(
+					qlc:q([R || R <- mnesia:table(Tab)]), [{order, descending}]
+				)
+		  )
+	   end,
+	mnesia:activity(async_dirty, F).
 
 
 %	

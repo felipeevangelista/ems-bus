@@ -15,6 +15,7 @@
   
 execute(Request) -> 
 	Conf = ems_config:getConfig(),
+	io:format("~p", [Conf#config.tcp_listen_main_ip]),
 	ContentData = iolist_to_binary([<<"{"/utf8>>,
 										<<"\"ip\":\""/utf8>>, Conf#config.tcp_listen_main_ip, <<"\","/utf8>>, 
 										<<"\"http_port\":"/utf8>>, integer_to_binary(2301), <<","/utf8>>, 

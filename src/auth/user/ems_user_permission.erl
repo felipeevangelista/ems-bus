@@ -84,6 +84,10 @@ new_from_map(Map, _Conf) ->
 							  grant_post = ems_util:parse_bool(maps:get(<<"grant_post">>, Map, false)),
 							  grant_put = ems_util:parse_bool(maps:get(<<"grant_put">>, Map, false)),
 							  grant_delete = ems_util:parse_bool(maps:get(<<"grant_delete">>, Map, false)),
+							  position = case maps:get(<<"position">>, Map, 0) of
+											undefined -> 0;
+											PositionValue -> PositionValue
+										 end,
 							  ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 							  ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
 							  ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),

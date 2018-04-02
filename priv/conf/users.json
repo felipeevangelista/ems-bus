@@ -3,7 +3,7 @@
 		"id" : 1,
 		"codigo" : 1,
 		"name": "erlangms",
-		"login" : "erlangms@unb.br",
+		"login" : "erlangms",
 		"password": "UKPBlZSudxkVz+Lnc34YxVT/6/U=",
 		"passwd_crypto" : "SHA1",
 		"active": true,

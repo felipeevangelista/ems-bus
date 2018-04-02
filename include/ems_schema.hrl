@@ -10,7 +10,7 @@
 				   index :: non_neg_integer()}).
 
 -record(counter, {key :: atom(), 
-     			  index :: non_neg_integer()}).
+     			  value :: non_neg_integer()}).
 
 -record(user, {id :: non_neg_integer(), 					%% identificador do usuário (required) (Na UnB é o campo Tb_Usuario.UsuId)
 			   codigo :: non_neg_integer(),					%% código da pessoa se o usuário possui dados pessoais em outra tabela externa. (Na UnB é o campo Tb_Pessoa.PesCodigoPessoa)
@@ -122,6 +122,7 @@
 						  grant_post :: boolean(),
 						  grant_put :: boolean(),
 						  grant_delete :: boolean(),
+						  position :: non_neg_integer(),
 						  ctrl_path :: string(),
 						  ctrl_file :: string(),
 						  ctrl_insert,							%% Data que o serviço foi inserido no banco mnesia
@@ -330,6 +331,7 @@
 					redirect_url :: binary(),					%% redirect url						
 					tcp_listen_address,
 					tcp_listen_address_t,
+					tcp_listen_prefix_interface_names :: list(string()),
 					tcp_allowed_address,
 					tcp_allowed_address_t,
 					tcp_max_connections :: non_neg_integer(),
@@ -355,11 +357,10 @@
 					service_unavailable_metric_name :: atom(),
 					service_timeout_metric_name :: atom(),
 					service_resend_msg1 :: atom(),
-					service_resend_msg2 :: atom(),
-					service_resend_msg3 :: atom(),
 					http_max_content_length :: non_neg_integer(),
 					http_headers :: map(),
-					restricted = false :: boolean()				%% Serviços restrito para admins
+					restricted = false :: boolean(),			%% Serviços restrito para admins
+					metadata :: binary()						%% Representação em json do que será enviado para o web service /catalog
 				}).
 
 
@@ -387,7 +388,12 @@
 -record(stat_counter_hist, {  id :: non_neg_integer(),
 							  stat_name :: atom(),
 							  stat_value :: non_neg_integer,
-							  stat_timestamp
+							  stat_date :: binary(),
+							  stat_time :: binary(),
+							  stat_service_name :: binary(),
+							  stat_service_url :: binary(),
+							  stat_service_type :: binary(),
+							  stat_label :: binary()
 							}).
 
 

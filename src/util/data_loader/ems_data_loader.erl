@@ -49,9 +49,9 @@
 				disable_metric_name,
 				skip_metric_name,
 				source_type,
-				async,
 				loading,
-				allow_clear_table_full_sync
+				allow_clear_table_full_sync,
+				group
 			}).
 
 -define(SERVER, ?MODULE).
@@ -98,16 +98,16 @@ init(#service{name = Name,
 			  datasource = Datasource, 
 			  middleware = Middleware, 
 			  start_timeout = StartTimeout,
-			  properties = Props,
-			  async = Async}) ->
+			  properties = Props}) ->
+	NameStr = binary_to_list(Name),
 	LastUpdateParamName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_last_update_param_name">>]), utf8),
 	LastUpdate = ems_db:get_param(LastUpdateParamName),
 	UpdateCheckpoint = maps:get(<<"update_checkpoint">>, Props, ?DATA_LOADER_UPDATE_CHECKPOINT),
 	CheckRemoveRecords = ems_util:parse_bool(maps:get(<<"check_remove_records">>, Props, false)),
 	CheckRemoveRecordsCheckpoint0 = maps:get(<<"check_remove_records_checkpoint">>, Props, ?DATA_LOADER_UPDATE_CHECKPOINT),
 	case CheckRemoveRecordsCheckpoint0 < UpdateCheckpoint of
-		true -> CheckRemoveRecordsCheckpoint = UpdateCheckpoint + 5000;
-		false -> CheckRemoveRecordsCheckpoint = CheckRemoveRecordsCheckpoint0
+		true -> CheckRemoveRecordsCheckpoint = UpdateCheckpoint + 5000 + rand:uniform(3000);
+		false -> CheckRemoveRecordsCheckpoint = CheckRemoveRecordsCheckpoint0 + rand:uniform(3000)
 	end,
 	SqlLoad = string:trim(binary_to_list(maps:get(<<"sql_load">>, Props, <<>>))),
 	SqlUpdate = string:trim(binary_to_list(maps:get(<<"sql_update">>, Props, <<>>))),
@@ -115,7 +115,7 @@ init(#service{name = Name,
 	SqlIds = re:replace(SqlLoad, "select ([^,]+),(.+)( from.+)( order by.+)?", "select \\1 \\3", [{return,list}]),
 	Fields = maps:get(<<"fields">>, Props, <<>>),
 	SourceType = binary_to_atom(maps:get(<<"source_type">>, Props, <<"db">>), utf8),
-	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 10000),
+	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 10000) + rand:uniform(3000),
 	SyncFullCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_full_checkpoint">>]), utf8),
 	CheckCountCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_count_checkpoint">>]), utf8),
 	CheckRemoveCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_remove_checkpoint">>]), utf8),
@@ -128,12 +128,14 @@ init(#service{name = Name,
 	ErrorsMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_errors">>]), utf8),
 	DisabledMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_disabled">>]), utf8),
 	SkipMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_skip">>]), utf8),
-	erlang:send_after(60000 * 60, self(), check_sync_full),
+	GroupDataLoader = lists:delete(NameStr, ems_util:binlist_to_list(maps:get(<<"group">>, Props, []))),
+	% Removido para não causar indisponibilidade
+	%erlang:send_after(60000 * 60, self(), check_sync_full),
 	case CheckRemoveRecords andalso CheckRemoveRecordsCheckpoint > 0 of
-		true -> erlang:send_after(CheckRemoveRecordsCheckpoint + 60000, self(), check_count_records);
+		true -> erlang:send_after(CheckRemoveRecordsCheckpoint + 90000 + rand:uniform(10000), self(), check_count_records);
 		false -> ok
 	end,
-	State = #state{name = binary_to_list(Name),
+	State = #state{name = NameStr,
 				   datasource = Datasource, 
 				   update_checkpoint = UpdateCheckpoint,
 				   last_update_param_name = LastUpdateParamName,
@@ -159,9 +161,9 @@ init(#service{name = Name,
 				   disable_metric_name = DisabledMetricName,
 				   skip_metric_name = SkipMetricName,
 				   source_type = SourceType,
-				   async = Async,
 				   loading = true,
-				   allow_clear_table_full_sync = false},
+				   allow_clear_table_full_sync = false,
+				   group = GroupDataLoader},
 	{ok, State, StartTimeout}.
     
 handle_cast(shutdown, State) ->
@@ -209,29 +211,30 @@ handle_info(check_sync_full, State = #state{name = Name,
 											timeout_on_error = TimeoutOnError,
 											sync_full_checkpoint_metric_name = SyncFullCheckpointMetricName,
 											error_checkpoint_metric_name = ErrorCheckpointMetricName,
-											loading = Loading
+											loading = Loading,
+											group = GroupDataLoader
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-		case Hour >= 4 andalso Hour =< 6 of
+		case Hour >= 3 andalso Hour =< 6 of
 			true ->
 				?DEBUG("~s handle check_sync_full execute.", [Name]),
-				case not Loading andalso do_permission_to_execute(check_sync_full, Name, State) of
+				case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader) of
 					true ->
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
 						ems_logger:info("~s sync full checkpoint now.", [Name]),
 						State2 = State#state{last_update = undefined,
-											 allow_clear_table_full_sync = true},
+											  allow_clear_table_full_sync = true},
 						case do_check_load_or_update_checkpoint(State2) of
 							{ok, State3} ->
 								ems_logger:info("~s sync full checkpoint successfully", [Name]),
-								ems_data_loader_ctl:notify_finish_work(check_sync_full, Name),
+								ems_data_loader_ctl:notify_finish_work(Name),
 								erlang:send_after(86400 * 1000, self(), check_sync_full),
 								{noreply, State3, UpdateCheckpoint};
 							_Error -> 
-								ems_data_loader_ctl:notify_finish_work(check_sync_full, Name),
+								ems_data_loader_ctl:notify_finish_work(Name),
 								ems_db:inc_counter(ErrorCheckpointMetricName),
 								erlang:send_after(86400 * 1000, self(), check_sync_full),
-								ems_logger:warn("~s sync full wait ~p minutes for next checkpoint while has database connection error.", [Name, trunc(TimeoutOnError / 60000)]),
+								ems_logger:warn("~s sync full wait ~pms for next checkpoint while has database connection error.", [Name, TimeoutOnError]),
 								{noreply, State, TimeoutOnError}
 						end;
 					false ->
@@ -252,23 +255,24 @@ handle_info(check_count_records, State = #state{name = Name,
 												update_checkpoint = UpdateCheckpoint,
 											    timeout_on_error = TimeoutOnError,
 											    check_remove_records_checkpoint = CheckRemoveRecordsCheckpoint,
-											    loading = Loading}) ->
+											    loading = Loading,
+											    group = GroupDataLoader}) ->
 	?DEBUG("~s handle check_count_records execute.", [Name]),
-	case not Loading andalso do_permission_to_execute(check_count_records, Name, State) of
+	case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader) of
 		true ->
 			case do_check_count_checkpoint(State) of
 				{ok, State2} -> 
-					ems_data_loader_ctl:notify_finish_work(check_count_records, Name),
+					ems_data_loader_ctl:notify_finish_work(Name),
 					erlang:send_after(CheckRemoveRecordsCheckpoint, self(), check_count_records),
-					{noreply, State2, UpdateCheckpoint};
+					{noreply, State2, UpdateCheckpoint + rand:uniform(3000)};
 				_ -> 
-					ems_data_loader_ctl:notify_finish_work(check_count_records, Name),
+					ems_data_loader_ctl:notify_finish_work(Name),
 					erlang:send_after(CheckRemoveRecordsCheckpoint, self(), check_count_records),
 					{noreply, State, TimeoutOnError}
 			end;
 		false ->
 			?DEBUG("~s handle check_count_records wait 3000ms to execute.", [Name]),
-			{noreply, State, 3000}
+			{noreply, State, 3000 + rand:uniform(3000)}
 	end;
 
 handle_info({_Pid, {error, _Reason}}, State = #state{timeout_on_error = TimeoutOnError}) ->
@@ -289,23 +293,23 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 														 timeout_on_error = TimeoutOnError,
 														 error_checkpoint_metric_name = ErrorCheckpointMetricName,
 														 last_update = LastUpdate,
-														 loading = Loading}) ->
+														 loading = Loading,
+														 group = DataLoaderGroup}) ->
 	?DEBUG("~s handle_do_check_load_or_update_checkpoint execute.", [Name]),
-	case do_permission_to_execute(check_load_or_update_checkpoint, Name, State) of
+	case ems_data_loader_ctl:permission_to_execute(Name, DataLoaderGroup) of
 		true ->
-			?DEBUG("~s handle_do_check_load_or_update_checkpoint execute.", [Name]),
 			case do_check_load_or_update_checkpoint(State) of
 				{ok, State2} ->
-					ems_data_loader_ctl:notify_finish_work(check_load_or_update_checkpoint, Name),
+					ems_data_loader_ctl:notify_finish_work(Name),
 					erlang:garbage_collect(),
 					case Loading of
-						true -> {noreply, State2, UpdateCheckpoint + 60000};
+						true -> {noreply, State2, UpdateCheckpoint + 60000 + rand:uniform(10000)};
 						false -> {noreply, State2, UpdateCheckpoint}
 					end;
 				_Error -> 
-					ems_data_loader_ctl:notify_finish_work(check_load_or_update_checkpoint, Name),
+					ems_data_loader_ctl:notify_finish_work(Name),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
-					ems_logger:warn("~s wait ~p minutes for next checkpoint while has database connection error.", [Name, trunc(TimeoutOnError / 60000)]),
+					ems_logger:warn("~s wait ~pms for next checkpoint while has database connection error.", [Name, TimeoutOnError]),
 					erlang:garbage_collect(),
 					{noreply, State, TimeoutOnError}
 			end;
@@ -313,10 +317,10 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 			case LastUpdate == undefined orelse do_is_empty(State) orelse Loading of
 				true -> 
 					?DEBUG("~s handle_do_check_load_or_update_checkpoint wait 1000ms to execute.", [Name]),
-					{noreply, State, 1000};
+					{noreply, State, 1000 + rand:uniform(500)};
 				false -> 
 					?DEBUG("~s handle_do_check_load_or_update_checkpoint wait 3000ms to execute.", [Name]),
-					{noreply, State, 3000}	
+					{noreply, State, 3000 + rand:uniform(3000)}	
 			end
 	end.
 	
@@ -627,6 +631,7 @@ do_check_remove_records(Ids, #state{middleware = Middleware, source_type = Sourc
 	do_remove_records_(IdsDiff, Table),
 	length(IdsDiff).
 
+
 -spec do_remove_records_(list(non_neg_integer()), atom()) -> ok.
 do_remove_records_([], _) -> ok;
 do_remove_records_([Id|T], Table) ->
@@ -634,10 +639,9 @@ do_remove_records_([Id|T], Table) ->
 	do_remove_records_(T, Table).
 
 
--spec do_permission_to_execute(atom(), atom(), #state{}) -> boolean().
-do_permission_to_execute(_, _, #state{async = true}) -> true;
-do_permission_to_execute(_What, _ProcessName, _) -> true.
-	%ems_data_loader_ctl:permission_to_execute(What, ProcessName).
+		
+	
+	
 		
 
 
