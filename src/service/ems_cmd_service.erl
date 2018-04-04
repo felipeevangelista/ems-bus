@@ -13,17 +13,33 @@
 
 -export([execute/1]).
 
-execute(Request = #request{service = #service{properties = Properties}}) ->	
+execute(Request = #request{service = #service{properties = Properties, content_type = ContentTypeOut}}) ->	
 	Script = maps:get(<<"script">>, Properties, []), 
 	Result = execute_script(Script, []),
-	{ok, Request#request{code = 200, 
-						 response_data = Result}
-	}.
+	case ContentTypeOut of
+		<<"application/json; charset=utf-8">> ->
+			{ok, Request#request{code = 200, 
+								 response_data = ems_schema:to_json({ok, Result})}
+			};
+		<<"plain/text">> ->
+			{ok, Request#request{code = 200, 
+								 response_data = Result}
+			}
+	end.
 
    
-execute_script([], Output) -> {ok, io_lib:iolist_to_binary("~p", [Output])};
+execute_script([], Output) -> 
+	try
+		iolist_to_binary(lists:reverse(Output))
+	catch
+		_:_ -> <<"">>
+	end;
 execute_script([H|T], Output) ->
-	Result = os:cmd(H),
-	execute_script(T, [Result | Output]).
+	case os:cmd(binary_to_list(H)) of
+		"sudo: no tty present and no askpass program specified\n" -> execute_script(T, Output);
+		undefined -> execute_script(T, Output); 
+		Result -> execute_script(T, [Result | Output])
+	end.
+	
 	
     

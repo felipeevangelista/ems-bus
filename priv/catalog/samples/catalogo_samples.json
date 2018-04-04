@@ -37,6 +37,11 @@
 	{
 		"catalog": "/samples/upload_file", 
 		"file": "upload_file.json"
+	},
+	
+	{
+		"catalog": "/samples/catalogo_cmd_service", 
+		"file": "catalogo_cmd_service.json"
 	}	
 	
 ]

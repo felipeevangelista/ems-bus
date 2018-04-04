@@ -10,7 +10,7 @@
 #
 
 # Test if ldap-utils package is intalled
-ldapsearch --version 2>> /dev/null 2>$1
+ldapsearch --version 2>> /dev/null 2>&1
 if "$1" = "1" ; then
 	echo "Error: Requires ldap-utils package to execute this command."
 	exit

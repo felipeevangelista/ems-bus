@@ -382,18 +382,12 @@ make_result_done(ResultCode) ->
 -spec handle_request_search_login(binary(), #state{}) -> {ok, tuple()}.
 handle_request_search_login(UserLogin, #state{admin = AdminLdap,
 										      search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
-											  search_unavailable_metric_name = SearchUnavailableMetricName,
 											  search_success_metric_name = SearchSuccessMetricName}) ->	
-	case ems_user:find_by_login_with_metric(UserLogin) of
+	case ems_user:find_by_login(UserLogin) of
 		{error, enoent} ->
 			ems_db:inc_counter(SearchInvalidCredentialMetricName),
 			ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
 			ResultDone = make_result_done(invalidCredentials),
-			{ok, [ResultDone]};
-		{error, Reason} ->
-			ems_db:inc_counter(SearchUnavailableMetricName),
-			ems_logger:error("ems_ldap_handler search ~p fail. Reason: ~p.", [UserLogin, Reason]),
-			ResultDone = make_result_done(unavailable),
 			{ok, [ResultDone]};
 		{ok, User} ->
 			ems_db:inc_counter(SearchSuccessMetricName),

@@ -442,22 +442,6 @@
 					"comment": "Campos que devem ser ordenados"
 				}
 			]	
-	},
-	
-	{
-		"name": "/netadm/jboss/tail",
-		"comment": "Show log of jboss",
-		"owner": "netadm",
-		"version": "1.0.0",
-		"service" : "ems_cmd_service:execute",
-		"url": "/netadm/jboss/tail",
-		"script" : [ "tail /home/agilar/desenvolvimento/servers/wildfly10/standalone/log/server.log" ],
-		"type": "GET",
-		"authorization": "basic",
-		"lang" : "erlang"
 	}
-	
-	
-	
 	
 ]
