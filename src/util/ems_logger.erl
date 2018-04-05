@@ -135,8 +135,11 @@ sync() ->
 	info("ems_logger sync log_buffer."),
 	gen_server:call(?SERVER, sync_log_buffer). 		
 
-log_request(Request) -> 
-	gen_server:cast(?SERVER, {log_request, Request}). 
+log_request(Request = #request{content_length = ContentLength}) -> 
+	case ContentLength > ?LOG_SHOW_PAYLOAD_MAX_LENGTH_LOG_REQUEST of
+		true -> gen_server:cast(?SERVER, {log_request, Request#request{payload = <<>>, content_length = 0}});
+		false -> gen_server:cast(?SERVER, {log_request, Request})
+	end.
 
 set_level(Level) -> 
 	info("ems_logger set log_level ~p.", [Level]),
@@ -200,13 +203,13 @@ show_payload_url(_, MaxLength, Url) ->
 	gen_server:cast(?SERVER, {show_payload, false, MaxLength, Url}). 
 
 log_file_head() ->
-	gen_server:call(?SERVER, {log_file_head, 80}). 		
+	gen_server:call(?SERVER, {log_file_head, 1000}). 		
 
 log_file_head(N) ->
 	gen_server:call(?SERVER, {log_file_head, N}). 		
 
 log_file_tail() ->
-	gen_server:call(?SERVER, {log_file_tail, 80}). 		
+	gen_server:call(?SERVER, {log_file_tail, 1000}). 		
 
 log_file_tail(N) ->
 	gen_server:call(?SERVER, {log_file_tail, N}). 		
@@ -530,9 +533,9 @@ sync_log_buffer_screen(State) ->
 
 
 sync_log_buffer(State = #state{log_buffer = Buffer,
-						   log_file_name = CurrentLogFilename,
-						   log_file_max_size = LogFileMaxSize,
-						   log_file_handle = CurrentIODevice}) ->
+							   log_file_name = CurrentLogFilename,
+							   log_file_max_size = LogFileMaxSize,
+							   log_file_handle = CurrentIODevice}) ->
 	ems_db:inc_counter(ems_logger_sync_log_buffer),
 	FileSize = filelib:file_size(CurrentLogFilename),
 	case FileSize > LogFileMaxSize of 	% check limit log file max size
@@ -565,7 +568,10 @@ sync_log_buffer(State = #state{log_buffer = Buffer,
 			ems_logger:error("ems_logger does no have log file descriptor valid.");
 		{error, Reason} ->
 			ems_db:inc_counter(ems_logger_sync_log_buffer_error),
-			ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Reason])
+			ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Reason]);
+		_ ->
+			ems_db:inc_counter(ems_logger_sync_log_buffer_error),
+			ems_logger:error("ems_logger was unable to unload the log log_buffer cache.")
 	end,
 	State2.
 
@@ -807,7 +813,7 @@ do_log_request(#request{rid = RID,
 	catch 
 		_:ExceptionReason -> 
 			io:format("ems_logger do_log_request format invalid message. Reason: ~p.\n", [ExceptionReason]),
-			State
+			State#state{log_ult_reqhash = ReqHash}
 	end.
 	
 

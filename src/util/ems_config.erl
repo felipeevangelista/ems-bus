@@ -298,8 +298,8 @@ parse_config(Json, NomeArqConfig) ->
 			 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
 	 		 log_show_response = ems_util:parse_bool(maps:get(<<"log_show_response">>, Json, false)),
 			 log_show_payload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Json, false)),
-	 		 log_show_response_max_length = ems_util:parse_bool(maps:get(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH)),
-			 log_show_payload_max_length = ems_util:parse_bool(maps:get(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH)),
+	 		 log_show_response_max_length = maps:get(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH),
+			 log_show_payload_max_length = maps:get(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH),
 			 rest_default_querystring = Querystring
 		}.
 

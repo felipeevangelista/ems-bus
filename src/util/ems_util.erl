@@ -916,14 +916,24 @@ read_file_as_map(Filename) ->
 		Error -> Error
 	end.
 
+
+read_file_as_list_add_carriage_return([], Result) -> Result;
+read_file_as_list_add_carriage_return([H|T], Result) ->	
+	Result2 = [<<"\n">> | Result],
+	Result3 = [H | Result2],
+	read_file_as_list_add_carriage_return(T, Result3).
+
+
 -spec read_file_as_list(string()) -> list().
 read_file_as_list(Filename) ->
-  {ok, IO} = file:open( Filename, [read] ),
-  read_file_as_list( io:get_line(IO, ''), IO, [] ).
+	{ok, Data} = file:read_file(Filename),
+	List = binary:split(Data, [<<"\n">>], [global]),
+	read_file_as_list_add_carriage_return(List, []).
+	
 
-read_file_as_list( eof, _IO, Acc ) -> lists:reverse( Acc );
-read_file_as_list( {error, _Error}, _IO, Acc ) -> lists:reverse( Acc );
-read_file_as_list( Line, IO, Acc ) -> read_file_as_list( io:get_line(IO, ''), IO, [Line | Acc] ).
+%read_file_as_list( eof, _IO, Acc ) -> lists:reverse( Acc );
+%read_file_as_list( {error, _Error}, _IO, Acc ) -> lists:reverse( Acc );
+%read_file_as_list( Line, IO, Acc ) -> read_file_as_list( io:get_line(IO, ''), IO, [Line | Acc] ).
 
 
 -spec head_file(string(), non_neg_integer()) -> list().
@@ -2330,8 +2340,7 @@ parse_allowed_address(AllowedAddress) when is_list(AllowedAddress) ->
 			parse_allowed_address_t(AllowedAddress3);
 		false -> []
 	end;
-parse_allowed_address(AddrList) -> 
-	ems_util:binlist_to_list(AddrList).
+parse_allowed_address(AddrList) -> binlist_to_list(AddrList).
 
 -spec parse_allowed_address_t(all | undefined | list()) -> all | undefined | list().
 parse_allowed_address_t(all) -> all;

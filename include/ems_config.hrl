@@ -101,6 +101,7 @@
 -define(LOG_ARCHIVE_CHECKPOINT, 1000 * 60 * 60 * 24).  % Por default são 24 horas
 
 -define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 4000).
+-define(LOG_SHOW_PAYLOAD_MAX_LENGTH_LOG_REQUEST, 4000 * 4).
 -define(LOG_SHOW_RESPONSE_MAX_LENGTH, 4000).
 
 % Quantos workers HTTP instanciar se não especificado no arquivo de configuração
