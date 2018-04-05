@@ -917,7 +917,7 @@ read_file_as_map(Filename) ->
 	end.
 
 
-read_file_as_list_add_carriage_return([], Result) -> Result;
+read_file_as_list_add_carriage_return([], Result) -> lists:reverse(Result);
 read_file_as_list_add_carriage_return([H|T], Result) ->	
 	Result2 = [<<"\n">> | Result],
 	Result3 = [H | Result2],
@@ -930,11 +930,6 @@ read_file_as_list(Filename) ->
 	List = binary:split(Data, [<<"\n">>], [global]),
 	read_file_as_list_add_carriage_return(List, []).
 	
-
-%read_file_as_list( eof, _IO, Acc ) -> lists:reverse( Acc );
-%read_file_as_list( {error, _Error}, _IO, Acc ) -> lists:reverse( Acc );
-%read_file_as_list( Line, IO, Acc ) -> read_file_as_list( io:get_line(IO, ''), IO, [Line | Acc] ).
-
 
 -spec head_file(string(), non_neg_integer()) -> list().
 head_file(Filename, N) ->
