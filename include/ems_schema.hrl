@@ -152,6 +152,7 @@
 				 redirect_uri :: binary(),
 				 active :: boolean(),
 				 scope :: binary(),
+				 version :: binary(),
 				 ctrl_path :: string(),
 				 ctrl_file :: string(),
 				 ctrl_insert,								%% Data que o serviço foi inserido no banco mnesia

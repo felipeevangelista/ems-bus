@@ -4,7 +4,7 @@
 	"owner": "samples",
 	"version": "1.0.0",
 	"service" : "ems_barramento_service:execute",
-	"url": "/.+/barramento",
+	"url": "/(?<name>.+)/barramento",
 	"use_re" : true,
 	"async": "false",
 	"result_cache" : 60000,

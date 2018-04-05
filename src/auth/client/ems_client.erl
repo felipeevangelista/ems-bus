@@ -75,9 +75,7 @@ to_json(Client) ->
 	iolist_to_binary([
 		<<"{"/utf8>>,
 			<<"\"id\":"/utf8>>, integer_to_binary(Client#client.id), <<","/utf8>>,
-			<<"\"name\":\""/utf8>>, Client#client.name, <<"\","/utf8>>, 
-			<<"\"redirect_uri\":\""/utf8>>, Client#client.redirect_uri, <<"\","/utf8>>, 
-			<<"\"description\":\""/utf8>>, Client#client.description, <<"\""/utf8>>, 
+			<<"\"name\":\""/utf8>>, Client#client.name, <<"\""/utf8>>,
 		<<"}"/utf8>>
 		]).
 
@@ -92,6 +90,7 @@ new_from_map(Map, _Conf) ->
 				redirect_uri = ems_util:to_lower_and_remove_backslash(?UTF8_STRING(maps:get(<<"redirect_uri">>, Map, <<>>))),
 				description = ?UTF8_STRING(maps:get(<<"description">>, Map, <<>>)),
 				scope = ?UTF8_STRING(maps:get(<<"scope">>, Map, <<>>)),
+				version = ?UTF8_STRING(maps:get(<<"version">>, Map, <<"1.0.0">>)),
 				active = ems_util:parse_bool(maps:get(<<"active">>, Map, true)),
 				ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 				ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),

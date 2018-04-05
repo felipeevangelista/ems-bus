@@ -8,8 +8,8 @@
 
 -module(ems_client_loader_middleware).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 -export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2]).
 
@@ -78,6 +78,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 description = NewClient#client.description,
 												 scope = NewClient#client.scope,
 												 active = NewClient#client.active,
+												 version = NewClient#client.version,
 												 ctrl_path = NewClient#client.ctrl_path,
 												 ctrl_file = NewClient#client.ctrl_file,
 												 ctrl_update = CtrlDate,
