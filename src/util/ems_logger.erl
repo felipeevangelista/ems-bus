@@ -203,13 +203,13 @@ show_payload_url(_, MaxLength, Url) ->
 	gen_server:cast(?SERVER, {show_payload, false, MaxLength, Url}). 
 
 log_file_head() ->
-	gen_server:call(?SERVER, {log_file_head, 1000}). 		
+	gen_server:call(?SERVER, {log_file_head, 2000}). 		
 
 log_file_head(N) ->
 	gen_server:call(?SERVER, {log_file_head, N}). 		
 
 log_file_tail() ->
-	gen_server:call(?SERVER, {log_file_tail, 1000}). 		
+	gen_server:call(?SERVER, {log_file_tail, 2000}). 		
 
 log_file_tail(N) ->
 	gen_server:call(?SERVER, {log_file_tail, N}). 		

@@ -43,6 +43,20 @@
 	},
 
 	{
+		"name": "/logger/head/:id",
+		"comment": "Return first lines of current logfile",
+		"owner": "logger",
+		"version": "1.0.0",
+		"service" : "ems_logger_service:log_file_head",
+		"url": "/logger/head/:id",
+		"content_type" : "text/file",
+		"result_cache" : 0,
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+
+	{
 		"name": "/logger/tail",
 		"comment": "Return last lines of current logfile",
 		"owner": "logger",
@@ -56,6 +70,20 @@
 		"lang" : "erlang"
 	},
 	
+	{
+		"name": "/logger/tail/:id",
+		"comment": "Return last lines of current logfile",
+		"owner": "logger",
+		"version": "1.0.0",
+		"service" : "ems_logger_service:log_file_tail",
+		"url": "/logger/tail/:id",
+		"content_type" : "text/file",
+		"result_cache" : 0,
+		"type": "GET",
+		"authorization": "basic",
+		"lang" : "erlang"
+	},
+
 	{
 		"name": "/logger/debug",
 		"comment": "Check debug mode",

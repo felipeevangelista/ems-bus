@@ -19,11 +19,18 @@
 #
 ########################################################################################################
 
-CURRENT_DIR=$(pwd)
-VERSION_SCRIPT="2.0.0"
-
 clear
+
+CURRENT_DIR=$(pwd)
+VERSION_SCRIPT="3.0.0"
+
 echo "Build ErlangMs images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
+
+echo "Clear /tmp/erlangms cache with sudo..."
+sudo rm -rf /tmp/erlangms
+
+echo "Clear npm cache with sudo..."
+sudo rm -rf ~/.npm
 
 
 # Imprime na tela a ajuda do comando
@@ -75,8 +82,8 @@ if [ "$1" = "--help" ]; then
 fi
 
 # Make sure only root can run our script
-if [[ $EUID -ne 0 ]]; then
-   echo "Only the root user can build docker images" 1>&2
+if [ "$EUID" = "0" ]; then
+   echo "Do not run the build image as root!!!" 1>&2
    exit 1
 fi
 
@@ -141,7 +148,6 @@ GIT_USER="erlangms"
 GIT_PASSWD=""
 
 
-
 # SMTP parameter
 SMTP_SERVER="mail.unb.br"
 SMTP_PORT=587
@@ -154,10 +160,15 @@ SMTP_RE_CHECK="^[a-z0-9!#\$%&'*+/=?^_\`{|}~-]+(\.[a-z0-9!#$%&'*+/=?^_\`{|}~-]+)*
 # Quando este flag é true, faz um cache do node_modules para acelerar o build (apenas para testes)
 CACHE_NODE_MODULES="false"
 
+INSTALL_REQUIRED_PCK="true"
+
 # Se este flag for true, após o build a stage área não será removida. Obs.: Para finalidades de debug
 KEEP_STAGE="true"
 
-LOG_FILE="$CURRENT_DIR/docker-build.log"
+# Log file path
+LOG_FILE_PATH="/tmp/erlangms/docker-build/$$/"
+LOG_FILE="/tmp/erlangms/docker-build/$$/docker-build.log"
+mkdir -p "$LOG_FILE_PATH"
 
 
 # Lê uma configuração específica do arquivo de configuração. Aceita default se não estiver definido
@@ -241,13 +252,17 @@ EOF
 
 # Instala os componentes necessários para o build
 install_required_libs(){
+	echo "Install required libs..."
+
+	curl -sL https://deb.nodesource.com/setup_9.x > /dev/null | sudo -E bash -
+
 	# Indicates whether it will be necessary to update the repository
 	UPDATE_NECESSARY="false"
 
 	# **** Install required packages to build images ****
 	
-	if [ "$INSTALL_REQUIRED_PCK" == "true" ]; then
-		REQUIRED_PCK=""
+	if [ "$INSTALL_REQUIRED_PCK" = "true" ]; then
+		REQUIRED_PCK="build-essential nodejs libcairo2-dev libjpeg-dev libgif-dev"
 		INSTALL_REQUIRED_PCK="false"
 		for PCK in $REQUIRED_PCK; do 
 			if ! dpkg -s $PCK > /dev/null 2>&1 ; then
@@ -255,8 +270,10 @@ install_required_libs(){
 				break
 			fi
 		done
-		echo "Installing required libs $REQUIRED_PCK..."
-		apt-get -y install $REQUIRED_PCK > /dev/null 2>&1
+		if [ "$INSTALL_REQUIRED_PCK" = "true" ]; then
+			echo "Installing required libs $REQUIRED_PCK..."
+			apt-get -y install $REQUIRED_PCK > /dev/null 2>&1
+		fi
 	fi
 }
 
@@ -378,56 +395,59 @@ build_app(){
 
 # Build docker image
 build_image(){
-	echo "Start build docker image $APP_NAME, please wait..."
+	echo "Start build docker image $APP_NAME, please wait (Root credentials necessary)..."
 
 	# Format app version do docker
-	APP_VERSION=$(echo "$GIT_CHECKOUT_TAG" | sed -r 's/[^0-9.]+//g')
+	if [ "$BUILD_FROM_MASTER" = "true" ]; then
+		APP_VERSION="1.0.0"
+	else
+		APP_VERSION=$(echo "$GIT_CHECKOUT_TAG" | sed -r 's/[^0-9.]+//g')
+	fi
 
 	# Nome da imagem no docker sem o sufixo latest
-	APP_DOCKER_FILENAME=$APP_NAME:$APP_VERSION
+	APP_DOCKER_FILENAME="$APP_NAME:$APP_VERSION"
 
 	# Nome da imagem no docker com sufixo latest
-	APP_DOCKER_LATEST=$APP_NAME:latest
+	APP_DOCKER_LATEST="$APP_NAME:latest"
 
 	echo "Build image $APP_DOCKER_LATEST"
-	docker swarm leave --force
+	
+	echo "sudo docker swarm leave --force"
+	sudo docker swarm leave --force
 
-	echo "Stop image $APP_DOCKER_FILENAME..."
-	docker stop $(docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3)
-	docker stop $(docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3)
+	echo "Stop current images..."
+	sudo docker stop $(docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
+	sudo docker stop $(docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
 
-	# Por segurança melhor apagar as imagens anteriores
-	echo "Remove previous build images de $APP_DOCKER_FILENAME..."
-	docker rmi --force $(docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3)
-	docker rmi --force $(docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3)
+	echo "Remove previous build images..."
+	sudo docker rmi --force $(docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
+	sudo docker rmi --force $(docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
 
 	# build docker image $APP_NAME:$APP_VERSION
-	echo "docker build . -t $APP_DOCKER_FILENAME"
-	docker build . -t $APP_DOCKER_FILENAME
+	echo "sudo docker build . -t $APP_DOCKER_FILENAME"
+	sudo docker build . -t $APP_DOCKER_FILENAME
 	
 	# Add tag $APP_DOCKER_LATEST
-	echo "docker tag $APP_DOCKER_FILENAME $APP_DOCKER_LATEST"
-	docker tag $APP_DOCKER_FILENAME $APP_DOCKER_LATEST
+	echo "sudo docker tag $APP_DOCKER_FILENAME $APP_DOCKER_LATEST"
+	sudo docker tag $APP_DOCKER_FILENAME $APP_DOCKER_LATEST
 	
 	# create stack of services
-	echo "docker swarm init"
-	docker swarm init
+	echo "sudo docker swarm init"
+	sudo docker swarm init
 
 	# Create network:
-	echo "docker network create -d overlay $APP_NAME"
-	docker network create -d overlay $APP_NAME
+	echo "sudo docker network create -d overlay $APP_NAME"
+	sudo docker network create -d overlay $APP_NAME
 	
-	echo "docker stack deploy -c docker-compose.yml erlangms"
-	docker stack deploy -c docker-compose.yml erlangms
+	echo "sudo docker stack deploy -c docker-compose.yml erlangms"
+	sudo docker stack deploy -c docker-compose.yml erlangms
 	
 	# remove old tar
-	rm -f $APP_DOCKER_LATEST.tar
+	sudo rm -f $APP_DOCKER_LATEST.tar
 
 	# save image
-	echo "docker save $APP_DOCKER_LATEST -o $APP_DOCKER_LATEST.tar"
-	docker save $APP_DOCKER_LATEST -o $APP_DOCKER_LATEST.tar
-	
-	cp $APP_DOCKER_LATEST.tar $CURRENT_DIR/$APP_DOCKER_LATEST.tar
+	echo "sudo docker save $APP_DOCKER_LATEST -o $APP_DOCKER_LATEST.tar"
+	sudo docker save $APP_DOCKER_LATEST -o $APP_DOCKER_LATEST.tar
 }
 
 
@@ -738,7 +758,7 @@ if [ "$SKIP_BUILD" = "false" ]; then
 		check_node_version
 		check_docker_version
 	else
-		echo "Skip npm, node and docker enabled..."	
+		echo "Skip npm, node and docker check enabled..."	
 	fi
 
 
@@ -793,11 +813,12 @@ fi
 
 #check_send_email
 	
-# Volta para o diretório do projeto docker
-cd $CURRENT_DIR
-
 if [ "$KEEP_STAGE" = "false" ]; then
-	rm -rf $STAGE_AREA
+	echo "Finish!!!"
+	sudo rm -rf $STAGE_AREA
+else
+	cd "$STAGE_AREA"
+	echo "Finish, stage area is $STAGE_AREA."
 fi
 
-echo "Finish!!!"
+

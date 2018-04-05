@@ -29,7 +29,8 @@
 		 print_debug_log/1]).
 
 log_file_tail(Request) ->	
-	case ems_logger:log_file_tail() of
+	QtdLines = ems_util:get_param_url(<<"id">>, 2000, Request),
+	case ems_logger:log_file_tail(QtdLines) of
 		{ok, FileList} ->
 			{ok, Request#request{code = 200, 
 								 content_type_out = <<"text/file">>,
@@ -42,7 +43,8 @@ log_file_tail(Request) ->
 	end.
 
 log_file_head(Request) ->	
-	case ems_logger:log_file_head() of
+	QtdLines = ems_util:get_param_url(<<"id">>, 2000, Request),
+	case ems_logger:log_file_head(QtdLines) of
 		{ok, FileList} ->
 			{ok, Request#request{code = 200, 
 								 content_type_out = <<"text/file">>,

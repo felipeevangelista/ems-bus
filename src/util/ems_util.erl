@@ -934,15 +934,17 @@ read_file_as_list(Filename) ->
 -spec head_file(string(), non_neg_integer()) -> list().
 head_file(Filename, N) ->
 	L = read_file_as_list(Filename),
-	{ok, lists:sublist(L, N)}.
+	{ok, lists:sublist(L, (N*2))}.
 
 -spec tail_file(string(), non_neg_integer()) -> list().
 tail_file(Filename, N) ->
 	L = read_file_as_list(Filename),
 	Len = length(L),
 	case Len > N of 	
-		true ->	{ok, lists:nthtail(Len-N, L)};
-		false -> {ok, L}
+		true ->	
+			{ok, lists:nthtail(Len-(N*2), L)};
+		false -> 
+			{ok, L}
 	end.
 
 
