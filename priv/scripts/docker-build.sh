@@ -416,12 +416,12 @@ build_image(){
 	sudo docker swarm leave --force
 
 	echo "Stop current images..."
-	sudo docker stop $(docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
-	sudo docker stop $(docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
+	sudo docker stop $(sudo docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
+	sudo docker stop $(sudo docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
 
 	echo "Remove previous build images..."
-	sudo docker rmi --force $(docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
-	sudo docker rmi --force $(docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
+	sudo docker rmi --force $(sudo docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
+	sudo docker rmi --force $(sudo docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
 
 	# build docker image $APP_NAME:$APP_VERSION
 	echo "sudo docker build . -t $APP_DOCKER_FILENAME"
@@ -520,7 +520,7 @@ check_docker_version(){
 	printf "Checking installed docker version... "
 	docker --version > /dev/null || die "Docker is not installed, start canceled!"
 	DOCKER_VERSION2=$(echo $DOCKER_VERSION | sed -r 's/[^0-9.]+//g' | sed -r 's/(^[0-9]{1,3})\..+/\1/')
-	DOCKER_VERSION_OS=$(docker --version)
+	DOCKER_VERSION_OS=$(sudo docker --version)
 	DOCKER_VERSION_OS=$(echo $DOCKER_VERSION_OS | sed -r 's/[^0-9.]+//g' | sed -r 's/(^[0-9]{1,3})\..+/\1/')
 	if [ "$DOCKER_VERSION_OS" -ge "$DOCKER_VERSION2" ]; then
 		printf "OK\n"
@@ -537,17 +537,22 @@ check_docker_version(){
 # arquivo de configuração /etc/docker/daemon.json
 # para liberar conexões HTTP inseguras
 check_push_registry(){
-	if docker info > /dev/null 2>&1 ; then
+	if sudo docker info > /dev/null 2>&1 ; then
 		
 		# Crate /etc/docker/daemon.json SOMENTE if does not exist
-		if [ ! -f /etc/docker/daemon.json ]; then
+		sudo test -f /etc/docker/daemon.json
+		if [ "$?" = "1" ]; then
 			echo "File /etc/docker/daemon.json does not exist, creating it..."
-			echo "{ \"insecure-registries\": [\"$REGISTRY_IP:$REGISTRY_PORT\"] }" > /etc/docker/daemon.json
+			sudo echo "{ \"insecure-registries\": [\"$REGISTRY_IP:$REGISTRY_PORT\"] }" > /etc/docker/daemon.json
 			echo "Restart systemctl docker.service daemon after creating /etc/docker/daemon.json..."
-			systemctl restart docker > /dev/null 2>&1
+			sudo systemctl restart docker > /dev/null 2>&1
 		fi
 
-		# Push the generated image to specific registry
+		echo ""
+		echo "--------------------------------------------------------------------------------------------------------"
+		echo ""
+		
+		# Push the generated image to specific registrysudo 
 		if [ ! -z "$REGISTRY" ]; then
 			push_registry		
 		else
@@ -603,10 +608,10 @@ push_registry(){
 	if $(host "$REGISTRY_IP" 2> /dev/null 1> /dev/null); then
 		if nc -z $REGISTRY_IP $REGISTRY_PORT ; then
 			PUSH_TAG="$REGISTRY_SERVER/$APP_NAME"
-			docker tag $APP_NAME $PUSH_TAG
+			sudo docker tag $APP_NAME $PUSH_TAG
 			echo
 			echo "Push $PUSH_TAG to $REGISTRY_SERVER"
-			docker push $REGISTRY_SERVER/$APP_NAME
+			sudo docker push $REGISTRY_SERVER/$APP_NAME
 
 			echo
 			

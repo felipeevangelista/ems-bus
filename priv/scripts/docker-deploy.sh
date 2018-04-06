@@ -179,7 +179,7 @@ help() {
 # Se o arquivo for informado com --client_conf, então o arquivo não precisa ser gerado
 make_conf_file(){
 	if [ "$CLIENT_CONF_IN_MEMORY" = "true" ]; then
-		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app_id\":$APP_ID,\"app_name\":\"$APP_NAME\",\"app_version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\",\"url_mask\":\"$ERLANGMS_URL_MASK\",\"ErlangMS_version\":\"$ERLANGMS_VERSION\"}" > $CLIENT_CONF
+		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app_id\":$APP_ID,\"app_name\":\"$APP_NAME\",\"app_version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\",\"url_mask\":\"$ERLANGMS_URL_MASK\",\"erlangms_version\":\"$ERLANGMS_VERSION\"}" > $CLIENT_CONF
 	fi
 }
 
@@ -338,7 +338,8 @@ ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 ERLANGMS_AUTHORIZATION_HEADER="Basic $(echo -n "$ERLANGMS_USER:$ERLANGMS_PASSWD" | openssl base64)"
 ERLANGMS_VERSION=$(curl -s "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 if [ -z "$ERLANGMS_VERSION" ]; then
-	die "Error: HTTT/REST request to ErlangMS version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+	ERLANGMS_VERSION="1.0.0"
+	echo "Error: HTTT/REST request to ErlangMS version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
 fi
 
 
@@ -350,6 +351,11 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
 	IMAGE=$APP_NAME
+	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	if [ -z "$APP_ID" ]; then
+		APP_ID=0
+		echo "Error: HTTT/REST request to /auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+	fi
 	get_expose_ports
 	make_conf_file
 
@@ -390,7 +396,8 @@ elif [ ! -z "$IMAGE" ]; then
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
 	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
-		die "Error: HTTT/REST request to app version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+		APP_ID=0
+		echo "Error: HTTT/REST request to /auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
 	fi
 	
 	ID_IMAGE=$(docker ps -f name=$APP_NAME | awk '{print $1}' | sed '1d')
@@ -441,6 +448,11 @@ else
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
 	IMAGE=$APP_NAME
+	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	if [ -z "$APP_ID" ]; then
+		APP_ID=0
+		echo "Error: HTTT/REST request to /auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+	fi
 	get_expose_ports
 	make_conf_file
 
