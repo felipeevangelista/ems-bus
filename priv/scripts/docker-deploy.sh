@@ -42,7 +42,8 @@ SERVER_HTTPS_PORT_LISTENER=
 ENTRYPOINT="ems-bus/bin/ems-bus console"
 CLIENT_CONF="/tmp/erlangms_$$_barramento_client.conf"
 CLIENT_CONF_IN_MEMORY="true"
-APP_VERSION="1.0"
+APP_ID="0"
+APP_VERSION="1.0.0"
 ENVIRONMENT="desenv"
 SKIP_CHECK="false"
 IMAGE_ID="latest"
@@ -57,6 +58,7 @@ ERLANGMS_AUTH_PROTOCOL="oauth2"
 ERLANGMS_URL_MASK="false"
 ERLANGMS_USER="geral"
 ERLANGMS_PASSWD="$(echo -n "123456" | openssl dgst -binary -sha1 | openssl base64)"
+ERLANGMS_VERSION="1.0.0"
 
 # Imprime uma mensagem e termina o sistema
 # Parâmetros:
@@ -336,7 +338,7 @@ ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 
 # Credentials to HTTP REST
 ERLANGMS_AUTHORIZATION_HEADER="Basic $(echo -n "$ERLANGMS_USER:$ERLANGMS_PASSWD" | openssl base64)"
-ERLANGMS_VERSION=$(curl -s "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+#ERLANGMS_VERSION=$(curl -s "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 if [ -z "$ERLANGMS_VERSION" ]; then
 	ERLANGMS_VERSION="1.0.0"
 	echo "Error: HTTT/REST request to ErlangMS version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
@@ -394,7 +396,7 @@ elif [ ! -z "$IMAGE" ]; then
 		APP_NAME=$(echo $IMAGE | awk -F/ '{ print $2 }')
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
-	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	#APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
 		echo "Error: HTTT/REST request to /auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
