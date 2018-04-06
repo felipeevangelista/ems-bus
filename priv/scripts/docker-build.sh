@@ -24,7 +24,7 @@ clear
 CURRENT_DIR=$(pwd)
 VERSION_SCRIPT="3.0.0"
 
-echo "Build ErlangMs images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
+echo "Build ErlangMS images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
 
 echo "Clear /tmp/erlangms cache with sudo..."
 sudo rm -rf /tmp/erlangms

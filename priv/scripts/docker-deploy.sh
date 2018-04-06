@@ -19,15 +19,17 @@
 #
 ########################################################################################################
 
+clear
+WORKING_DIR=$(pwd)
 
-# Versão do docker necessário
 # Será verificado se a versão está igual ou maior que a definida aqui
 DOCKER_VERSION="17.03.2"
 
-
 # Parameters
-VERSION_SCRIPT="1.0.2"
-WORKING_DIR=$(pwd)
+VERSION_SCRIPT="2.0.0"
+
+echo "Deploy ErlangMS images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
+
 
 # As configurações podem estar armazenadas no diretório /etc/default/erlangms-docker
 CONFIG_ARQ="/etc/default/erlangms-docker"
@@ -41,11 +43,11 @@ ENTRYPOINT="ems-bus/bin/ems-bus console"
 CLIENT_CONF="/tmp/erlangms_$$_barramento_client.conf"
 CLIENT_CONF_IN_MEMORY="true"
 APP_VERSION="1.0"
-ENVIRONMENT=`hostname`
+ENVIRONMENT="desenv"
 SKIP_CHECK="false"
 IMAGE_ID="latest"
 
-# Erlangms
+# Erlangms parameters
 ERLANGMS_ADDR="127.0.0.1"
 ERLANGMS_HTTP_PORT_LISTENER="2301"
 ERLANGMS_HTTPS_PORT_LISTENER="2344"
@@ -53,7 +55,8 @@ ERLANGMS_BASE_URL=""
 ERLANGMS_AUTH_URL=""
 ERLANGMS_AUTH_PROTOCOL="oauth2"
 ERLANGMS_URL_MASK="false"
-
+ERLANGMS_USER="geral"
+ERLANGMS_PASSWD="$(echo -n "123456" | openssl dgst -binary -sha1 | openssl base64)"
 
 # Imprime uma mensagem e termina o sistema
 # Parâmetros:
@@ -73,7 +76,7 @@ le_setting () {
 	KEY=$1
 	DEFAULT=$2
 	# Lê o valor configuração, remove espaços a esquerda e faz o unquoted das aspas duplas
-	RESULT=$(egrep "^$KEY" $CONFIG_ARQ | cut -d"=" -f2 | sed -r 's/^ *//' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
+	RESULT=$(egrep "^$KEY" $CONFIG_ARQ | sed -r 's/^[A-Za-z_]+=(.+)/\1/' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
 	if [ -z "$RESULT" ] ; then
 		echo $DEFAULT
 	else
@@ -103,7 +106,9 @@ le_all_settings () {
 		ERLANGMS_HTTPS_PORT_LISTENER=$(le_setting 'ERLANGMS_HTTPS_PORT' "$ERLANGMS_HTTPS_PORT")
 		ERLANGMS_AUTH_PROTOCOL=$(le_setting 'ERLANGMS_AUTH_PROTOCOL' "$ERLANGMS_AUTH_PROTOCOL")
 		ERLANGMS_BASE_URL=$(le_setting 'ERLANGMS_BASE_URL' "$ERLANGMS_BASE_URL")
-		ERLANGMS_URL_MASK = $(le_setting 'ERLANGMS_URL_MASK' "$ERLANGMS_URL_MASK")
+		ERLANGMS_URL_MASK=$(le_setting 'ERLANGMS_URL_MASK' "$ERLANGMS_URL_MASK")
+		ERLANGMS_USER=$(le_setting 'ERLANGMS_USER' "$ERLANGMS_USER")
+		ERLANGMS_PASSWD=$(le_setting 'ERLANGMS_PASSWD' "$ERLANGMS_PASSWD")
 
 		
 		# E-mail settings
@@ -159,6 +164,8 @@ help() {
 	echo "  --erlangms_https_port   ->  port of https erlangms listener"
 	echo "  --erlangms_auth_protocol    -> authorization protocol to use. The default is oauth2"
 	echo "  --erlangms_base_url    -> base url of erlangms"
+	echo "  --erlangms_user    -> authorization user"
+	echo "  --erlangms_passwd    -> authorization user passwd"
 	echo "  --image_id         -> id of a specific docker image. The default is latest"
 	echo
 	echo "Obs.: Use only com root or sudo!"
@@ -172,7 +179,7 @@ help() {
 # Se o arquivo for informado com --client_conf, então o arquivo não precisa ser gerado
 make_conf_file(){
 	if [ "$CLIENT_CONF_IN_MEMORY" = "true" ]; then
-		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app\":\"$APP_NAME\",\"version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\",\"url_mask\":\"$ERLANGMS_URL_MASK\"}" > $CLIENT_CONF
+		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app_id\":$APP_ID,\"app_name\":\"$APP_NAME\",\"app_version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\",\"url_mask\":\"$ERLANGMS_URL_MASK\",\"ErlangMS_version\":\"$ERLANGMS_VERSION\"}" > $CLIENT_CONF
 	fi
 }
 
@@ -256,6 +263,10 @@ for P in $*; do
 			fi
 		elif [[ "$P" =~ ^--ERLANGMS_AUTH_URL=.+$ ]]; then
 			ERLANGMS_AUTH_URL="$(echo $P | cut -d= -f2)"
+		elif [[ "$P" =~ ^--user=.+$ ]]; then
+			ERLANGMS_USER="$(echo $P | cut -d= -f2)"
+		elif [[ "$P" =~ ^--passwd=.+$ ]]; then
+			ERLANGMS_PASSWD="$(echo $P | cut -d= -f2)"
 		elif [ "$P" = "--help" ]; then
 			help
 		else
@@ -323,6 +334,14 @@ fi
 ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 
 
+# Credentials to HTTP REST
+ERLANGMS_AUTHORIZATION_HEADER="Basic $(echo -n "$ERLANGMS_USER:$ERLANGMS_PASSWD" | openssl base64)"
+ERLANGMS_VERSION=$(curl -s "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+if [ -z "$ERLANGMS_VERSION" ]; then
+	die "Error: HTTT/REST request to ErlangMS version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+fi
+
+
 # Se não foi informado o parâmetro --tarfile e a pasta atual 
 # é a pasta do projeto do docker no gitlab, então tenta subir
 if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1" ]; then
@@ -335,10 +354,13 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	make_conf_file
 
 	echo "App name: $APP_NAME  Version: $APP_VERSION"
-	echo "Erlangms base url: $ERLANGMS_BASE_URL"
-	echo "Erlangms auth url: $ERLANGMS_AUTH_URL"
-	echo "Erlangms auth protocol: $ERLANGMS_AUTH_PROTOCOL"
-	echo "Erlangms server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
+	echo "ErlangMS version: $ERLANGMS_VERSION"
+	echo "ErlangMS base url: $ERLANGMS_BASE_URL"
+	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
+	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
+	echo "ErlangMS auth user: $ERLANGMS_USER"
+	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
+	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
 	echo "Web server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
 	echo "Client conf: $CLIENT_CONF"
 	echo "Environment: $ENVIRONMENT"
@@ -366,32 +388,36 @@ elif [ ! -z "$IMAGE" ]; then
 		APP_NAME=$(echo $IMAGE | awk -F/ '{ print $2 }')
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
+	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	if [ -z "$APP_ID" ]; then
+		die "Error: HTTT/REST request to app version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+	fi
 	
 	ID_IMAGE=$(docker ps -f name=$APP_NAME | awk '{print $1}' | sed '1d')
 	if [ ! -z "$ID_IMAGE" ]; then
-		echo "docker stop $IMAGE"
-		docker stop $ID_IMAGE
+		echo "Stop current image $IMAGE..."
+		docker stop $ID_IMAGE > /dev/null 2>&1
 	fi
 
 	LS_IMAGES=$(docker images $IMAGE)
 	if [ ! -z "$LS_IMAGE" ]; then
-		echo "rmi $LS_IMAGES..."
-		docker rmi $LS_IMAGES
+		echo "Remove previous images $LS_IMAGES..."
+		docker rmi $LS_IMAGES > /dev/null 2>&1
 	fi
 
-	docker rm erlangms_$APP_NAME
-
-	echo "docker pull $IMAGE"
+	docker rm erlangms_$APP_NAME > /dev/null 2>&1
 	docker pull $IMAGE
-
 	get_expose_ports
 	make_conf_file
 
 	echo "App name: $APP_NAME  Version: $APP_VERSION"
-	echo "Erlangms base url: $ERLANGMS_BASE_URL"
-	echo "Erlangms auth url: $ERLANGMS_AUTH_URL"
-	echo "Erlangms auth protocol: $ERLANGMS_AUTH_PROTOCOL"
-	echo "Erlangms server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
+	echo "ErlangMS version: $ERLANGMS_VERSION"
+	echo "ErlangMS base url: $ERLANGMS_BASE_URL"
+	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
+	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
+	echo "ErlangMS auth user: $ERLANGMS_USER"
+	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
+	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
 	echo "Web server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
 	echo "Client conf: $CLIENT_CONF"
 	echo "Environment: $ENVIRONMENT"
@@ -419,10 +445,13 @@ else
 	make_conf_file
 
 	echo "App name: $APP_NAME  Version: $APP_VERSION"
-	echo "Erlangms base url: $ERLANGMS_BASE_URL"
-	echo "Erlangms auth url: $ERLANGMS_AUTH_URL"
-	echo "Erlangms auth protocol: $ERLANGMS_AUTH_PROTOCOL"
-	echo "Erlangms server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
+	echo "ErlangMS version: $ERLANGMS_VERSION"
+	echo "ErlangMS base url: $ERLANGMS_BASE_URL"
+	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
+	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
+	echo "ErlangMS auth user: $ERLANGMS_USER"
+	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
+	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
 	echo "Web server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
 	echo "Client conf: $CLIENT_CONF"
 	echo "Environment: $ENVIRONMENT"
@@ -431,10 +460,10 @@ else
 	echo "Docker version: $(docker --version)"
 	echo "-----------------------------------------------------------------------------"
 
-	echo "docker stop previous $IMAGE"
+	echo "Stop current image $IMAGE..."
 	docker image stop $IMAGE > /dev/null 2>&1
 
-	echo "docker image remove previous $IMAGE"
+	echo "Remove previous images $IMAGE..."
 	docker image remove $IMAGE > /dev/null 2>&1
 
 	echo docker load -i $TAR_FILE
