@@ -146,9 +146,9 @@ check_docker_version(){
 # Imprime na tela a ajuda do comando
 help() {
 	echo "Deploy erlang docker image frontend (Version $VERSION_SCRIPT)"
-	echo "by tarfile: ./docker-deploy.sh --tar[file]=image.tar [--app=name]"
-	echo "by registry image: ./docker-deploy.sh --image=image [--app=name]"
-	echo "by gitlab project: ./docker-deploy.sh"
+	echo "by registry image: sudo ./docker-deploy.sh --image=image [--app=name]"
+	echo "by tarfile: sudo ./docker-deploy.sh --tar[file]=image.tar [--app=name]"
+	echo "by gitlab project: sudo ./docker-deploy.sh"
 	echo ""
 	echo "Additional parameters:"
 	echo "  --app              -> name of docker app"
@@ -204,6 +204,28 @@ get_expose_ports(){
 }
 
 
+print_info(){
+	echo "-----------------------------------------------------------------------------"
+	echo "App id: $APP_ID"
+	echo "App name: $APP_NAME"
+	echo "App version: $APP_VERSION"
+	echo "App environment: $ENVIRONMENT"
+	echo "ErlangMS version: $ERLANGMS_VERSION"
+	echo "ErlangMS base url: $ERLANGMS_BASE_URL"
+	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
+	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
+	echo "ErlangMS auth user: $ERLANGMS_USER"
+	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
+	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
+	echo "Frontend server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
+	echo "Frontend client conf: $CLIENT_CONF"
+	echo "Docker registry: $REGISTRY"
+	echo "Docker entrypoint: $ENTRYPOINT"
+	echo "Docker version: $(docker --version)"
+	echo "-----------------------------------------------------------------------------"
+}
+
+
 ######################################## main ########################################
 
 # Não precisa ser root para pedir ajuda
@@ -213,7 +235,7 @@ fi
 
 # Make sure only root can run our script
 if [[ $EUID -ne 0 ]]; then
-   die "Only the root user can build docker images"
+   die "Only the root user can deploy docker images"
 fi
 
 
@@ -337,11 +359,12 @@ ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 
 
 # Credentials to HTTP REST
-ERLANGMS_AUTHORIZATION_HEADER="Basic $(echo -n "$ERLANGMS_USER:$ERLANGMS_PASSWD" | openssl base64)"
-#ERLANGMS_VERSION=$(curl -s "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+ERLANGMS_ACCESS_TOKEN=$(curl -sX POST http://localhost:2301/authorize -d "grant_type=password&username=geral&password=123456&client_id=168&client_secret=CPD" | egrep -o "\"access_token\":? ?\"[A-Za-z0-9]+\"" | awk -F: '{ print $2 }' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
+ERLANGMS_AUTHORIZATION_HEADER="Bearer $ERLANGMS_ACCESS_TOKEN"
+ERLANGMS_VERSION=$(curl -s "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 if [ -z "$ERLANGMS_VERSION" ]; then
 	ERLANGMS_VERSION="1.0.0"
-	echo "Error: HTTT/REST request to ErlangMS version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+	echo "Error: HTTT/REST request $ERLANGMS_BASE_URL/netadm/version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
 fi
 
 
@@ -353,29 +376,14 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
 	IMAGE=$APP_NAME
-	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
+	APP_ID=$(curl -s "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
-		APP_ID=0
-		echo "Error: HTTT/REST request to /auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+		die "Error: HTTT/REST request to $URL_REST_CLIENT_ID failed, check the credentials of the configured user in /etc/default/erlangms-docker."
 	fi
 	get_expose_ports
 	make_conf_file
-
-	echo "App name: $APP_NAME  Version: $APP_VERSION"
-	echo "ErlangMS version: $ERLANGMS_VERSION"
-	echo "ErlangMS base url: $ERLANGMS_BASE_URL"
-	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
-	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
-	echo "ErlangMS auth user: $ERLANGMS_USER"
-	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
-	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
-	echo "Web server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
-	echo "Client conf: $CLIENT_CONF"
-	echo "Environment: $ENVIRONMENT"
-	echo "Docker registry: $REGISTRY"
-	echo "Docker entrypoint: $ENTRYPOINT"
-	echo "Docker version: $(docker --version)"
-	echo "-----------------------------------------------------------------------------"
+	print_info
 
 	echo "docker stop previous $IMAGE"
 	docker image stop $IMAGE > /dev/null 2>&1
@@ -395,11 +403,10 @@ elif [ ! -z "$IMAGE" ]; then
 	if [ -z "$APP_NAME" ]; then
 		APP_NAME=$(echo $IMAGE | awk -F/ '{ print $2 }')
 	fi
-	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
-	#APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
+	APP_ID=$(curl -s "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
-		APP_ID=0
-		echo "Error: HTTT/REST request to /auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+		die "Error: HTTT/REST request to $URL_REST_CLIENT_ID failed, check if client $APP_NAME exist!"
 	fi
 	
 	ID_IMAGE=$(docker ps -f name=$APP_NAME | awk '{print $1}' | sed '1d')
@@ -416,25 +423,12 @@ elif [ ! -z "$IMAGE" ]; then
 
 	docker rm erlangms_$APP_NAME > /dev/null 2>&1
 	docker pull $IMAGE
+
+	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | egrep -o "$APP_NAME:[0-9.]+" | cut -d: -f2)
+
 	get_expose_ports
 	make_conf_file
-
-	echo "App name: $APP_NAME  Version: $APP_VERSION"
-	echo "ErlangMS version: $ERLANGMS_VERSION"
-	echo "ErlangMS base url: $ERLANGMS_BASE_URL"
-	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
-	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
-	echo "ErlangMS auth user: $ERLANGMS_USER"
-	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
-	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
-	echo "Web server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
-	echo "Client conf: $CLIENT_CONF"
-	echo "Environment: $ENVIRONMENT"
-	echo "Docker registry: $REGISTRY"
-	echo "Docker entrypoint: $ENTRYPOINT"
-	echo "Docker version: $(docker --version)"
-	echo "-----------------------------------------------------------------------------"
-
+	print_info
 
 	echo docker run  --name erlangms_$APP_NAME \
 			   --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
@@ -453,26 +447,11 @@ else
 	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
-		echo "Error: HTTT/REST request to /auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+		echo "Error: HTTT/REST request to $ERLANGMS_BASE_URL/auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
 	fi
 	get_expose_ports
 	make_conf_file
-
-	echo "App name: $APP_NAME  Version: $APP_VERSION"
-	echo "ErlangMS version: $ERLANGMS_VERSION"
-	echo "ErlangMS base url: $ERLANGMS_BASE_URL"
-	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
-	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
-	echo "ErlangMS auth user: $ERLANGMS_USER"
-	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
-	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
-	echo "Web server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
-	echo "Client conf: $CLIENT_CONF"
-	echo "Environment: $ENVIRONMENT"
-	echo "Docker registry: $REGISTRY"
-	echo "Docker entrypoint: $ENTRYPOINT"
-	echo "Docker version: $(docker --version)"
-	echo "-----------------------------------------------------------------------------"
+	print_info
 
 	echo "Stop current image $IMAGE..."
 	docker image stop $IMAGE > /dev/null 2>&1
