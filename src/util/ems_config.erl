@@ -154,7 +154,7 @@ load_config() ->
 	end.
 
 
-parse_cat_path_search([], Result) -> lists:reverse(Result);
+parse_cat_path_search([], Result) -> Result;
 parse_cat_path_search([{CatName, CatFilename}|T], Result) -> 
 	CatNameStr = binary_to_list(CatName),
 	CatFilename2 = ems_util:parse_file_name_path(CatFilename, [], undefined),
@@ -183,7 +183,7 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 parse_cat_path_search(Json) ->
 	CatPathSearch = maps:to_list(maps:get(<<"catalog_path">>, Json, #{})),
 	CatPathSearch2 = parse_cat_path_search(CatPathSearch, []),
-	CatPathSearch2 ++ [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}].
+	[{<<"ems-bus">>, ?CATALOGO_ESB_PATH} | CatPathSearch2].
 
 
 -spec parse_static_file_path(map()) -> list().
