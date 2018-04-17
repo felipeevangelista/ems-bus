@@ -301,7 +301,7 @@ prepare_project_to_build(){
 			echo "Git checkout from lastest tag..."
 			echo "exec: git checkout -b $GIT_CHECKOUT_TAG"
 			git checkout -b $GIT_CHECKOUT_TAG
-			[ $? -ne 0 ] | die "Fatal: Could not git checkout $GIT_CHECKOUT_TAG!"
+			#[ $? -ne 0 ] | die "Fatal: Could not git checkout $GIT_CHECKOUT_TAG!"
 		fi
 	fi
 	
