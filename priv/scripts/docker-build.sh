@@ -26,12 +26,6 @@ VERSION_SCRIPT="3.0.0"
 
 echo "Build ErlangMS images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
 
-echo "Clear /tmp/erlangms cache with sudo..."
-sudo rm -rf /tmp/erlangms
-
-echo "Clear npm cache with sudo..."
-sudo rm -rf ~/.npm
-
 
 # Imprime na tela a ajuda do comando
 help() {
@@ -70,7 +64,8 @@ help() {
 #  $1  - Mensagem que será impressa 
 #  $2  - Código de Return para o comando exit
 die () {
-    printf $1 "\n"
+    echo $1
+    echo 
     exit $2
 }
 
@@ -86,6 +81,9 @@ if [ "$EUID" = "0" ]; then
    echo "Do not run the build image as root!!!" 1>&2
    exit 1
 fi
+
+sudo rm -rf /tmp/erlangms
+sudo rm -rf ~/.npm
 
 
 # Versões do npm e node necessárias. 
@@ -119,7 +117,7 @@ CONFIG_ARQ="/etc/default/erlangms-docker"
 
 
 # O nome do projeto é o nome do próprio projeto docker mas sem o sufíxo .docker
-APP_NAME=
+APP_NAME=""
 
 # Github repository ERLANGMS release: onde está o setup do barramento
 ERLANGMS_RELEASE_URL="https://github.com/erlangms/releases/raw/master"
@@ -252,8 +250,6 @@ EOF
 
 # Instala os componentes necessários para o build
 install_required_libs(){
-	echo "Install required libs..."
-
 	curl -sL https://deb.nodesource.com/setup_9.x > /dev/null | sudo -E bash -
 
 	# Indicates whether it will be necessary to update the repository
@@ -305,7 +301,7 @@ prepare_project_to_build(){
 			echo "Git checkout from lastest tag..."
 			echo "exec: git checkout -b $GIT_CHECKOUT_TAG"
 			git checkout -b $GIT_CHECKOUT_TAG
-			[ "$?" = "0" ] | die "Fatal: Could not git checkout $GIT_CHECKOUT_TAG!"
+			[ $? -ne 0 ] | die "Fatal: Could not git checkout $GIT_CHECKOUT_TAG!"
 		fi
 	fi
 	
@@ -713,8 +709,6 @@ for P in $*; do
 done
 
 
-[ -z "$APP_NAME" ] && die "Name of project not informed, build canceled. Enter the parameter --app!"
-
 
 # APP_URL_GIT setting
 if [ -z "$APP_URL_GIT" ]; then
@@ -722,8 +716,13 @@ if [ -z "$APP_URL_GIT" ]; then
 else
 	GIT_BASE_URL_PROJECTS=$(dirname "$APP_URL_GIT")
 fi
-
 [ -z "$APP_URL_GIT" ] && die "Project url not informed, build canceled. Enter the parameter --app_url_git!"
+
+
+if [ -z "$APP_NAME" ]; then
+	APP_NAME=$(basename "$APP_URL_GIT" | sed 's/.git//' | sed -r 's/_frontend$//' | sed 's/[-_]//')
+fi
+[ -z "$APP_NAME" ] && die 'Name of project not informed, build canceled. Enter the parameter --app!'
 
 
 

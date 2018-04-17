@@ -1591,6 +1591,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			"/erl.ms/" ++ UrlEncoded -> 
 				UrlMasked = true,
 				Url1 = binary_to_list(base64:decode(UrlEncoded)),
+				io:format("url is ~p\n", [Url1]),
 				case Url1 of
 					"/dados" ++ UrlRest -> UrlSemPrefix = UrlRest;
 					_ -> UrlSemPrefix = Url1

@@ -26,7 +26,7 @@ WORKING_DIR=$(pwd)
 DOCKER_VERSION="17.03.2"
 
 # Parameters
-VERSION_SCRIPT="2.0.0"
+VERSION_SCRIPT="3.0.0"
 
 echo "Deploy ErlangMS images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
 
