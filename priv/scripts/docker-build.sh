@@ -720,7 +720,7 @@ fi
 
 
 if [ -z "$APP_NAME" ]; then
-	APP_NAME=$(basename "$APP_URL_GIT" | sed 's/.git//' | sed -r 's/_frontend$//' | sed 's/[-_]//')
+	APP_NAME=$(basename "$APP_URL_GIT" | sed 's/.git//' | sed -r 's/_frontend$//' | sed 's/[-_]//g')
 fi
 [ -z "$APP_NAME" ] && die 'Name of project not informed, build canceled. Enter the parameter --app!'
 
