@@ -11,7 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2]).
+-export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2, after_load_or_update_checkpoint/1]).
 
 
 -spec is_empty(fs | db) -> boolean().
@@ -64,7 +64,8 @@ update_dados_funcionais_tabela_users(DadosFuncionais, UserTable, IdUser) ->
 							  subtype = DadosFuncionais#user_dados_funcionais.subtype,
 							  active = DadosFuncionais#user_dados_funcionais.active,
 							  matricula = DadosFuncionais#user_dados_funcionais.matricula},
-			mnesia:dirty_write(UserTable, User2);
+			mnesia:dirty_write(UserTable, User2),
+			ems_db:delete(user_cache_lru, IdUser);
 		_ -> ok
 	end.
 	
@@ -112,3 +113,5 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 		_Exception:Reason -> {error, Reason}
 	end.
 
+-spec after_load_or_update_checkpoint(fs | db) -> ok.
+after_load_or_update_checkpoint(_SourceType) ->	ok.

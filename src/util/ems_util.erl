@@ -942,7 +942,10 @@ tail_file(Filename, N) ->
 	Len = length(L),
 	case Len > N of 	
 		true ->	
-			{ok, lists:nthtail(Len-(N*2), L)};
+			case Len-(N*2) > 0 of
+				true -> {ok, lists:nthtail(Len-(N*2), L)};
+				false -> {ok, lists:nthtail(Len-N, L)}
+			end;
 		false -> 
 			{ok, L}
 	end.
@@ -1591,7 +1594,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			"/erl.ms/" ++ UrlEncoded -> 
 				UrlMasked = true,
 				Url1 = binary_to_list(base64:decode(UrlEncoded)),
-				io:format("url is ~p\n", [Url1]),
 				case Url1 of
 					"/dados" ++ UrlRest -> UrlSemPrefix = UrlRest;
 					_ -> UrlSemPrefix = Url1

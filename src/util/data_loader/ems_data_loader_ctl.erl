@@ -40,18 +40,18 @@ stop() ->
 
 permission_to_execute(DataLoader, []) -> 
 	?DEBUG("ems_data_loader_ctl ~s begin work now.", [DataLoader]),
-	ets:insert(ets_dataloader_working_ctl, {DataLoader, true}),
+	ets:insert(ets_dataloader_working_ctl, {DataLoader, true, "timestamp", ems_util:timestamp_str()}),
 	true;
 permission_to_execute(DataLoader, [DataLoaderGroup|T]) ->
 	case ets:lookup(ets_dataloader_working_ctl, DataLoaderGroup) of
 		[] -> permission_to_execute(DataLoader, T);
-		[{_, true}] -> false;
-		[{_, false}] -> permission_to_execute(DataLoader, T)
+		[{_, true, _, _}] -> false;
+		[{_, false, _, _}] -> permission_to_execute(DataLoader, T)
 	end.
  
 notify_finish_work(DataLoader) ->
 	?DEBUG("ems_data_loader_ctl ~s finish work.", [DataLoader]),
-	ets:insert(ets_dataloader_working_ctl, {DataLoader, false}).
+	ets:insert(ets_dataloader_working_ctl, {DataLoader, false, "timestamp", ems_util:timestamp_str()}).
  
  
 %%====================================================================

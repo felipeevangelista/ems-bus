@@ -11,7 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2]).
+-export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2, after_load_or_update_checkpoint/1]).
 
 
 -spec is_empty(user_db | user_aluno_ativo_db | user_aluno_inativo_db | user_fs) -> boolean().
@@ -31,22 +31,30 @@ size_table(user_fs) -> mnesia:table_info(user_fs, size).
 -spec clear_table(user_db | user_aluno_ativo_db | user_aluno_inativo_db | user_fs) -> ok | {error, efail_clear_ets_table}.
 clear_table(user_db) ->	
 	case mnesia:clear_table(user_db) of
-		{atomic, ok} -> ok;
+		{atomic, ok} -> 
+			mnesia:clear_table(user_cache_lru),
+			ok;
 		_ -> {error, efail_clear_ets_table}
 	end;
 clear_table(user_aluno_ativo_db) ->	
 	case mnesia:clear_table(user_aluno_ativo_db) of
-		{atomic, ok} -> ok;
+		{atomic, ok} -> 
+			mnesia:clear_table(user_cache_lru),
+			ok;
 		_ -> {error, efail_clear_ets_table}
 	end;
 clear_table(user_aluno_inativo_db) ->	
 	case mnesia:clear_table(user_aluno_inativo_db) of
-		{atomic, ok} -> ok;
+		{atomic, ok} -> 
+			mnesia:clear_table(user_cache_lru),
+			ok;
 		_ -> {error, efail_clear_ets_table}
 	end;
 clear_table(user_fs) ->	
 	case mnesia:clear_table(user_fs) of
-		{atomic, ok} -> ok;
+		{atomic, ok} -> 
+			mnesia:clear_table(user_cache_lru),
+			ok;
 		_ -> {error, efail_clear_ets_table}
 	end.
 	
@@ -100,10 +108,10 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 nome_pai = NewUser#user.nome_pai,
 												 nome_mae = NewUser#user.nome_mae,
 												 nacionalidade = NewUser#user.nacionalidade,
-												 email = NewUser#user.email,
-												 type = NewUser#user.type,
-												 subtype = NewUser#user.subtype,
-												 active = NewUser#user.active,
+												 %email = NewUser#user.email,      %% Atualizado somente pelo dataloader de email
+												 %type = NewUser#user.type,        %% Atualizado somente pelo dataloader de dados funcionais
+												 %subtype = NewUser#user.subtype,  %% Atualizado somente pelo dataloader de dados funcionais
+												 %active = NewUser#user.active,    %% Atualizado somente pelo dataloader de dados funcionais
 												 remap_user_id = NewUser#user.remap_user_id,
 												 admin = NewUser#user.admin,
 												 ctrl_path = NewUser#user.ctrl_path,
@@ -112,6 +120,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_modified = NewUser#user.ctrl_modified,
 												 ctrl_hash = NewUser#user.ctrl_hash
 											},
+								ems_db:delete(user_cache_lru, Id),
 								{ok, User, SourceType, update};
 							false -> 
 								{ok, skip}
@@ -123,4 +132,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 	catch
 		_Exception:Reason -> {error, Reason}
 	end.
+
+
+-spec after_load_or_update_checkpoint(fs | db) -> ok.
+after_load_or_update_checkpoint(_SourceType) ->	ok.
 

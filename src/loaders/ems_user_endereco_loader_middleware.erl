@@ -11,7 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, get_table/1]).
+-export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, get_table/1, after_load_or_update_checkpoint/1]).
 
 
 -spec is_empty(fs | db) -> boolean().
@@ -70,8 +70,8 @@ update_endereco_tabela_users(Endereco, SourceType, CodigoPessoa) ->
 -spec update_endereco_tabela_users_(list(#user{}), #user_endereco{}, atom()) -> ok.
 update_endereco_tabela_users_([], _, _) -> ok;
 update_endereco_tabela_users_([User|UserT], 
-							 Endereco, 
-							 UserTable) -> 
+							   Endereco, 
+							   UserTable) -> 
 	User2 = User#user{endereco = Endereco#user_endereco.endereco,
 					  complemento_endereco = Endereco#user_endereco.complemento,
 					  bairro = Endereco#user_endereco.bairro,
@@ -79,6 +79,7 @@ update_endereco_tabela_users_([User|UserT],
 					  uf = Endereco#user_endereco.uf,
 					  cep = Endereco#user_endereco.cep},
 	mnesia:dirty_write(UserTable, User2),
+	ems_db:delete(user_cache_lru, User2#user.id),
 	update_endereco_tabela_users_(UserT, Endereco, UserTable).
 	
 	
@@ -131,6 +132,9 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 		_Exception:Reason -> {error, Reason}
 	end.
 
+
+-spec after_load_or_update_checkpoint(fs | db) -> ok.
+after_load_or_update_checkpoint(_SourceType) ->	ok.
 
 	
 

@@ -71,7 +71,7 @@ create_database(Nodes) ->
 									  {attributes, record_info(fields, ctrl_params)}]),
 
     mnesia:create_table(user_cache_lru, [{type, set},
-										  {disc_copies, Nodes},
+										  {ram_copies, Nodes},
 										  {index, [#user.login]},
 										  {attributes, record_info(fields, user)},
 										  {record_name, user}]),
@@ -331,7 +331,6 @@ create_database(Nodes) ->
 							auth_oauth2_access_code_table,
 							auth_oauth2_refresh_token_table
 							], 120000),
-	ems_util:sleep(2000),
 	ok.
 
 

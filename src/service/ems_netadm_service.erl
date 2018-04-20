@@ -145,7 +145,6 @@ cpudetailed(Request) ->
 						 response_data = ems_schema:to_json(ContentData)}
 	}.
 
-
 average(ListValue) ->
 	lists:sum(ListValue)/length(ListValue).
 

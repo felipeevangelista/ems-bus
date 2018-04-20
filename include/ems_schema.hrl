@@ -12,15 +12,17 @@
 -record(counter, {key :: atom(), 
      			  value :: non_neg_integer()}).
 
--record(user, {id :: non_neg_integer(), 					%% identificador do usuário (required) (Na UnB é o campo Tb_Usuario.UsuId)
-			   codigo :: non_neg_integer(),					%% código da pessoa se o usuário possui dados pessoais em outra tabela externa. (Na UnB é o campo Tb_Pessoa.PesCodigoPessoa)
+-record(user, {id :: non_neg_integer(), 					%% identificador do usuário (required) (B_Usuario.UsuId)
+			   codigo :: non_neg_integer(),					%% código da pessoa (required) (Tb_Pessoa.PesCodigoPessoa)
 			   login :: binary(),							%% login do usuário (required)
 			   name :: binary(), 							%% nome do usuário (required)
 			   cpf :: binary(),
 			   email :: binary(), 							
 			   password :: binary(),						%% password (required)
-			   type = 0 :: non_neg_integer(),				%% 0 = interno  1 = tecnico  2 = docente  3 = discente
-			   subtype = 0 :: non_neg_integer(),			%% se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
+			   type = 0 :: non_neg_integer(),				%% 0 = interno  1 = tecnico  2 = docente  3 = discente, 4 = terceiros
+			   subtype = 0 :: non_neg_integer(),			%% se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
+															%%            6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 
+															%%           10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
 			   passwd_crypto :: binary(),					%% Algoritmo criptografia: SHA1
 			   type_email :: non_neg_integer(),				%% undefined = desconhecido  1 = Institucional  2 = Pessoal
 			   active = true :: boolean(),
@@ -41,12 +43,12 @@
 			   nacionalidade :: non_neg_integer(),
 			   matricula :: non_neg_integer(),				%% se o usuário tem alguma matrícula proveniente de dados funcionais
 			   remap_user_id :: non_neg_integer(),
-			   admin :: boolean(),
+			   admin :: boolean(),							%% alguns web services podem ser acedidos somente por admins
 			   ctrl_path :: string(),
 			   ctrl_file :: string(),
-			   ctrl_insert,									%% Data que o serviço foi inserido no banco mnesia
-			   ctrl_update, 								%% Data que o serviço foi atualiado no banco mnesia			
-			   ctrl_modified,								%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_insert,									%% Data que foi inserido no banco mnesia
+			   ctrl_update, 								%% Data que foi atualiado no banco mnesia			
+			   ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 		
@@ -58,9 +60,9 @@
 			   matricula :: non_neg_integer(),				%% matrícula proveniente de dados funcionais
 			   ctrl_path :: string(),
 			   ctrl_file :: string(),
-			   ctrl_insert,									%% Data que o serviço foi inserido no banco mnesia
-			   ctrl_update, 								%% Data que o serviço foi atualiado no banco mnesia			
-			   ctrl_modified,								%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_insert,									%% Data que foi inserido no banco mnesia
+			   ctrl_update, 								%% Data que foi atualiado no banco mnesia			
+			   ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 
@@ -71,9 +73,9 @@
 			   type :: non_neg_integer(),					%% 1 = institucional  2 = outro
 			   ctrl_path :: string(),
 			   ctrl_file :: string(),
-			   ctrl_insert,									%% Data que o serviço foi inserido no banco mnesia
-			   ctrl_update, 								%% Data que o serviço foi atualiado no banco mnesia			
-			   ctrl_modified,								%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_insert,									%% Data que foi inserido no banco mnesia
+			   ctrl_update, 								%% Data que foi atualiado no banco mnesia			
+			   ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 
@@ -89,9 +91,9 @@
 			   type :: non_neg_integer(),					%% 1 = residencial  2 = comercial 3 = exterior 4 = outro
 			   ctrl_path :: string(),
 			   ctrl_file :: string(),
-			   ctrl_insert,									%% Data que o serviço foi inserido no banco mnesia
-			   ctrl_update, 								%% Data que o serviço foi atualiado no banco mnesia			
-			   ctrl_modified,								%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_insert,									%% Data que foi inserido no banco mnesia
+			   ctrl_update, 								%% Data que foi atualiado no banco mnesia			
+			   ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 
@@ -104,9 +106,9 @@
 			   type :: non_neg_integer(),					%% 1 = celular  2 = comercial 3 = residencial
 			   ctrl_path :: string(),
 			   ctrl_file :: string(),
-			   ctrl_insert,									%% Data que o serviço foi inserido no banco mnesia
-			   ctrl_update, 								%% Data que o serviço foi atualiado no banco mnesia			
-			   ctrl_modified,								%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_insert,									%% Data que foi inserido no banco mnesia
+			   ctrl_update, 								%% Data que foi atualiado no banco mnesia			
+			   ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 
@@ -125,9 +127,9 @@
 						  position :: non_neg_integer(),
 						  ctrl_path :: string(),
 						  ctrl_file :: string(),
-						  ctrl_insert,							%% Data que o serviço foi inserido no banco mnesia
-						  ctrl_update, 							%% Data que o serviço foi atualiado no banco mnesia			
-						  ctrl_modified,						%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+						  ctrl_insert,							%% Data que foi inserido no banco mnesia
+						  ctrl_update, 							%% Data que foi atualiado no banco mnesia			
+						  ctrl_modified,						%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 						  ctrl_hash								%% Hash gerado para poder comparar dois registros
           }).
 
@@ -138,9 +140,9 @@
 					  name :: binary(), 					%% nome do perfil (required)
 					  ctrl_path :: string(),
 				      ctrl_file :: string(),
-				      ctrl_insert,							%% Data que o serviço foi inserido no banco mnesia
-				      ctrl_update, 							%% Data que o serviço foi atualiado no banco mnesia			
-				      ctrl_modified,						%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+				      ctrl_insert,							%% Data que foi inserido no banco mnesia
+				      ctrl_update, 							%% Data que foi atualiado no banco mnesia			
+				      ctrl_modified,						%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 				      ctrl_hash								%% Hash gerado para poder comparar dois registros
 		}).
           
@@ -155,9 +157,9 @@
 				 version :: binary(),
 				 ctrl_path :: string(),
 				 ctrl_file :: string(),
-				 ctrl_insert,								%% Data que o serviço foi inserido no banco mnesia
-				 ctrl_update, 								%% Data que o serviço foi atualiado no banco mnesia			
-				 ctrl_modified,								%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+				 ctrl_insert,								%% Data que foi inserido no banco mnesia
+				 ctrl_update, 								%% Data que foi atualiado no banco mnesia			
+				 ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 				 ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 
@@ -265,9 +267,9 @@
 							 close_idle_connection_timeout :: non_neg_integer(),
 							 ctrl_path :: string(),
 							 ctrl_file :: string(),
-							 ctrl_insert,									%% Data que o serviço foi inserido no banco mnesia
-							 ctrl_update, 									%% Data que o serviço foi atualiado no banco mnesia			
-							 ctrl_modified,									%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+							 ctrl_insert,									%% Data que foi inserido no banco mnesia
+							 ctrl_update, 									%% Data que foi atualiado no banco mnesia			
+							 ctrl_modified,									%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 							 ctrl_hash										%% Hash gerado para poder comparar dois registros
 							}).
 
@@ -345,9 +347,9 @@
 					properties :: map(),						%% Outros parâmetros
 					ctrl_path :: string(),						%% Local de onde o catálogo foi carregado
 					ctrl_file :: string(),						%% Nome do arquivo onde está especificado o catálogo
-				    ctrl_insert,								%% Data que o serviço foi inserido no banco mnesia
-					ctrl_update, 								%% Data que o serviço foi atualiado no banco mnesia			
-					ctrl_modified,								%% Data que o serviço foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+				    ctrl_insert,								%% Data que foi inserido no banco mnesia
+					ctrl_update, 								%% Data que foi atualiado no banco mnesia			
+					ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 					ctrl_hash,									%% Hash gerado para poder comparar dois registros
 					start_timeout :: non_neg_integer(),			%% Define um timeout inicial para o processo
 					service_exec_metric_name :: atom(),

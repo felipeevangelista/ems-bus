@@ -215,7 +215,6 @@ print_info(){
 	echo "ErlangMS auth url: $ERLANGMS_AUTH_URL"
 	echo "ErlangMS auth protocol: $ERLANGMS_AUTH_PROTOCOL"
 	echo "ErlangMS auth user: $ERLANGMS_USER"
-	echo "ErlangMS auth passwd: $ERLANGMS_PASSWD"
 	echo "ErlangMS server listener IP: $ERLANGMS_ADDR  HTTP/REST PORT: $ERLANGMS_HTTP_PORT_LISTENER   HTTPS/REST PORT: $ERLANGMS_HTTPS_PORT_LISTENER"
 	echo "Frontend server listener IP: $SERVER_ADDR  HTTP PORT: $SERVER_HTTP_PORT_LISTENER   HTTPS PORT: $SERVER_HTTPS_PORT_LISTENER"
 	echo "Frontend client conf: $CLIENT_CONF"
@@ -308,7 +307,6 @@ for P in $*; do
 	fi
 done
 
-
 if [ -z "$TAR_FILE" ]; then
 	# Vamos precisar do registry. Validar registry settings
 	if [ ! -z $REGISTRY ]; then
@@ -359,9 +357,9 @@ ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 
 
 # Credentials to HTTP REST
-ERLANGMS_ACCESS_TOKEN=$(curl -sX POST http://localhost:2301/authorize -d "grant_type=password&username=geral&password=123456&client_id=168&client_secret=CPD" | egrep -o "\"access_token\":? ?\"[A-Za-z0-9]+\"" | awk -F: '{ print $2 }' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
+ERLANGMS_ACCESS_TOKEN=$(curl -ksX POST $ERLANGMS_BASE_URL/authorize -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=password&username=$ERLANGMS_USER&password=$ERLANGMS_PASSWD&client_id=168&client_secret=CPD" | egrep -o "\"access_token\":? ?\"[A-Za-z0-9]+\"" | awk -F: '{ print $2 }' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
 ERLANGMS_AUTHORIZATION_HEADER="Bearer $ERLANGMS_ACCESS_TOKEN"
-ERLANGMS_VERSION=$(curl -s "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+ERLANGMS_VERSION=$(curl -ks "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 if [ -z "$ERLANGMS_VERSION" ]; then
 	ERLANGMS_VERSION="1.0.0"
 	echo "Error: HTTT/REST request $ERLANGMS_BASE_URL/netadm/version failed, check the credentials of the configured user in /etc/default/erlangms-docker."
@@ -377,9 +375,10 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
 	IMAGE=$APP_NAME
 	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
-	APP_ID=$(curl -s "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
+	APP_ID=$(curl -ks "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
-		die "Error: HTTT/REST request to $URL_REST_CLIENT_ID failed, check the credentials of the configured user in /etc/default/erlangms-docker."
+		APP_ID=0
+		echo "Error: HTTT/REST request to $URL_REST_CLIENT_ID failed, check the credentials of the configured user in /etc/default/erlangms-docker."
 	fi
 	get_expose_ports
 	make_conf_file
@@ -404,9 +403,10 @@ elif [ ! -z "$IMAGE" ]; then
 		APP_NAME=$(echo $IMAGE | awk -F/ '{ print $2 }')
 	fi
 	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
-	APP_ID=$(curl -s "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
+	APP_ID=$(curl -ks "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
-		die "Error: HTTT/REST request to $URL_REST_CLIENT_ID failed, check if client $APP_NAME exist!"
+		APP_ID=0
+		echo "Error: HTTT/REST request to $URL_REST_CLIENT_ID failed, check if client $APP_NAME exist!"
 	fi
 	
 	ID_IMAGE=$(docker ps -f name=$APP_NAME | awk '{print $1}' | sed '1d')
@@ -444,7 +444,7 @@ else
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
 	IMAGE=$APP_NAME
-	APP_ID=$(curl -s "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	APP_ID=$(curl -ks "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
 		echo "Error: HTTT/REST request to $ERLANGMS_BASE_URL/auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
