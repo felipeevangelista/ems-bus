@@ -357,7 +357,7 @@ ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 
 
 # Credentials to HTTP REST
-ERLANGMS_ACCESS_TOKEN=$(curl -ksX POST $ERLANGMS_BASE_URL/authorize -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=password&username=$ERLANGMS_USER&password=$ERLANGMS_PASSWD&client_id=168&client_secret=CPD" | egrep -o "\"access_token\":? ?\"[A-Za-z0-9]+\"" | awk -F: '{ print $2 }' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
+ERLANGMS_ACCESS_TOKEN=$(curl -ksX POST $ERLANGMS_BASE_URL/authorize -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=password&username=$ERLANGMS_USER&password=$ERLANGMS_PASSWD" | egrep -o "\"access_token\":? ?\"[A-Za-z0-9]+\"" | awk -F: '{ print $2 }' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
 ERLANGMS_AUTHORIZATION_HEADER="Bearer $ERLANGMS_ACCESS_TOKEN"
 ERLANGMS_VERSION=$(curl -ks "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 if [ -z "$ERLANGMS_VERSION" ]; then
@@ -372,7 +372,7 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	if [ -z "$APP_NAME" ]; then
 		APP_NAME=$(basename $WORKING_DIR | sed -r 's/(.docker|_frontend)//g')
 	fi
-	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
+	APP_VERSION=$(docker inspect $APP_NAME | grep APP_VERSION | sed '1!d' |  sed -r 's/^.+=(.+)"$/\1/')
 	IMAGE=$APP_NAME
 	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
 	APP_ID=$(curl -ks "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
@@ -424,7 +424,7 @@ elif [ ! -z "$IMAGE" ]; then
 	docker rm erlangms_$APP_NAME > /dev/null 2>&1
 	docker pull $IMAGE
 
-	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | egrep -o "$APP_NAME:[0-9.]+" | cut -d: -f2)
+	APP_VERSION=$(docker inspect $IMAGE | grep APP_VERSION | sed '1!d' |  sed -r 's/^.+=(.+)"$/\1/')
 
 	get_expose_ports
 	make_conf_file
@@ -442,7 +442,7 @@ else
 	if [ -z "$APP_NAME" ]; then
 		APP_NAME=$(echo $TAR_FILE | awk -F: '{ print $1 }')
 	fi
-	APP_VERSION=$(docker inspect $APP_NAME | sed -n '/"RepoTags/ , /],/p' | sed '$d' | sed '$d' | tail -1 | sed -r 's/[^0-9\.]//g')
+	APP_VERSION=$(docker inspect $APP_NAME | | grep APP_VERSION | sed '1!d' |  sed -r 's/^.+=(.+)"$/\1/')
 	IMAGE=$APP_NAME
 	APP_ID=$(curl -ks "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then

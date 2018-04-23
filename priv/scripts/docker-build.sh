@@ -326,6 +326,12 @@ prepare_project_to_build(){
 	sed -i "s/{{ HTTP_PORT }}/$HTTP_PORT/"  Dockerfile
 	sed -i "s/{{ HTTPS_PORT }}/$HTTPS_PORT/"  Dockerfile
 	
+	if [ -z "$GIT_CHECKOUT_TAG" ]; then
+		sed -i "s/{{ APP_VERSION }}/1.0.0/"  Dockerfile
+	else
+		sed -i "s/{{ APP_VERSION }}/$GIT_CHECKOUT_TAG/"  Dockerfile
+	fi
+	
 	# Atualiza o arquivo docker-compose.yml
 	sed -i "s/{{ HTTP_PORT }}/$HTTP_PORT/g"  docker-compose.yml
 	sed -i "s/{{ HTTPS_PORT }}/$HTTPS_PORT/g"  docker-compose.yml
