@@ -130,7 +130,7 @@ init(#service{name = Name,
 	DisabledMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_disabled">>]), utf8),
 	SkipMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_skip">>]), utf8),
 	GroupDataLoader = lists:delete(NameStr, ems_util:binlist_to_list(maps:get(<<"group">>, Props, []))),
-	erlang:send_after(60000 * 60, self(), check_sync_full),
+	%erlang:send_after(60000 * 60, self(), check_sync_full),
 	case CheckRemoveRecords andalso CheckRemoveRecordsCheckpoint > 0 of
 		true -> erlang:send_after(CheckRemoveRecordsCheckpoint + 90000 + rand:uniform(10000), self(), check_count_records);
 		false -> ok
