@@ -235,7 +235,7 @@
 
 -record(service_datasource, {id :: non_neg_integer(),
 							 rowid :: non_neg_integer(),
-							 type :: atom(),								%% sqlserver, csvfile, mnesia
+							 type :: atom(),								%% postgresql, sqlserver, csvfile, mnesia
 							 driver :: binary(),							%% sqlite3, odbc, undefined
 							 connection :: binary(),
 							 table_name :: binary() | atom() | list(atom()),

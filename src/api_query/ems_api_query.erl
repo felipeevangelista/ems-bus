@@ -16,6 +16,7 @@
 find(FilterJson, Fields, Limit, Offset, Sort, Datasource = #service_datasource{type = ConnType}) ->
 	try
 		case ConnType of
+			postgresql -> ems_api_query_postgresql:find(FilterJson, Fields, Limit, Offset, Sort, Datasource); 
 			sqlserver -> ems_api_query_sqlserver:find(FilterJson, Fields, Limit, Offset, Sort, Datasource);
 			sqlite -> ems_api_query_sqlite:find(FilterJson, Fields, Limit, Offset, Sort, Datasource);
 			mnesia -> ems_api_query_mnesia:find(FilterJson, Fields, Limit, Offset, Sort, Datasource);
@@ -29,6 +30,7 @@ find(FilterJson, Fields, Limit, Offset, Sort, Datasource = #service_datasource{t
 find_by_owner(FilterJson, Fields, Limit, Offset, Sort, IdOwner, Datasource = #service_datasource{type = ConnType}) ->
 	try
 		case ConnType of
+			postgresql -> ems_api_query_postgresql:find(FilterJson, Fields, Limit, Offset, Sort, Datasource);
 			sqlserver -> ems_api_query_sqlserver:find(FilterJson, Fields, Limit, Offset, Sort, Datasource);
 			sqlite -> ems_api_query_sqlite:find(FilterJson, Fields, Limit, Offset, Sort, Datasource);
 			mnesia -> ems_api_query_mnesia:find_by_owner(FilterJson, Fields, Limit, Offset, Sort, IdOwner, Datasource);
@@ -42,6 +44,7 @@ find_by_owner(FilterJson, Fields, Limit, Offset, Sort, IdOwner, Datasource = #se
 find_by_id(Id, Fields, Datasource =  #service_datasource{type = ConnType}) ->
 	try
 		case ConnType of
+			postgresql -> ems_api_query_postgresql:find_by_id(Id, Fields, Datasource);
 			sqlserver -> ems_api_query_sqlserver:find_by_id(Id, Fields, Datasource);
 			sqlite -> ems_api_query_sqlite:find_by_id(Id, Fields, Datasource);
 			mnesia -> ems_api_query_mnesia:find_by_id(Id, Fields, Datasource);
@@ -55,6 +58,7 @@ find_by_id(Id, Fields, Datasource =  #service_datasource{type = ConnType}) ->
 insert(Payload, Service, Datasource = #service_datasource{type = ConnType}) ->
 	try
 		case ConnType of
+			postgresql -> ok;
 			sqlserver -> ok;
 			sqlite -> ok;
 			mnesia -> ems_api_query_mnesia:insert(Payload, Service, Datasource);
@@ -71,6 +75,7 @@ update(Id, Payload, Service, Datasource = #service_datasource{type = ConnType}) 
 			true -> {error, eupdate_id_not_allowed};
 			_ ->
 				case ConnType of
+					postgresql -> ok;
 					sqlserver -> ok;
 					sqlite -> ok;
 					mnesia -> ems_api_query_mnesia:update(Id, Payload, Service, Datasource);
@@ -85,6 +90,7 @@ update(Id, Payload, Service, Datasource = #service_datasource{type = ConnType}) 
 delete(Id, Service, Datasource = #service_datasource{type = ConnType}) -> 
 	try
 		case ConnType of
+			postgresql -> ems_api_query_postgresql:delete(Id, Datasource); 
 			sqlserver -> ems_api_query_sqlserver:delete(Id, Datasource);
 			sqlite -> ok;
 			mnesia -> ems_api_query_mnesia:delete(Id, Service, Datasource);

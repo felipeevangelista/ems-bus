@@ -453,7 +453,9 @@ set_param(ParamName, ParamValue) ->
 
 
 
-% Get the connection from a datasource (sqlserver, sqlite, ou mnesia)
+% Get the connection from a datasource (postgresql, sqlserver, sqlite, ou mnesia)
+get_connection(Datasource = #service_datasource{type = postgresql}) ->
+	get_odbc_connection(Datasource);
 get_connection(Datasource = #service_datasource{type = sqlserver}) ->
 	get_odbc_connection(Datasource);
 get_connection(Datasource = #service_datasource{type = csvfile}) ->
@@ -945,6 +947,7 @@ field_value(V) -> V.
 -spec parse_datasource_type(binary()) -> atom().
 parse_datasource_type(<<"mnesia">>) -> mnesia;
 parse_datasource_type(<<"sqlserver">>) -> sqlserver;
+parse_datasource_type(<<"postgresql">>) -> postgresql;
 parse_datasource_type(<<"csvfile">>) -> csvfile;
 parse_datasource_type(_) -> erlang:error(einvalid_datasource_type_property).
 
@@ -1032,6 +1035,8 @@ parse_datasource_connection(_, Value) -> binary_to_list(Value).
 -spec parse_datasource_sql_check_validation_connection(atom(), binary()) -> string().
 parse_datasource_sql_check_validation_connection(sqlserver, undefined) -> "select 1";
 parse_datasource_sql_check_validation_connection(sqlserver, Value) -> binary_to_list(Value);
+parse_datasource_sql_check_validation_connection(postgresql, undefined) -> "select 1";
+parse_datasource_sql_check_validation_connection(postgresql, Value) -> binary_to_list(Value);
 parse_datasource_sql_check_validation_connection(_, undefined) -> undefined;
 parse_datasource_sql_check_validation_connection(_, <<>>) -> undefined;
 parse_datasource_sql_check_validation_connection(_, _) -> erlang:error(einvalid_datasource_sql_check_validation_connection_property).
