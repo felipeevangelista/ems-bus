@@ -86,6 +86,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 						case CtrlHash =/= CurrentCtrlHash of
 							true ->
 								?DEBUG("ems_user_loader_middleware update ~p from ~p.", [Map, SourceType]),
+								%email, type, subtype e active são atualizado somente pelo dataloader de email
 								User = CurrentUser#user{
 												 codigo = NewUser#user.codigo,
 												 login = NewUser#user.login,
@@ -108,10 +109,6 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 nome_pai = NewUser#user.nome_pai,
 												 nome_mae = NewUser#user.nome_mae,
 												 nacionalidade = NewUser#user.nacionalidade,
-												 %email = NewUser#user.email,      %% Atualizado somente pelo dataloader de email
-												 %type = NewUser#user.type,        %% Atualizado somente pelo dataloader de dados funcionais
-												 %subtype = NewUser#user.subtype,  %% Atualizado somente pelo dataloader de dados funcionais
-												 %active = NewUser#user.active,    %% Atualizado somente pelo dataloader de dados funcionais
 												 remap_user_id = NewUser#user.remap_user_id,
 												 admin = NewUser#user.admin,
 												 ctrl_path = NewUser#user.ctrl_path,

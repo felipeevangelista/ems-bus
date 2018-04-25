@@ -451,6 +451,10 @@ new_from_map(Map, Conf) ->
 									_ -> ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
 							   end,
 					passwd_crypto = <<"SHA1">>,
+					dt_expire_password = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
+											  <<>> -> undefined;
+											  DtExpirePasswordValue -> DtExpirePasswordValue
+										 end,
 					endereco = ?UTF8_STRING(maps:get(<<"endereco">>, Map, <<>>)),
 					complemento_endereco = ?UTF8_STRING(maps:get(<<"complemento_endereco">>, Map, <<>>)),
 					bairro = ?UTF8_STRING(maps:get(<<"bairro">>, Map, <<>>)),
@@ -470,7 +474,7 @@ new_from_map(Map, Conf) ->
 					matricula = maps:get(<<"matricula">>, Map, undefined),
 					type = maps:get(<<"type">>, Map, 1),
 					subtype = maps:get(<<"subtype">>, Map, 0),
-					active = maps:get(<<"active">>, Map, true),
+					active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
 					remap_user_id = maps:get(<<"remap_user_id">>, Map, undefined),
 					admin = maps:get(<<"admin">>, Map, lists:member(LoginBin, Conf#config.cat_restricted_services_admin)),
 					ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),

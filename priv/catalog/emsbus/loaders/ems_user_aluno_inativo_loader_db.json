@@ -9,7 +9,7 @@
 	"lang" : "erlang",
 	"update_checkpoint" : 180000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 15000,
+	"start_timeout" : 18000,
 	"middleware" : "ems_user_loader_middleware",
 	"group" : ["ems_user_loader_db", "ems_user_perfil_loader_db", 
 			   "ems_user_permission_loader_db", "ems_user_email_loader_db", 
@@ -46,7 +46,8 @@
 					   cast(p.PesNacionalidade as int) as nacionalidade,
 					   3 as Type,  
 					   al.AluNivel as SubType,	
-					   0 as ActivePessoa  
+					   0 as ActivePessoa,
+					   null as DtExpirePassword    
 				from BDSiac.dbo.TB_Aluno al join BDPessoa.dbo.TB_Pessoa p 
 					   on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
 				where al.AluPerSaiUnB <> 99999 and al.alunivel not in  (9,10,11) and al.AluSenha is not null
@@ -77,7 +78,8 @@
 					   cast(p.PesNacionalidade as int) as nacionalidade,
 					   3 as Type,  
 					   al.AluNivel as SubType,	
-					   0 as ActivePessoa  
+					   0 as ActivePessoa,
+					   null as DtExpirePassword     
 				from BDSiac.dbo.TB_Aluno al join BDPessoa.dbo.TB_Pessoa p 
 					   on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
 				where (al.AluDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
@@ -89,6 +91,6 @@
 				"passwd_crypto", "endereco", "complemento_endereco", 
 				"bairro", "cidade", "uf", "cep", "rg", "data_nascimento", 
 				"sexo", "telefone", "celular", "ddd", "nome_pai", "nome_mae", "nacionalidade", 
-				"type", "subtype", "active"]
+				"type", "subtype", "active", "dt_expire_password"]
 				
 }

@@ -19,6 +19,7 @@
 			   cpf :: binary(),
 			   email :: binary(), 							
 			   password :: binary(),						%% password (required)
+			   dt_expire_password :: binary(),				%% data que o password expira
 			   type = 0 :: non_neg_integer(),				%% 0 = interno  1 = tecnico  2 = docente  3 = discente, 4 = terceiros
 			   subtype = 0 :: non_neg_integer(),			%% se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
 															%%            6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 

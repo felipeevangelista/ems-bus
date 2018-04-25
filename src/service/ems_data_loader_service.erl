@@ -57,6 +57,22 @@ sync(Request) ->
 			{ok, Request#request{code = 200, 
 								 response_data = ?OK_JSON}
 			};
+		<<"aluno">> ->
+			ems_data_loader:sync(ems_user_aluno_ativo_loader_db),
+			ems_data_loader:sync(ems_user_aluno_inativo_loader_db),
+			{ok, Request#request{code = 200, 
+								 response_data = ?OK_JSON}
+			};
+		<<"aluno/ativo">> ->
+			ems_data_loader:sync(ems_user_aluno_ativo_loader_db),
+			{ok, Request#request{code = 200, 
+								 response_data = ?OK_JSON}
+			};
+		<<"aluno/inativo">> ->
+			ems_data_loader:sync(ems_user_aluno_inativo_loader_db),
+			{ok, Request#request{code = 200, 
+								 response_data = ?OK_JSON}
+			};
 		_ -> 
 			{error, Request#request{code = 400, 
 									response_data = ?EINVALID_DATA_LOADER}
@@ -104,6 +120,22 @@ sync_full(Request) ->
 		<<"user/dados_funcionais">> ->
 			ems_data_loader:sync_full(ems_user_dados_funcionais_loader_db),
 			ems_json_loader:sync_full(ems_user_dados_funcionais_loader_fs),
+			{ok, Request#request{code = 200, 
+								 response_data = ?OK_JSON}
+			};
+		<<"aluno">> ->
+			ems_data_loader:sync_full(ems_user_aluno_ativo_loader_db),
+			ems_data_loader:sync_full(ems_user_aluno_inativo_loader_db),
+			{ok, Request#request{code = 200, 
+								 response_data = ?OK_JSON}
+			};
+		<<"aluno/ativo">> ->
+			ems_data_loader:sync_full(ems_user_aluno_ativo_loader_db),
+			{ok, Request#request{code = 200, 
+								 response_data = ?OK_JSON}
+			};
+		<<"aluno/inativo">> ->
+			ems_data_loader:sync_full(ems_user_aluno_inativo_loader_db),
 			{ok, Request#request{code = 200, 
 								 response_data = ?OK_JSON}
 			};

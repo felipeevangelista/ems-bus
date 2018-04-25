@@ -71,6 +71,7 @@
 		 timestamp_binary/1,
 		 uptime_str/0,
 		 boolean_to_binary/1,
+		 value_to_boolean/1,
  		 replacenth/3,
 		 replace/3,
 		 replace_all/2,
@@ -865,6 +866,13 @@ boolean_to_binary(1) -> <<"true"/utf8>>;
 boolean_to_binary(<<"true"/utf8>>) -> <<"true"/utf8>>;
 boolean_to_binary(<<"1"/utf8>>) -> <<"true"/utf8>>;
 boolean_to_binary(_) -> <<"false"/utf8>>.
+
+
+value_to_boolean(true) -> true;
+value_to_boolean(1) -> true;
+value_to_boolean(<<"true"/utf8>>) -> true;
+value_to_boolean(<<"1"/utf8>>) -> true;
+value_to_boolean(_) -> false.
 
 
 %%melhorar este método para conversão para utf8

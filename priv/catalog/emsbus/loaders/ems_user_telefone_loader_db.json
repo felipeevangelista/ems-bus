@@ -8,11 +8,11 @@
 	"async": false,
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 60000,
+	"update_checkpoint" : 216000,
 	"check_remove_records" : true,
-	"check_remove_records_checkpoint" : 70000,
+	"check_remove_records_checkpoint" : 120000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 8000,
+	"start_timeout" : 18000,
 	"middleware" : "ems_user_telefone_loader_middleware",
 	"group" : ["ems_user_loader_db", "ems_user_perfil_loader_db", 
 			   "ems_user_permission_loader_db", "ems_user_email_loader_db", 
@@ -34,6 +34,17 @@
 				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 					join BDPessoa.dbo.TB_Telefone t 
 					   on pft.PFTTelCodigo = t.TelCodigo",
-			
+	"sql_update" : 
+				"select 
+				   t.TelCodigo as id,
+				   pft.PFTPesCodigoPessoa as codigo,
+				   t.TelNumero as numero,
+				   t.TelRamal as ramal,
+				   t.TelDDD as ddd,
+				   t.TelTipo as type 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
+					join BDPessoa.dbo.TB_Telefone t 
+					   on pft.PFTTelCodigo = t.TelCodigo",
+
 	"fields" : ["id", "codigo", "numero", "ramal", "ddd", "type"]
 }
