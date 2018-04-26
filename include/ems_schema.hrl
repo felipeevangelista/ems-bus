@@ -311,6 +311,7 @@
 					oauth2_with_check_constraint = false :: boolean(),
 					oauth2_allow_client_credentials = false :: boolean(),
 					oauth2_token_encrypt = false :: boolean(),
+					auth_allow_user_inative_credentials :: boolean(),  % Permite login de usuários inativos.
 					page,										%% Page django file
 					page_module,								%% Page module django file compiled
 					page_mime_type = <<"text/html">>,			%% Page mime type

@@ -30,7 +30,8 @@
 				search_success_metric_name,
 				host_denied_metric_name,
 				error_metric_name,
-				request_capabilities_metric_name	
+				request_capabilities_metric_name,
+				auth_allow_user_inative_credentials	
 			}).   
 
 
@@ -117,14 +118,14 @@ handle_request({'LDAPMessage', _,
 					{bindRequest, #'BindRequest'{version = _Version, 
 												 name = Name, 
 												 authentication = {_, Password}}},
-				 _}, #state{admin = AdminLdap, 
-							password_admin = PasswordAdminLdap,
-							bind_cn_success_metric_name = BindCnSuccessMetricName,
-						    bind_uid_success_metric_name = BindUidSuccessMetricName,
-						    bind_success_metric_name = BindSuccessMetricName,
-						    bind_cn_invalid_credential_metric_name = BindCnInvalidCredentialMetricName,
-						    bind_uid_invalid_credential_metric_name = BindUidInvalidCredentialMetricName,
-						    bind_invalid_credential_metric_name = BindInvalidCredentialMetricName}) ->
+				 _}, State = #state{admin = AdminLdap, 
+									password_admin = PasswordAdminLdap,
+									bind_cn_success_metric_name = BindCnSuccessMetricName,
+									bind_uid_success_metric_name = BindUidSuccessMetricName,
+									bind_success_metric_name = BindSuccessMetricName,
+									bind_cn_invalid_credential_metric_name = BindCnInvalidCredentialMetricName,
+									bind_uid_invalid_credential_metric_name = BindUidInvalidCredentialMetricName,
+									bind_invalid_credential_metric_name = BindInvalidCredentialMetricName}) ->
 	case Name of
 		<<Cn:3/binary, _/binary>> ->
 			case Cn of
@@ -141,26 +142,32 @@ handle_request({'LDAPMessage', _,
 					end;
 				<<"uid">> -> 
 					<<_:4/binary, UserLogin/binary>> = hd(binary:split(Name, <<",">>)),
-					BindResponse = case do_authenticate(UserLogin, Password) of
+					BindResponse = case do_authenticate_with_password(UserLogin, Password, State) of
 						ok -> 
 							ems_db:inc_counter(BindUidSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind_uid ~p success.", [Name]),
 							make_bind_response(success, Name);
-						{error, _Reason} ->	
+						{error, Reason} ->	
 							ems_db:inc_counter(BindUidInvalidCredentialMetricName),
 							ems_logger:error("ems_ldap_handler bind_uid ~p invalid credential.", [Name]),
-							make_bind_response(invalidCredentials, Name)
+							case Reason of
+								access_denied_inative_user -> make_bind_response(insufficientAccessRights, Name);
+								access_denied -> make_bind_response(invalidCredentials, Name)
+							end
 					end;
 				_ -> 
-					BindResponse = case do_authenticate(Name, Password) of
+					BindResponse = case do_authenticate_with_password(Name, Password, State) of
 						ok -> 
 							ems_db:inc_counter(BindSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind ~p success.", [Name]),
 							make_bind_response(success, Name);
-						{error, _Reason} ->	
+						{error, Reason} ->	
 							ems_db:inc_counter(BindInvalidCredentialMetricName),
 							ems_logger:error("ems_ldap_handler bind ~p invalid credential.", [Name]),
-							make_bind_response(invalidCredentials, Name)
+							case Reason of
+								access_denied_inative_user -> make_bind_response(insufficientAccessRights, Name);
+								access_denied -> make_bind_response(invalidCredentials, Name)
+							end
 					end
 			end;
 		_ -> 
@@ -382,24 +389,40 @@ make_result_done(ResultCode) ->
 -spec handle_request_search_login(binary(), #state{}) -> {ok, tuple()}.
 handle_request_search_login(UserLogin, #state{admin = AdminLdap,
 										      search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
-											  search_success_metric_name = SearchSuccessMetricName}) ->	
+											  search_success_metric_name = SearchSuccessMetricName,
+											  auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}) ->	
 	case ems_user:find_by_login(UserLogin) of
 		{error, enoent} ->
 			ems_db:inc_counter(SearchInvalidCredentialMetricName),
 			ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
 			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]};
-		{ok, User} ->
-			ems_db:inc_counter(SearchSuccessMetricName),
-			ems_logger:info("ems_ldap_handler search ~p ~p success.", [UserLogin, User#user.name]),
-			ResultEntry = make_result_entry(User, AdminLdap),
-			ResultDone = make_result_done(success),
-			{ok, [ResultEntry, ResultDone]}
+		{ok, User = #user{active = Active}} -> 
+				case Active orelse AuthAllowUserInativeCredentials of
+					true -> 
+						ems_db:inc_counter(SearchSuccessMetricName),
+						ems_logger:info("ems_ldap_handler search ~p ~p success.", [UserLogin, User#user.name]),
+						ResultEntry = make_result_entry(User, AdminLdap),
+						ResultDone = make_result_done(success),
+						{ok, [ResultEntry, ResultDone]};
+					false -> 
+						ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
+						ResultDone = make_result_done(insufficientAccessRights),
+						{ok, [ResultDone]}
+				end
 	end.
 	
 
-do_authenticate(UserLogin, UserPassword) ->
-	ems_user:authenticate_login_password(UserLogin, UserPassword).
+do_authenticate_with_password(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}) ->
+	case ems_user:find_by_login_and_password(UserLogin, UserPassword) of
+		{ok, #user{active = Active}} -> 
+			case Active orelse AuthAllowUserInativeCredentials of
+				true -> ok;
+				false -> {error, access_denied_inative_user}
+			end;
+		_ -> {error, access_denied}
+	end.
+	
 
 format_user_field(undefined) -> <<"">>;
 format_user_field(null) -> <<"">>;

@@ -2885,14 +2885,18 @@ get_client_request_by_querystring(Request) ->
 
 
 -spec get_user_request_by_login_and_password(#request{}) -> #user{} | undefined.
-get_user_request_by_login_and_password(Request = #request{authorization = Authorization}) ->
+get_user_request_by_login_and_password(Request = #request{authorization = Authorization, service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}}) ->
     try
 		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
 		case Username =/= <<>> of
 			true ->
 				Password = ems_util:get_querystring(<<"password">>, <<>>, Request),
 				case ems_user:find_by_login_and_password(Username, Password) of
-					{ok, User} -> User;
+					{ok, User = #user{active = Active}} -> 
+						case Active orelse AuthAllowUserInativeCredentials of
+							true -> User;
+							false -> undefined
+						end;
 					_ -> undefined
 				end;
 			false ->
@@ -2902,7 +2906,11 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 						case parse_basic_authorization_header(Authorization) of
 							{ok, Login, Password} ->
 								case ems_user:find_by_login_and_password(Login, Password) of
-									{ok, User} -> User;
+									{ok, User = #user{active = Active}} -> 
+										case Active orelse AuthAllowUserInativeCredentials of
+											true -> User;
+											false -> undefined
+										end;
 									_ -> undefined
 								end;
 							_ -> undefined

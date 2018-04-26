@@ -36,7 +36,8 @@
 				search_success_metric_name,
 				host_denied_metric_name,
 				error_metric_name,
-				request_capabilities_metric_name	
+				request_capabilities_metric_name,
+				auth_allow_user_inative_credentials
 			}).   
 
 
@@ -65,6 +66,7 @@ init({IpAddress,
 			   tcp_port = Port, 
 			   tcp_max_connections = MaxConnections,
 			   tcp_allowed_address_t = AllowedAddress,
+			   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials,
 			   properties = Props}, 
 	  ListenerName,
 	  ServerName}) ->
@@ -100,7 +102,8 @@ init({IpAddress,
 				   search_success_metric_name = SearchSuccessMetricName,
 				   host_denied_metric_name = HostDeniedMetricName,
 				   error_metric_name = ErrorMetricName,
-				   request_capabilities_metric_name = RequestCapabilitiesMetricName
+				   request_capabilities_metric_name = RequestCapabilitiesMetricName,
+				   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials
 			   },
 	Ret = ranch:start_listener(ListenerName, 100, ranch_tcp, [{ip, IpAddress},
 															  {port, Port}, 

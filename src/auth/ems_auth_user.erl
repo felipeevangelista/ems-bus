@@ -8,8 +8,8 @@
 
 -module(ems_auth_user).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
     
 -export([authenticate/2]).
 
@@ -55,11 +55,15 @@ authenticate(Service = #service{authorization = AuthorizationMode,
 -spec do_basic_authorization(#service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied}.
 do_basic_authorization(Service, Request = #request{authorization = <<>>}) -> 
 	do_bearer_authorization(Service, Request);
-do_basic_authorization(Service, Request = #request{authorization = Authorization}) ->
+do_basic_authorization(Service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Request = #request{authorization = Authorization}) ->
 	case ems_util:parse_basic_authorization_header(Authorization) of
 		{ok, Login, Password} ->
 			case ems_user:find_by_login_and_password(Login, Password) of
-				{ok, User} -> do_check_grant_permission(Service, Request, public, User, <<>>, <<>>, basic);
+				{ok, User = #user{active = Active}} -> 
+					case Active orelse AuthAllowUserInativeCredentials of
+						true -> do_check_grant_permission(Service, Request, public, User, <<>>, <<>>, basic);
+						false -> {error, access_denied}
+					end;
 				_ -> {error, access_denied}
 			end;
 		_ -> do_bearer_authorization(Service, Request) % Quando ocorrer erro, tenta fazer via oauth2

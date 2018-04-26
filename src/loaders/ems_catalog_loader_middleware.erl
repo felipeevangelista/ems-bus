@@ -216,6 +216,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												oauth2_with_check_constraint = NewCatalog#service.oauth2_with_check_constraint,
 												oauth2_token_encrypt = NewCatalog#service.oauth2_token_encrypt,
 												oauth2_allow_client_credentials = NewCatalog#service.oauth2_allow_client_credentials,
+												auth_allow_user_inative_credentials = NewCatalog#service.auth_allow_user_inative_credentials,
 												authorization_public_check_credential = NewCatalog#service.authorization_public_check_credential,
 												protocol = NewCatalog#service.protocol,
 												filename = NewCatalog#service.filename,

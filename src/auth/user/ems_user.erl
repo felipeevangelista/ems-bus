@@ -19,7 +19,6 @@
 		 find_by_cpf/1, 
 		 find_by_login_and_password/2,
 		 find_by_codigo_pessoa/1, find_by_codigo_pessoa/2,
-		 authenticate_login_password/2, 
 		 to_resource_owner/1,
 		 to_resource_owner/2,
  		 new_from_map/2,
@@ -44,14 +43,6 @@ all() ->
 	{ok, ListaUserAlunoInativoDb} = ems_db:all(user_aluno_inativo_db),
 	{ok, ListaUserFs} = ems_db:all(user_fs),
 	{ok, ListaUserDb ++ ListaUserAlunoAtivoDb ++ ListaUserAlunoInativoDb ++ ListaUserFs}.
-	
-
--spec authenticate_login_password(binary(), binary() | list()) -> ok | {error, access_denied}.
-authenticate_login_password(Login, Password) ->
-	case find_by_login_and_password(Login, Password) of
-		{ok, _} -> ok;
-		_ -> {error, access_denied}
-	end.
 	
 
 -spec find_by_codigo_pessoa(non_neg_integer()) -> {ok, list(#user{})} | {error, enoent}.
