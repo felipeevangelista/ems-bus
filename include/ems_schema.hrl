@@ -80,22 +80,20 @@
 			   service_async :: boolean(),						%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
 			   request_rid,       								%% Request ID (Identificador da requisição gerada automaticamente)
 			   request_latency :: non_neg_integer(),			%% Latência (tempo que levou para processar a requisição)
-			   request_code :: non_neg_integer(),	 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 			   request_type :: binary(),						%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
 			   request_uri :: binary(),							%% URI da requisição do serviço
 			   request_url :: binary(),							%% URL da requisição do serviço
 			   request_url_masked :: boolean(),					%% Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
 			   request_http_version :: binary(),				%% Versão do cabeçalho HTTP
-			   request_payload :: binary(),						%% Payload da requisição (se menor que 4K)
-			   request_querystring :: map(),					%% Querystring da requisição
-			   request_params_url,								%% Map com os parâmetros da URL
+			   %request_payload :: binary(),					%% Payload da requisição (se menor que 4K)
+			   request_querystring :: binary(),					%% Querystring da requisição
+			   %request_params_url :: binary(),					%% Map com os parâmetros da URL
 			   request_content_type_in :: binary(),				%% Tipo de conteúdo de entrada (Ex.: application/json)
 			   request_content_type_out :: binary(),			%% Tipo de conteúdo de saída. (Ex.: application/json)
 			   request_content_length :: non_neg_integer(), 	%% Largura da requisição
 			   request_accept :: binary(),						%% Parâmetro ACCEPT HTTP
 			   request_user_agent :: binary(),					%% Nome do browser
 			   request_user_agent_version :: binary(),			%% Versão do browser
-			   request_ip :: binary(),							%% Peer que iniciou a requisição
 			   request_t1,										%% Utilizado para cálculo da latência (Tempo inicial em milisegundos)
 			   request_authorization :: binary(),				%% Dados da autenticação da requisição
 			   request_port :: non_neg_integer(),				
@@ -105,9 +103,10 @@
 			   request_filename :: string(),					%% Qual arquivo foi lido do disco
 			   request_referer :: binary(),
 			   request_access_token :: binary(),
-   			   request_timestamp,								%% Timestamp de quando que a requisição ocorreu
-			   request_reason :: atom(),							%% Registra a mensagem de erro, quando status indicar um erro
+			   request_reason :: atom(),						%% Registra a mensagem de erro, quando status indicar um erro
+			   request_code :: non_neg_integer(),	 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 			   request_protocol :: atom()						%% Protocol (http, ldap)
+   			   request_timestamp								%% Timestamp de quando que a requisição ocorreu
 
 		}).
 		

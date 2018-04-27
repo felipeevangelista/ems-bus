@@ -14,7 +14,7 @@ execute(Request = #request{type = Type,
 						   host = Host, 
 						   user_agent = UserAgent, 
 						   user_agent_version = UserAgentVersion,
-						   service  = #service{oauth2_allow_client_credentials = OAuth2AllowClientCredentials}}) -> 
+						   service  = Service = #service{oauth2_allow_client_credentials = OAuth2AllowClientCredentials}}) -> 
 	try
 		case Type of
 			<<"GET">> -> GrantType = ems_util:get_querystring(<<"response_type">>, <<>>, Request);
@@ -70,9 +70,7 @@ execute(Request = #request{type = Type,
 					case User =/= undefined of
 						true -> 
 							UserAgentBin = ems_util:user_agent_atom_to_binary(UserAgent),
-							SingleSignonUserMetricName = binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_user_">>, integer_to_binary(User#user.id)]), utf8),
 							SingleSignonUserAgentMetricName = binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_user_agent_">>, UserAgentBin, <<"_">>, UserAgentVersion]), utf8),
-							ems_db:inc_counter(SingleSignonUserMetricName),
 							ems_db:inc_counter(SingleSignonUserAgentMetricName);
 						false -> ok
 					end,
@@ -80,10 +78,12 @@ execute(Request = #request{type = Type,
 						true ->
 							ClientJson = ems_client:to_json(Client),
 							ResourceOwner = ems_user:to_resource_owner(User, Client#client.id),
-							ClientProp = [<<"\"client\":"/utf8>>, ClientJson, <<","/utf8>>];
+							ClientProp = [<<"\"client\":"/utf8>>, ClientJson, <<","/utf8>>],
+							ems_user:add_history(User, Service, Request);
 						false ->
 							ResourceOwner = ems_user:to_resource_owner(User),
-							ClientProp = <<"\"client\": \"public\","/utf8>>
+							ClientProp = <<"\"client\": \"public\","/utf8>>,
+							ems_user:add_history(User, Service, Request)
 					end,
 					ResponseData2 = iolist_to_binary([<<"{"/utf8>>,
 															ClientProp,
