@@ -39,9 +39,12 @@ start() ->
 	
 -spec create_database(list()) -> ok.	
 create_database(Nodes) ->
+	ems_logger:format_info("\nems_db initializing ErlangMS database, please wait ..."),
+
 	% Define a pasta de armazenamento dos databases
 	filelib:ensure_dir(?DATABASE_PATH),
 	application:set_env(mnesia, dir, ?DATABASE_PATH),
+	
 	mnesia:create_schema(Nodes),
 	mnesia:start(),
 
@@ -87,6 +90,12 @@ create_database(Nodes) ->
 								  {index, [#user.codigo, #user.login]},
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
+
+    mnesia:create_table(user_history, [{type, set},
+									  {disc_copies, Nodes},
+									  {index, [#user_history.user_id]},
+									  {attributes, record_info(fields, user_history)},
+									  {record_name, user_history}]),
 
     mnesia:create_table(user_aluno_ativo_db, [{type, set},
 								  {disc_copies, Nodes},
@@ -291,6 +300,7 @@ create_database(Nodes) ->
 							ctrl_params,
 							user_fs, 
 							user_db,
+							user_history,
 							user_aluno_ativo_db,
 							user_aluno_inativo_db,
 							user_cache_lru,

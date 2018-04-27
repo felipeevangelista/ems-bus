@@ -1734,7 +1734,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			payload = <<>>, 
 			payload_map = #{},
 			response_data = <<>>,
-			node_exec = ems_util:node_binary()
+			node_exec = ems_util:node_binary(),
+			code = 200
 		},	
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,

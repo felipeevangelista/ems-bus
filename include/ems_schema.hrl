@@ -20,13 +20,13 @@
 			   email :: binary(), 							
 			   password :: binary(),						%% password (required)
 			   dt_expire_password :: binary(),				%% data que o password expira
-			   type = 0 :: non_neg_integer(),				%% 0 = interno  1 = tecnico  2 = docente  3 = discente, 4 = terceiros
-			   subtype = 0 :: non_neg_integer(),			%% se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
+			   type :: non_neg_integer(),					%% 0 = interno  1 = tecnico  2 = docente  3 = discente, 4 = terceiros
+			   subtype :: non_neg_integer(),				%% se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
 															%%            6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 
 															%%           10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
 			   passwd_crypto :: binary(),					%% Algoritmo criptografia: SHA1
 			   type_email :: non_neg_integer(),				%% undefined = desconhecido  1 = Institucional  2 = Pessoal
-			   active = true :: boolean(),
+			   active :: boolean(),							
 			   endereco :: binary(),
 			   complemento_endereco :: binary(),
 			   bairro :: binary(),
@@ -51,6 +51,64 @@
 			   ctrl_update, 								%% Data que foi atualiado no banco mnesia			
 			   ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
+		}).
+		
+-record(user_history, {
+			   id :: non_neg_integer(), 						%% identificador do history
+			   user_id :: non_neg_integer(), 					%% identificador do user
+			   user_codigo :: non_neg_integer(),				%% código da pessoa
+			   user_login :: binary(),							%% login do usuário
+			   user_name :: binary(), 							%% nome do usuário
+			   user_cpf :: binary(),
+			   user_email :: binary(), 							
+			   user_type :: non_neg_integer(),					%% veja record user
+			   user_subtype :: non_neg_integer(),				%% veja record user
+			   user_type_email :: non_neg_integer(),			%% undefined = desconhecido  1 = Institucional  2 = Pessoal
+			   user_active :: boolean(),
+			   user_admin :: boolean(),							%% o user eh admin
+			   client_id :: non_neg_integer(), 					%% identificador do client
+			   client_name :: binary(), 
+			   service_rowid :: non_neg_integer(), 				%% rowid do catálogo
+			   service_name :: binary(), 						%% Nome do contrato do serviço
+			   service_url :: string(),  						%% URL do contrato do serviço
+			   service_type :: binary(),						%% Verbo HTTP do contrato (GET, POST, PUT, DELETE e OPTIONS) ou KERNEL para módulos do barramento
+			   service_service :: binary(),						%% Serviço que será executado no contrato
+			   service_use_re :: boolean(),						%% Flag que indica se usa expressão regular
+			   service_public :: boolean(), 					%% Identificador da expressão regular que vai verificar se a URL bate com a URL da requisição
+			   service_version :: binary(), 					%% Versão do serviço executado
+			   service_owner :: binary(),  						%% Quem é o proprietário pelo serviço
+			   service_async :: boolean(),						%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
+			   request_rid,       								%% Request ID (Identificador da requisição gerada automaticamente)
+			   request_latency :: non_neg_integer(),			%% Latência (tempo que levou para processar a requisição)
+			   request_code :: non_neg_integer(),	 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
+			   request_type :: binary(),						%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
+			   request_uri :: binary(),							%% URI da requisição do serviço
+			   request_url :: binary(),							%% URL da requisição do serviço
+			   request_url_masked :: boolean(),					%% Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
+			   request_http_version :: binary(),				%% Versão do cabeçalho HTTP
+			   request_payload :: binary(),						%% Payload da requisição (se menor que 4K)
+			   request_querystring :: map(),					%% Querystring da requisição
+			   request_params_url,								%% Map com os parâmetros da URL
+			   request_content_type_in :: binary(),				%% Tipo de conteúdo de entrada (Ex.: application/json)
+			   request_content_type_out :: binary(),			%% Tipo de conteúdo de saída. (Ex.: application/json)
+			   request_content_length :: non_neg_integer(), 	%% Largura da requisição
+			   request_accept :: binary(),						%% Parâmetro ACCEPT HTTP
+			   request_user_agent :: binary(),					%% Nome do browser
+			   request_user_agent_version :: binary(),			%% Versão do browser
+			   request_ip :: binary(),							%% Peer que iniciou a requisição
+			   request_t1,										%% Utilizado para cálculo da latência (Tempo inicial em milisegundos)
+			   request_authorization :: binary(),				%% Dados da autenticação da requisição
+			   request_port :: non_neg_integer(),				
+			   request_response_data,
+			   request_bash,
+			   request_host :: binary(),						%% Ip do barramento
+			   request_filename :: string(),					%% Qual arquivo foi lido do disco
+			   request_referer :: binary(),
+			   request_access_token :: binary(),
+   			   request_timestamp,								%% Timestamp de quando que a requisição ocorreu
+			   request_reason :: atom(),							%% Registra a mensagem de erro, quando status indicar um erro
+			   request_protocol :: atom()						%% Protocol (http, ldap)
+
 		}).
 		
 -record(user_dados_funcionais, {
@@ -180,7 +238,7 @@
 					  service,   								%% Contrato que estabelece o serviço que vai atender a requisição
 					  timestamp, 								%% Timestamp de quando que a requisição ocorreu
 					  latency :: non_neg_integer(),				%% Latência (tempo que levou para processar a requisição)
-					  code = 200 :: non_neg_integer(), 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
+					  code :: non_neg_integer(), 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 					  reason = ok :: atom(),					%% Registra a mensagem de erro, quando status indicar um erro
 					  type :: binary(),							%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
 					  uri :: binary(),							%% URI da requisição do serviço
@@ -286,7 +344,7 @@
 					rowid :: non_neg_integer(),					%% Identificador interno do contrato (utilizado para localizar o contrato)
 					name :: binary(), 							%% Nome do contrato do serviço (Por default usa-se a própria URL como name)
 					url :: string(),  							%% URL do contrato do serviço
-					type = <<"GET">> :: binary(),				%% Verbo HTTP do contrato (GET, POST, PUT, DELETE e OPTIONS) ou KERNEL para módulos do barramento
+					type :: binary(),							%% Verbo HTTP do contrato (GET, POST, PUT, DELETE e OPTIONS) ou KERNEL para módulos do barramento
 					service :: binary(),						%% Serviço que será executado no contrato
 					middleware :: atom(),						%% Miidleware definido para pós processamento do serviço
 					module_name :: string(), 					%% Nome do módulo do serviço que vai atender a requisição. Ex.: br.erlangms.HelloWorldService  
@@ -298,25 +356,25 @@
 					id_re_compiled = undefined, 				%% Identificador da expressão regular que vai verificar se a URL bate com a URL da requisição
 					public = true :: boolean(), 				%% Indica se o contrato estará listado no Portal API Management
 					comment :: binary(), 						%% Comentário sobre o que o contrato oferece em termos de serviço
-					version = "1.0.0" :: binary(), 				%% Versão do contrato do serviço
+					version :: binary(), 						%% Versão do contrato do serviço
 					owner :: binary(),  						%% Quem é o proprietário pelo serviço
-					async = false :: boolean(),					%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
+					async :: boolean(),							%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
 					querystring :: list(map()),					%% Definição da querystring para o contrato do serviço
 					qtd_querystring_req :: non_neg_integer(), 	%% Indica quantas querystrings são obrigatórias
 					host :: atom(),  							%% Atom do host onde está o módulo do serviço que vai processar a requisição
 					host_name,				  					%% Nome do host onde está o módulo do serviço que vai processar a requisição
 					result_cache :: non_neg_integer(), 			%% Indica quanto tempo em milisegundos o resultado vai ficar armazenado em cache (somente para o módulo msbus_static_file_service)
 					authorization :: atom(),					%% Forma de autenticação (public, basic, oauth2)
-					authorization_public_check_credential = false :: boolean(),		%% Faz a checagem da credencial do usuário quando o serviço é publico
-					oauth2_with_check_constraint = false :: boolean(),
-					oauth2_allow_client_credentials = false :: boolean(),
-					oauth2_token_encrypt = false :: boolean(),
+					authorization_public_check_credential :: boolean(),		%% Faz a checagem da credencial do usuário quando o serviço é publico
+					oauth2_with_check_constraint :: boolean(),
+					oauth2_allow_client_credentials :: boolean(),
+					oauth2_token_encrypt :: boolean(),
 					auth_allow_user_inative_credentials :: boolean(),  % Permite login de usuários inativos.
 					page,										%% Page django file
 					page_module,								%% Page module django file compiled
-					page_mime_type = <<"text/html">>,			%% Page mime type
+					page_mime_type :: binary(),					%% Page mime type
 					node,										%% Node ou lista de node onde os serviços estão publicados
-					lang = "erlang" :: binary(),				%% Linguagem que foi utilizada para implementar o serviço
+					lang :: binary(),							%% Linguagem que foi utilizada para implementar o serviço
 					datasource :: #service_datasource{},		%% Datasource para a fonte de dados
 					debug = false :: boolean(),					%% Permite habilitar um modo debug (depende da implementação do serviço)
 					schema_in :: non_neg_integer(),
@@ -324,9 +382,9 @@
 					pool_size :: non_neg_integer(),
 					pool_max :: non_neg_integer(),
 					timeout :: non_neg_integer(),				%% Tempo que o dispatcher aguarda em milisegundos o processamento de um serviço antes de retornar etimeout_service para o cliente
-					timeout_alert_threshold = 0 :: non_neg_integer(),  	% Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
-					log_show_response = false :: boolean(),		%% Se true, imprime o response no log
-					log_show_payload = false :: boolean(),		%% Se true, imprime o payload no log
+					timeout_alert_threshold :: non_neg_integer(),  	% Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
+					log_show_response :: boolean(),		%% Se true, imprime o response no log
+					log_show_payload :: boolean(),		%% Se true, imprime o payload no log
 					expires :: non_neg_integer(),				%% Cabeçalho HTTP expires
 					cache_control :: binary(),					%% Cabeçalho HTTP cache-control
 					enable = false :: boolean(),
@@ -341,7 +399,7 @@
 					tcp_allowed_address_t,
 					tcp_max_connections :: non_neg_integer(),
 					tcp_port :: non_neg_integer(),
-					tcp_is_ssl = false :: boolean(),
+					tcp_is_ssl :: boolean(),
 					tcp_ssl_cacertfile,
 					tcp_ssl_certfile,
 					tcp_ssl_keyfile,
@@ -364,7 +422,7 @@
 					service_resend_msg1 :: atom(),
 					http_max_content_length :: non_neg_integer(),
 					http_headers :: map(),
-					restricted = false :: boolean(),			%% Serviços restrito para admins
+					restricted :: boolean(),			%% Serviços restrito para admins
 					metadata :: binary()						%% Representação em json do que será enviado para o web service /catalog
 				}).
 
@@ -414,3 +472,4 @@
 									 context :: binary()
 									}).
 
+		

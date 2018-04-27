@@ -7,7 +7,6 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/:id",
 		"type": "GET",
-		"authorization": "basic",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
@@ -36,7 +35,6 @@
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/user",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang",
 		"datasource" : {
 			"type" : "mnesia",
@@ -90,7 +88,6 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/lru/:id",
 		"type": "GET",
-		"authorization": "basic",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_cache_lru",
@@ -119,7 +116,6 @@
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/user/lru",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang",
 		"datasource" : {
 			"type" : "mnesia",
@@ -173,7 +169,6 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/fs/:id",
 		"type": "GET",
-		"authorization": "basic",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_fs",
@@ -202,7 +197,6 @@
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/user/fs",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang",
 		"datasource" : {
 			"type" : "mnesia",
@@ -246,6 +240,105 @@
 					"comment": "Campos que devem ser ordenados"
 				}
 			]	
+	},
+	
+	{	
+		"name": "/auth/user/:id/history",
+		"comment": "List history of user",
+		"owner": "auth",
+		"service" : "ems_api_query_service:find_by_owner",
+		"url": "/auth/user/:id/history",
+		"type": "GET",
+		"lang" : "erlang",
+		"datasource" : {
+			"type" : "mnesia",
+			"table_name" : ["user_history"],
+			"foreign_table_name" : ["user_db", "user_fs"],
+			"foreign_key" : "user_id"
+		},
+		"schema_in" : "user_history",
+		"schema_out" : "user_history",
+		"querystring": [
+				{
+					"name": "filter",
+					"type": "string",
+					"default" : "",
+					"comment": "Filtro principal da pesquisa"
+				},
+				{
+					"name": "fields",
+					"type": "string",
+					"default" : "",
+					"comment": "Campos que devem ser retornados na pesquisa"
+				},
+				{
+					"name": "limit",
+					"type": "int",
+					"default" : "100",
+					"comment": "Quantidade máxima de registros retornados"
+				},
+				{
+					"name": "offset",
+					"type": "int",
+					"default" : "1",
+					"comment": "Offset retornado da consulta"
+				},
+				{
+					"name": "sort",
+					"type": "string",
+					"default" : "",
+					"comment": "Campos que devem ser ordenados"
+				}
+			]	
+	},
+	
+	{	
+		"name": "/auth/user/history",
+		"comment": "List user history",
+		"owner": "auth_user",
+		"service" : "ems_api_query_service:find",
+		"url": "/auth/user/history",
+		"type": "GET",
+		"lang" : "erlang",
+		"datasource" : {
+			"type" : "mnesia",
+			"table_name" : "user_history"
+		},
+		"schema_in" : "user_history",
+		"schema_out" : "user_history",
+		"querystring": [
+				{
+					"name": "filter",
+					"type": "string",
+					"default" : "",
+					"comment": "Filtro principal da pesquisa"
+				},
+				{
+					"name": "fields",
+					"type": "string",
+					"default" : "",
+					"comment": "Campos que devem ser retornados na pesquisa"
+				},
+				{
+					"name": "limit",
+					"type": "int",
+					"default" : "100",
+					"comment": "Quantidade máxima de registros retornados"
+				},
+				{
+					"name": "offset",
+					"type": "int",
+					"default" : "1",
+					"comment": "Offset retornado da consulta"
+				},
+				{
+					"name": "sort",
+					"type": "string",
+					"default" : "",
+					"comment": "Campos que devem ser ordenados"
+				}
+			]	
 	}
+		
 		
 ]

@@ -10,9 +10,9 @@
 
 -behaviour(ranch_protocol).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
--include("../include/LDAP.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
+-include("include/LDAP.hrl").
 
 -record(state, {listener_name,
 				server_name,
@@ -52,14 +52,15 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 	case Transport:recv(Socket, 0, 5000) of
 		{ok, Data} ->
 			case inet:peername(Socket) of
-				{ok, {Ip,_Port}} ->
-					case ems_util:allow_ip_address(Ip, AllowedAddress) of				
+				{ok, {IpTuple, Port}} ->
+					IpBin = list_to_binary(inet_parse:ntoa(IpTuple)),
+					case ems_util:allow_ip_address(IpTuple, AllowedAddress) of				
 						true ->
 							case decode_ldap_message(Data) of
 								{ok, LdapMessage} ->
 									ems_logger:debug2("ems_ldap_handler request: ~p\n.", [LdapMessage]),
 									MessageID = LdapMessage#'LDAPMessage'.messageID,
-									Result = handle_request(LdapMessage, State),
+									Result = handle_request(LdapMessage, State, IpBin, Port),
 									case Result of
 										{ok, unbindRequest} ->
 											?DEBUG("ems_ldap_handler unbindRequest and close socket."),
@@ -79,7 +80,7 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 							end;
 						false ->
 							ems_db:inc_counter(HostDeniedMetricName),
-							ems_logger:warn("ems_ldap_handler does not grant access to IP ~p. Reason: IP denied.", [Ip]),
+							ems_logger:warn("ems_ldap_handler does not grant access to IP ~p. Reason: IP denied.", [IpBin]),
 							ResultDone = make_result_done(insufficientAccessRights),
 							Response = [ encode_response(1, ResultDone) ],
 							Transport:send(Socket, Response),
@@ -125,7 +126,8 @@ handle_request({'LDAPMessage', _,
 									bind_success_metric_name = BindSuccessMetricName,
 									bind_cn_invalid_credential_metric_name = BindCnInvalidCredentialMetricName,
 									bind_uid_invalid_credential_metric_name = BindUidInvalidCredentialMetricName,
-									bind_invalid_credential_metric_name = BindInvalidCredentialMetricName}) ->
+									bind_invalid_credential_metric_name = BindInvalidCredentialMetricName},
+					Ip, Port) ->
 	case Name of
 		<<Cn:3/binary, _/binary>> ->
 			case Cn of
@@ -134,15 +136,31 @@ handle_request({'LDAPMessage', _,
 						true -> 
 							ems_db:inc_counter(BindCnSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind_cn ~p success.", [Name]),
+							ems_user:add_history(#user{name = AdminLdap}, 
+												 #service{}, 
+												 #request{timestamp = ems_util:timestamp_binary(),
+														  code = 0,
+														  reason = admin_ldap_success,
+														  ip = Ip,
+														  protocol = ldap,
+														  port = Port}),
 							make_bind_response(success, Name);
 						_-> 
 							ems_db:inc_counter(BindCnInvalidCredentialMetricName),
 							ems_logger:error("ems_ldap_handler bind_cn ~p invalid credential.", [Name]),
+							ems_user:add_history(#user{login = AdminLdap},  
+												 #service{}, 
+												 #request{timestamp = ems_util:timestamp_binary(),
+														  code = 50,
+														  reason = admin_ldap_denied,
+														  ip = Ip,
+														  protocol = ldap,
+														  port = Port}),
 							make_bind_response(invalidCredentials, Name)
 					end;
 				<<"uid">> -> 
 					<<_:4/binary, UserLogin/binary>> = hd(binary:split(Name, <<",">>)),
-					BindResponse = case do_authenticate_with_password(UserLogin, Password, State) of
+					BindResponse = case do_authenticate_with_password(UserLogin, Password, State, Ip, Port) of
 						ok -> 
 							ems_db:inc_counter(BindUidSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind_uid ~p success.", [Name]),
@@ -156,7 +174,7 @@ handle_request({'LDAPMessage', _,
 							end
 					end;
 				_ -> 
-					BindResponse = case do_authenticate_with_password(Name, Password, State) of
+					BindResponse = case do_authenticate_with_password(Name, Password, State, Ip, Port) of
 						ok -> 
 							ems_db:inc_counter(BindSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind ~p success.", [Name]),
@@ -185,8 +203,8 @@ handle_request({'LDAPMessage', _,
 													typesOnly = _TypesOnly, 
 													filter =  {equalityMatch, {'AttributeValueAssertion', <<"uid">>, UsuLoginBin}},
 													attributes = _Attributes}},
-				 _}, State) ->
-	handle_request_search_login(UsuLoginBin, State);
+				 _}, State, Ip, Port) ->
+	handle_request_search_login(UsuLoginBin, State, Ip, Port);
 handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
 													scope = _Scope, 
@@ -196,7 +214,7 @@ handle_request({'LDAPMessage', _,
 													typesOnly = _TypesOnly, 
 													filter =  {present, ObjectClass},
 													attributes = _Attributes}},
-				 _}, #state{request_capabilities_metric_name = RequestCapabilitiesMetricName}) ->
+				 _}, #state{request_capabilities_metric_name = RequestCapabilitiesMetricName}, _Ip, _Port) ->
 	ems_db:inc_counter(RequestCapabilitiesMetricName),	
 	ObjectName = make_object_name(ObjectClass),
 	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
@@ -224,15 +242,15 @@ handle_request({'LDAPMessage', _,
 																	{equalityMatch, {'AttributeValueAssertion', <<"uid">>, UsuLoginBin}}
 																]},
 													attributes = _Attributes}},
-				_}, State) ->
-	handle_request_search_login(UsuLoginBin, State);
+				_}, State, Ip, Port) ->
+	handle_request_search_login(UsuLoginBin, State, Ip, Port);
 handle_request({'LDAPMessage', _, 
 					{unbindRequest, _},
-				 _}, _State) ->
+				 _}, _State, _Ip, _Port) ->
 	{ok, unbindRequest};
 handle_request({'LDAPMessage', _, 
 					_UnknowMsg,
-				 _} = LdapMsg, _State) ->
+				 _} = LdapMsg, _State, _Ip, _Port) ->
 	ems_logger:warn("ems_ldap_handler received unknow msg ~p\n", [LdapMsg]),
 	{ok, unbindRequest}.
 	
@@ -386,15 +404,25 @@ make_result_done(ResultCode) ->
 	}.
 	
 
--spec handle_request_search_login(binary(), #state{}) -> {ok, tuple()}.
-handle_request_search_login(UserLogin, #state{admin = AdminLdap,
-										      search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
-											  search_success_metric_name = SearchSuccessMetricName,
-											  auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}) ->	
+-spec handle_request_search_login(binary(), #state{}, binary(), non_neg_integer()) -> {ok, tuple()}.
+handle_request_search_login(UserLogin, 
+							#state{admin = AdminLdap,
+								   search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
+								   search_success_metric_name = SearchSuccessMetricName,
+								   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
+								   Ip, Port) ->	
 	case ems_user:find_by_login(UserLogin) of
 		{error, enoent} ->
 			ems_db:inc_counter(SearchInvalidCredentialMetricName),
 			ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
+			ems_user:add_history(#user{login = UserLogin}, 
+								 #service{}, 
+								 #request{timestamp = ems_util:timestamp_binary(),
+										  code = 49,
+										  reason = access_denied,
+										  ip = Ip,
+										  protocol = ldap,
+										  port = Port}),
 			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]};
 		{ok, User = #user{active = Active}} -> 
@@ -404,23 +432,66 @@ handle_request_search_login(UserLogin, #state{admin = AdminLdap,
 						ems_logger:info("ems_ldap_handler search ~p ~p success.", [UserLogin, User#user.name]),
 						ResultEntry = make_result_entry(User, AdminLdap),
 						ResultDone = make_result_done(success),
+						ems_user:add_history(User, 
+											 #service{}, 
+											 #request{timestamp = ems_util:timestamp_binary(),
+													  code = 0,
+													  reason = success,
+													  ip = Ip,
+													  protocol = ldap,
+													  port = Port}),
 						{ok, [ResultEntry, ResultDone]};
 					false -> 
 						ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
+						ems_user:add_history(User, 
+											 #service{}, 
+											 #request{timestamp = ems_util:timestamp_binary(),
+													  code = 50,
+													  reason = access_denied_inative_user,
+													  ip = Ip,
+													  protocol = ldap,
+													  port = Port}),
 						ResultDone = make_result_done(insufficientAccessRights),
 						{ok, [ResultDone]}
 				end
 	end.
 	
 
-do_authenticate_with_password(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}) ->
+do_authenticate_with_password(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port) ->
 	case ems_user:find_by_login_and_password(UserLogin, UserPassword) of
-		{ok, #user{active = Active}} -> 
+		{ok, User = #user{active = Active}} -> 
 			case Active orelse AuthAllowUserInativeCredentials of
-				true -> ok;
-				false -> {error, access_denied_inative_user}
+				true -> 
+					ems_user:add_history(User, 
+						 #service{}, 
+						 #request{timestamp = ems_util:timestamp_binary(),
+								  code = 0,
+								  reason = success,
+								  ip = Ip,
+								  protocol = ldap,
+								  port = Port}),
+					ok;
+				false -> 
+					ems_user:add_history(User, 
+										 #service{}, 
+										 #request{timestamp = ems_util:timestamp_binary(),
+												  code = 50,
+												  reason = access_denied_inative_user,
+												  ip = Ip,
+												  protocol = ldap,
+												  port = Port}),
+					{error, access_denied_inative_user}
 			end;
-		_ -> {error, access_denied}
+		_ -> 
+			ems_user:add_history(#user{login = UserLogin},  
+								 #service{}, 
+								 #request{timestamp = ems_util:timestamp_binary(),
+										  code = 50,
+										  reason = access_denied,
+										  ip = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			{error, access_denied}
 	end.
 	
 
