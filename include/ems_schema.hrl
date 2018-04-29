@@ -105,8 +105,8 @@
 			   request_access_token :: binary(),
 			   request_reason :: atom(),						%% Registra a mensagem de erro, quando status indicar um erro
 			   request_code :: non_neg_integer(),	 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
-			   request_protocol :: atom()						%% Protocol (http, ldap)
-   			   request_timestamp								%% Timestamp de quando que a requisição ocorreu
+			   request_protocol :: atom(),						%% Protocol (http, ldap)
+   			   request_timestamp :: binary()					%% Timestamp de quando que a requisição ocorreu
 
 		}).
 		

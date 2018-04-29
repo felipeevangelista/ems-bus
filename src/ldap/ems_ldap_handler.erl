@@ -18,6 +18,7 @@
 				server_name,
 				admin,		 		%% admin ldap
 				password_admin,     %% Password of admin ldap
+				base_search,
 				tcp_allowed_address_t,
 				bind_cn_success_metric_name,
 				bind_uid_success_metric_name,
@@ -36,7 +37,7 @@
 
 
 -export([start_link/4]).
--export([init/4]).
+-export([init/4, parse_name/1]).
 
 start_link(Ref, Socket, Transport, Service) ->
 	Pid = spawn_link(?MODULE, init, [Ref, Socket, Transport, Service]),
@@ -115,83 +116,58 @@ decode_ldap_message(RequestBin) ->
     end.
 
   
-handle_request({'LDAPMessage', _,
-					{bindRequest, #'BindRequest'{version = _Version, 
-												 name = Name, 
-												 authentication = {_, Password}}},
-				 _}, State = #state{admin = AdminLdap, 
-									password_admin = PasswordAdminLdap,
-									bind_cn_success_metric_name = BindCnSuccessMetricName,
-									bind_uid_success_metric_name = BindUidSuccessMetricName,
-									bind_success_metric_name = BindSuccessMetricName,
-									bind_cn_invalid_credential_metric_name = BindCnInvalidCredentialMetricName,
-									bind_uid_invalid_credential_metric_name = BindUidInvalidCredentialMetricName,
-									bind_invalid_credential_metric_name = BindInvalidCredentialMetricName},
-					Ip, Port) ->
-	case Name of
-		<<Cn:3/binary, _/binary>> ->
-			case Cn of
-				<<"cn=">> ->
-					BindResponse = case Name =:= AdminLdap andalso Password =:= PasswordAdminLdap of
+handle_request(LDAPMessage = {'LDAPMessage', _,
+								{bindRequest, #'BindRequest'{version = _Version, 
+															 name = Name, 
+															 authentication = {_, Password}}},
+							 _}, 
+			   State = #state{base_search = _BaseSearchConfig,
+							   bind_cn_success_metric_name = BindCnSuccessMetricName,
+							   bind_uid_success_metric_name = BindUidSuccessMetricName,
+							   bind_cn_invalid_credential_metric_name = BindCnInvalidCredentialMetricName,
+							   bind_uid_invalid_credential_metric_name = BindUidInvalidCredentialMetricName},
+			  Ip, Port) ->
+	NameSize = byte_size(Name),
+	case (Name =:= <<>>) orelse (NameSize < 4) orelse (NameSize > 100) orelse (Password =:= <<>>) of
+		true ->
+			ems_logger:error("ems_ldap_handler handle_request parse invalid message."),
+			BindResponse = make_bind_response(invalidCredentials, Name);
+		false ->
+			case parse_name(Name) of
+				{ok, cn, UserLogin, _LdapBaseFilter} ->
+					case do_authenticate_admin_with_admin_user(Name, UserLogin, Password, State, Ip, Port) orelse
+						  do_authenticate_admin_with_list_users(UserLogin, Password, State, Ip, Port) of
 						true -> 
 							ems_db:inc_counter(BindCnSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind_cn ~p success.", [Name]),
-							ems_user:add_history(#user{name = AdminLdap}, 
-												 #service{}, 
-												 #request{timestamp = ems_util:timestamp_binary(),
-														  code = 0,
-														  reason = admin_ldap_success,
-														  host = Ip,
-														  protocol = ldap,
-														  port = Port}),
-							make_bind_response(success, Name);
+							BindResponse = make_bind_response(success, Name);
 						_-> 
 							ems_db:inc_counter(BindCnInvalidCredentialMetricName),
 							ems_logger:error("ems_ldap_handler bind_cn ~p invalid credential.", [Name]),
-							ems_user:add_history(#user{login = AdminLdap},  
-												 #service{}, 
-												 #request{timestamp = ems_util:timestamp_binary(),
-														  code = 50,
-														  reason = admin_ldap_denied,
-														  host = Ip,
-														  protocol = ldap,
-														  port = Port}),
-							make_bind_response(invalidCredentials, Name)
-					end;
-				<<"uid">> -> 
-					<<_:4/binary, UserLogin/binary>> = hd(binary:split(Name, <<",">>)),
-					BindResponse = case do_authenticate_with_password(UserLogin, Password, State, Ip, Port) of
+							BindResponse = make_bind_response(invalidCredentials, Name)
+					end,
+					BindResponse;
+				{ok, _, UserLogin, _LdapBaseFilter} when LDAPMessage#'LDAPMessage'.messageID > 1 ->
+					case do_authenticate_user(UserLogin, Password, State, Ip, Port) of
 						ok -> 
 							ems_db:inc_counter(BindUidSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind_uid ~p success.", [Name]),
-							make_bind_response(success, Name);
+							BindResponse = make_bind_response(success, Name);
 						{error, Reason} ->	
 							ems_db:inc_counter(BindUidInvalidCredentialMetricName),
 							ems_logger:error("ems_ldap_handler bind_uid ~p invalid credential.", [Name]),
 							case Reason of
-								access_denied_inative_user -> make_bind_response(insufficientAccessRights, Name);
-								access_denied -> make_bind_response(invalidCredentials, Name)
+								access_denied_inative_user -> 
+									BindResponse = make_bind_response(insufficientAccessRights, Name);
+								access_denied -> 
+									BindResponse = make_bind_response(invalidCredentials, Name)
 							end
-					end;
+					end,
+					BindResponse;
 				_ -> 
-					BindResponse = case do_authenticate_with_password(Name, Password, State, Ip, Port) of
-						ok -> 
-							ems_db:inc_counter(BindSuccessMetricName),
-							ems_logger:info("ems_ldap_handler bind ~p success.", [Name]),
-							make_bind_response(success, Name);
-						{error, Reason} ->	
-							ems_db:inc_counter(BindInvalidCredentialMetricName),
-							ems_logger:error("ems_ldap_handler bind ~p invalid credential.", [Name]),
-							case Reason of
-								access_denied_inative_user -> make_bind_response(insufficientAccessRights, Name);
-								access_denied -> make_bind_response(invalidCredentials, Name)
-							end
-					end
-			end;
-		_ -> 
-			ems_db:inc_counter(BindInvalidCredentialMetricName),
-			ems_logger:error("ems_ldap_handler bind ~p invalid credential.", [Name]),
-			BindResponse = make_bind_response(invalidCredentials, Name)
+					ems_logger:error("ems_ldap_handler handle_request parse invalid message."),
+					BindResponse = make_bind_response(invalidCredentials, Name)
+			end
 	end,
 	{ok, [BindResponse]};
 handle_request({'LDAPMessage', _,
@@ -418,11 +394,11 @@ handle_request_search_login(UserLogin,
 			ems_user:add_history(#user{login = UserLogin}, 
 								 #service{}, 
 								 #request{timestamp = ems_util:timestamp_binary(),
-										  code = 49,
-										  reason = access_denied,
-										  host = Ip,
-										  protocol = ldap,
-										  port = Port}),
+										   code = 49,
+										   reason = access_denied,
+										   host = Ip,
+										   protocol = ldap,
+										   port = Port}),
 			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]};
 		{ok, User = #user{active = Active}} -> 
@@ -435,41 +411,42 @@ handle_request_search_login(UserLogin,
 						ems_user:add_history(User, 
 											 #service{}, 
 											 #request{timestamp = ems_util:timestamp_binary(),
-													  code = 0,
-													  reason = success,
-													  host = Ip,
-													  protocol = ldap,
-													  port = Port}),
+													   code = 0,
+													   reason = success,
+													   host = Ip,
+													   protocol = ldap,
+													   port = Port}),
 						{ok, [ResultEntry, ResultDone]};
 					false -> 
 						ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
 						ems_user:add_history(User, 
 											 #service{}, 
 											 #request{timestamp = ems_util:timestamp_binary(),
-													  code = 50,
-													  reason = access_denied_inative_user,
-													  host = Ip,
-													  protocol = ldap,
-													  port = Port}),
+													   code = 50,
+													   reason = access_denied_inative_user,
+													   host = Ip,
+													   protocol = ldap,
+													   port = Port}),
 						ResultDone = make_result_done(insufficientAccessRights),
 						{ok, [ResultDone]}
 				end
 	end.
 	
 
-do_authenticate_with_password(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port) ->
+% Autentica users possibilitando users inativos se autenticarem se o flag AuthAllowUserInativeCredentials for true  
+do_authenticate_user(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port) ->
 	case ems_user:find_by_login_and_password(UserLogin, UserPassword) of
 		{ok, User = #user{active = Active}} -> 
 			case Active orelse AuthAllowUserInativeCredentials of
 				true -> 
 					ems_user:add_history(User, 
-						 #service{}, 
-						 #request{timestamp = ems_util:timestamp_binary(),
-								  code = 0,
-								  reason = success,
-								  host = Ip,
-								  protocol = ldap,
-								  port = Port}),
+										 #service{}, 
+										 #request{timestamp = ems_util:timestamp_binary(),
+												  code = 0,
+												  reason = success,
+												  host = Ip,
+												  protocol = ldap,
+												  port = Port}),
 					ok;
 				false -> 
 					ems_user:add_history(User, 
@@ -493,7 +470,71 @@ do_authenticate_with_password(UserLogin, UserPassword, #state{auth_allow_user_in
 										  port = Port}),
 			{error, access_denied}
 	end.
-	
+
+% Autentica o admin a partir da base de usuários de users com flag admin = true	
+do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port) ->
+	case ems_user:find_by_login_and_password(UserLogin, UserPassword) of
+		{ok, User = #user{active = Active, admin = true}} -> 
+			case Active orelse AuthAllowUserInativeCredentials of
+				true -> 
+					ems_user:add_history(User, 
+										 #service{}, 
+										 #request{timestamp = ems_util:timestamp_binary(),
+												  code = 0,
+												  reason = success,
+												  host = Ip,
+												  protocol = ldap,
+												  port = Port}),
+					true;
+				false -> 
+					ems_user:add_history(User, 
+										 #service{}, 
+										 #request{timestamp = ems_util:timestamp_binary(),
+												   code = 50,
+												   reason = access_denied_inative_admin,
+												   host = Ip,
+												   protocol = ldap,
+												   port = Port}),
+					false
+			end;
+		_ -> 
+			ems_user:add_history(#user{login = UserLogin},  
+								 #service{}, 
+								 #request{timestamp = ems_util:timestamp_binary(),
+										   code = 50,
+										   reason = access_denied_admin,
+										   host = Ip,
+										   protocol = ldap,
+										   port = Port}),
+			false
+	end.
+
+% Autentica o admin com o admin fornecido na configuração do processo ldap
+do_authenticate_admin_with_admin_user(Name, LdapUser, Password, #state{admin = AdminLdap, password_admin = PasswordAdminLdap}, Ip, Port) ->
+	case (Name =:= AdminLdap orelse LdapUser =:= AdminLdap) andalso 
+		 (Password =:= PasswordAdminLdap orelse ems_util:criptografia_sha1(Password) =:= PasswordAdminLdap) of
+		true -> 
+			ems_user:add_history(#user{login = LdapUser},  
+								 #service{}, 
+								 #request{timestamp = ems_util:timestamp_binary(),
+										   code = 0,
+										   reason = success,
+										   host = Ip,
+										   protocol = ldap,
+										   port = Port}),
+			true;
+		false -> 
+			ems_user:add_history(#user{login = LdapUser},  
+								 #service{}, 
+								 #request{timestamp = ems_util:timestamp_binary(),
+										   code = 0,
+										   reason = access_denied_admin,
+										   host = Ip,
+										   protocol = ldap,
+										   port = Port}),
+			false
+	end.
+						 
 
 format_user_field(undefined) -> <<"">>;
 format_user_field(null) -> <<"">>;
@@ -504,3 +545,25 @@ format_user_field(Value) when is_list(Value) -> list_to_binary(Value);
 format_user_field(Value) when is_binary(Value) -> Value.
 	
 
+parse_name(undefined) -> {error, einvalid_name};	
+parse_name(<<>>) -> {error, einvalid_name};	
+parse_name(Name) -> 	
+	case binary:split(Name, <<",">>) of
+		[UserFilterValue, BaseFilterValue] ->
+			case UserFilterValue of
+				<<"cn=", Value/binary>> -> {ok, cn, Value, BaseFilterValue};
+				<<"uid=", Value/binary>> -> {ok, uid, Value, BaseFilterValue};
+				_ -> {error, einvalid_name}
+			end;
+		[UserFilterValue] ->
+			case UserFilterValue of
+				<<"cn=", Value/binary>> -> {ok, cn, Value, <<>>};
+				<<"uid=", Value/binary>> -> {ok, uid, Value, <<>>};
+				Value -> {ok, other, Value, <<>>}
+			end;
+		_ -> {error, einvalid_name}
+	end.
+	
+
+
+	

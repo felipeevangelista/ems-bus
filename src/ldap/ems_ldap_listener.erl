@@ -24,6 +24,7 @@
 				server_name,
 				admin,		 		%% admin ldap
 				password_admin,     %% Password of admin ldap
+				base_search,
 				tcp_allowed_address_t,
 				bind_cn_success_metric_name,
 				bind_uid_success_metric_name,
@@ -84,10 +85,17 @@ init({IpAddress,
 	HostDeniedMetricName = erlang:binary_to_atom(iolist_to_binary([ServerName, <<"_host_denied">>]), utf8),
 	ErrorMetricName = erlang:binary_to_atom(iolist_to_binary([ServerName, <<"_error_denied">>]), utf8),
 	RequestCapabilitiesMetricName = erlang:binary_to_atom(iolist_to_binary([ServerName, <<"_request_capabilities">>]), utf8),
-	LdapAdmin = maps:get(<<"ldap_admin">>, Props),
-	LdapPasswdAdmin = maps:get(<<"ldap_password_admin">>, Props),
+	LdapAdmin = ems_config:getConfig(<<"ldap_admin">>, ServerName, maps:get(<<"ldap_admin">>, Props)),
+	LdapPasswdAdmin0 = ems_config:getConfig(<<"ldap_password_admin">>, ServerName, maps:get(<<"ldap_password_admin">>, Props)),
+    LdapPasswdAdminCrypto = ems_config:getConfig(<<"ldap_password_admin_crypto">>, ServerName, maps:get(<<"ldap_password_admin_crypto">>, Props)),
+    LdapPasswdAdmin = case LdapPasswdAdminCrypto of
+							<<"SHA1">> -> LdapPasswdAdmin0;
+							_ -> ems_util:criptografia_sha1(LdapPasswdAdmin0)
+					  end,
+    LdapBaseSearch = ems_config:getConfig(<<"ldap_base_search">>, ServerName, maps:get(<<"ldap_base_search">>, Props)),
     State = #state{admin = LdapAdmin,
 				   password_admin = LdapPasswdAdmin,
+				   base_search = LdapBaseSearch,
 				   tcp_allowed_address_t = AllowedAddress,
 				   listener_name = ListenerName,
 				   server_name = ServerName,
