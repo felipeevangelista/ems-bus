@@ -52,7 +52,7 @@ authenticate(Service = #service{authorization = AuthorizationMode,
 %% Internal functions
 %%====================================================================
 
--spec do_basic_authorization(#service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied}.
+-spec do_basic_authorization(#service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied, atom()}.
 do_basic_authorization(Service, Request = #request{authorization = <<>>}) -> 
 	do_bearer_authorization(Service, Request);
 do_basic_authorization(Service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Request = #request{authorization = Authorization}) ->
@@ -62,15 +62,16 @@ do_basic_authorization(Service = #service{auth_allow_user_inative_credentials = 
 				{ok, User = #user{active = Active}} -> 
 					case Active orelse AuthAllowUserInativeCredentials of
 						true -> do_check_grant_permission(Service, Request, public, User, <<>>, <<>>, basic);
-						false -> {error, access_denied}
+						false -> {error, access_denied, einative_user}
 					end;
-				_ -> {error, access_denied}
+				Error -> Error
 			end;
-		_ -> do_bearer_authorization(Service, Request) % Quando ocorrer erro, tenta fazer via oauth2
+		{error, access_denied, ebasic_authorization_header_required} -> do_bearer_authorization(Service, Request); % Se o header não é Basic, então tenta oauth2
+		Error -> Error
 	end.
 
 
--spec do_bearer_authorization(#service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied}.
+-spec do_bearer_authorization(#service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied, atom()}.
 do_bearer_authorization(Service, Request = #request{authorization = <<>>}) ->
 	AccessToken = ems_util:get_querystring(<<"token">>, <<"access_token">>, <<>>, Request),
 	do_oauth2_check_access_token(AccessToken, Service, Request);
@@ -78,20 +79,20 @@ do_bearer_authorization(Service, Request = #request{authorization = Authorizatio
 	case ems_util:parse_bearer_authorization_header(Authorization) of
 		{ok, AccessToken} -> 
 			do_oauth2_check_access_token(AccessToken, Service, Request);
-		_ -> 
+		Error -> 
 			ems_db:inc_counter(ems_auth_user_oauth2_denied),
-			{error, access_denied}
+			Error
 	end.
 
 -spec do_oauth2_check_access_token(binary(), #service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied}.
 do_oauth2_check_access_token(<<>>, _, _) -> 
 	ems_db:inc_counter(ems_auth_user_oauth2_denied),
-	{error, access_denied};
+	{error, access_denied, eaccess_token_required};
 do_oauth2_check_access_token(AccessToken, Service, Req) ->
 	case byte_size(AccessToken) > 32 of
 		true -> 
 			ems_db:inc_counter(ems_auth_user_oauth2_denied),
-			{error, access_denied};
+			{error, access_denied, einvalid_access_token_size};
 		false -> 
 			case oauth2:verify_access_token(AccessToken, undefined) of
 				{ok, {[], [{<<"client">>, Client}, 
@@ -101,7 +102,7 @@ do_oauth2_check_access_token(AccessToken, Service, Req) ->
 					do_check_grant_permission(Service, Req, Client, User, AccessToken, Scope, oauth2);
 				_ -> 
 					ems_db:inc_counter(ems_auth_user_oauth2_denied),
-					{error, access_denied}
+					{error, access_denied, einvalid_access_token}
 			end
 	end.
 	
@@ -128,8 +129,6 @@ do_check_grant_permission(Service,
 				oauth2 -> ems_db:inc_counter(ems_auth_user_oauth2_denied);
 				_ -> ems_db:inc_counter(ems_auth_user_public_denied)
 			end,
-			{error, access_denied}
+			{error, access_denied, einsufficient_access_rights}
 	end.
-
-
 

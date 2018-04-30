@@ -53,8 +53,8 @@
          get_querystring/2,
          get_client_request_by_id_and_secret/1,
          get_client_request_by_id/1,
-         get_client_request_by_querystring/1,
          get_user_request_by_login_and_password/1,
+         get_user_request_by_login/1,
          date_add_minute/2,
          date_dec_minute/2,
          date_add_second/2,
@@ -1735,7 +1735,9 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			payload_map = #{},
 			response_data = <<>>,
 			node_exec = ems_util:node_binary(),
-			code = 200
+			code = 200,
+			reason = ok,
+			reason_detail = undefined
 		},	
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,
@@ -2087,7 +2089,10 @@ match_ip_address({O1, O2, O3, O4}, {X1, X2, X3, X4}) ->
    (O4 == '_' orelse O4 == X4).
 	
 	
--spec parse_basic_authorization_header(Header :: binary()) -> {ok, string(), string()} | {error, access_denied}.
+-spec parse_basic_authorization_header(Header :: binary()) -> {ok, string(), string()} | 
+															  {error, access_denied, einvalid_basic_authorization_header | 
+																					 ebasic_authorization_header_required | 
+																					 eparse_basic_authorization_header_exception}.
 parse_basic_authorization_header(<<Basic:5/binary, _:1/binary, Secret/binary>>) ->
 	try
 		case Basic =:= <<"Basic">> of
@@ -2095,28 +2100,32 @@ parse_basic_authorization_header(<<Basic:5/binary, _:1/binary, Secret/binary>>) 
 				Secret2 = base64:decode_to_string(binary_to_list(Secret)),
 				case string:tokens(Secret2, ":") of
 					[Login|[Password|_]] -> {ok, Login, Password};
-					_ -> {error, access_denied}
+					_ -> {error, access_denied, einvalid_basic_authorization_header}
 				end;
-			false -> {error, access_denied}
+			false -> {error, access_denied, ebasic_authorization_header_required}
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_basic_authorization_header_exception}
 	end;
-parse_basic_authorization_header(_) -> {error, access_denied}.
+parse_basic_authorization_header(_) -> {error, access_denied, eparse_basic_authorization_header_exception}.
 	
--spec parse_bearer_authorization_header(Header :: binary()) -> {ok, binary()} | {error, access_denied}.
+	
+-spec parse_bearer_authorization_header(Header :: binary()) -> {ok, binary()} | 
+															   {error, access_denied, ebearer_authorization_header_required | 
+																					  einvalid_bearer_authorization_header | 
+																					  eparse_bearer_authorization_header_exception}.
 parse_bearer_authorization_header(Header) ->
 	try
 		case Header of 
 			<<Bearer:6/binary, _:1/binary, Secret/binary>> ->
 				case Bearer =:= <<"Bearer">> of
 					true ->	{ok, Secret};
-					false -> {error, access_denied}
+					false -> {error, access_denied, ebearer_authorization_header_required}
 				end;
-			_ -> {error, access_denied}
+			_ -> {error, access_denied, einvalid_bearer_authorization_header}
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_bearer_authorization_header_exception}
 	end.
 		
 
@@ -2791,7 +2800,7 @@ is_email_institucional(SufixoEmailInstitucional, Email) ->
 		false -> false
 	end.
 
--spec get_client_request_by_id_and_secret(#request{}) -> #client{} | undefined.
+-spec get_client_request_by_id_and_secret(#request{}) -> {ok, #client{}} | {error, enoent, atom()}.
 get_client_request_by_id_and_secret(Request = #request{authorization = Authorization}) ->
     try
 		case get_querystring(<<"client_id">>, <<>>, Request) of
@@ -2803,8 +2812,8 @@ get_client_request_by_id_and_secret(Request = #request{authorization = Authoriza
 			true ->
 				ClientSecret = ems_util:get_querystring(<<"client_secret">>, <<>>, Request),
 				case ems_client:find_by_id_and_secret(ClientId, ClientSecret) of
-					{ok, Client} -> Client;
-					_ -> undefined
+					{ok, Client} -> {ok, Client};
+					Error -> Error
 				end;
 			false ->
 				% O ClientId também pode ser passado via header Authorization
@@ -2814,21 +2823,25 @@ get_client_request_by_id_and_secret(Request = #request{authorization = Authoriza
 							{ok, ClientLogin, ClientSecret} ->
 								ClientId2 = list_to_integer(ClientLogin),
 								ClientSecret2 = list_to_binary(ClientSecret),
-								case ems_client:find_by_id_and_secret(ClientId2, ClientSecret2) of
-									{ok, Client} -> Client;
-									_ -> undefined
+								case ClientId2 > 0 of
+									true ->
+										case ems_client:find_by_id_and_secret(ClientId2, ClientSecret2) of
+											{ok, Client} -> {ok, Client};
+											Error -> Error
+										end;
+									false -> {error, access_denied, einvalid_client_id}
 								end;
-							_ -> undefined
+							Error -> Error
 						end;
-					false -> undefined
+					false -> {error, access_denied, eauthorization_header_required}
 				end
 		end
 	catch
-		_:_ -> undefined
+		_:_ -> {error, access_denied, eparse_get_client_request_by_id_and_secret_exception}
 	end.
 
 
--spec get_client_request_by_id(#request{}) -> #client{} | undefined.
+-spec get_client_request_by_id(#request{}) -> {ok, #client{}} | {error, enoent, atom()}.
 get_client_request_by_id(Request = #request{authorization = Authorization}) ->
     try
 		case get_querystring(<<"client_id">>, <<>>, Request) of
@@ -2839,8 +2852,8 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 		case ClientId > 0 of
 			true ->
 				case ems_client:find_by_id(ClientId) of
-					{ok, Client} -> Client;
-					_ -> undefined
+					{ok, Client} -> {ok, Client};
+					_ -> {error, enoent, undefined}
 				end;
 			false ->
 				% O ClientId também pode ser passado via header Authorization
@@ -2849,44 +2862,29 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 						case parse_basic_authorization_header(Authorization) of
 							{ok, ClientLogin, _} ->
 								ClientId2 = list_to_integer(ClientLogin),
-								case ems_client:find_by_id(ClientId2) of
-									{ok, Client} -> Client;
-									_ -> undefined
+								case ClientId2 > 0 of 	
+									true ->
+										case ems_client:find_by_id(ClientId2) of
+											{ok, Client} -> {ok, Client};
+											_ -> {error, enoent, undefined}
+										end;
+									false -> {error, access_denied, einvalid_client_id}
 								end;
-							_ -> undefined
+							Error -> Error
 						end;
-					false -> undefined
+					false -> {error, access_denied, eauthorization_header_required}
 				end
 		end
 	catch
-		_:_ -> undefined
+		_:_ -> {error, access_denied, eparse_get_client_request_by_id_exception}
 	end.
 
 
--spec get_client_request_by_querystring(#request{}) -> #client{} | undefined.
-get_client_request_by_querystring(Request) ->
-    try
-		case get_querystring(<<"client_id">>, <<>>, Request) of
-			<<>> -> ClientId = 0;
-			undefined -> ClientId = 0;
-			ClientIdValue -> ClientId = binary_to_integer(ClientIdValue)
-		end,
-		case ClientId > 0 of
-			true ->
-				ClientSecret = ems_util:get_querystring(<<"client_secret">>, <<>>, Request),
-				case ems_client:find_by_id_and_secret(ClientId, ClientSecret) of
-					{ok, Client} -> Client;
-					_ -> undefined
-				end;
-			false -> undefined
-		end
-	catch
-		_:_ -> undefined
-	end.
-
-
--spec get_user_request_by_login_and_password(#request{}) -> #user{} | undefined.
-get_user_request_by_login_and_password(Request = #request{authorization = Authorization, service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}}) ->
+-spec get_user_request_by_login_and_password(#request{}) -> {ok, #user{}} | {error, 
+																			 enoent | access_denied, 
+																			 einvalid_password | einative_user | einvalid_authorization_header | eparse_authorization_header_exception}.
+get_user_request_by_login_and_password(Request = #request{authorization = Authorization, 
+														  service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}}) ->
     try
 		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
 		case Username =/= <<>> of
@@ -2895,10 +2893,10 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 				case ems_user:find_by_login_and_password(Username, Password) of
 					{ok, User = #user{active = Active}} -> 
 						case Active orelse AuthAllowUserInativeCredentials of
-							true -> User;
-							false -> undefined
+							true -> {ok, User};
+							false -> {error, access_denied, einative_user}
 						end;
-					_ -> undefined
+					Error -> Error
 				end;
 			false ->
 				% O user também pode ser passado via header Authorization
@@ -2909,18 +2907,48 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 								case ems_user:find_by_login_and_password(Login, Password) of
 									{ok, User = #user{active = Active}} -> 
 										case Active orelse AuthAllowUserInativeCredentials of
-											true -> User;
-											false -> undefined
+											true -> {ok, User};
+											false -> {error, access_denied, einative_user}
 										end;
-									_ -> undefined
+									Error -> Error
 								end;
-							_ -> undefined
+							Error -> Error
 						end;
-					false -> undefined
+					false -> {error, access_denied, eauthorization_header_required}
 				end
 		end
 	catch
-		_:_ -> undefined
+		_:_ -> {error, access_denied, eparse_get_user_request_by_login_and_password_exception}
+	end.
+
+
+-spec get_user_request_by_login(#request{}) -> {ok, #user{}} | {error, enoent | access_denied, atom()}.
+get_user_request_by_login(Request = #request{authorization = Authorization}) ->
+    try
+		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
+		case Username =/= <<>> of
+			true ->
+				case ems_user:find_by_login(Username) of
+					{ok, User} -> {ok, User};
+					Error -> Error
+				end;
+			false ->
+				% O user também pode ser passado via header Authorization
+				case Authorization =/= undefined of
+					true ->
+						case parse_basic_authorization_header(Authorization) of
+							{ok, Login, _Password} ->
+								case ems_user:find_by_login(Login) of
+									{ok, User} -> {ok, User};
+									Error -> Error
+								end;
+							Error -> Error
+						end;
+					false -> {error, access_denied, eauthorization_header_required}
+				end
+		end
+	catch
+		_:_ -> {error, access_denied, eparse_get_user_request_by_login_exception}
 	end.
 
 seconds_since_epoch(Diff) ->

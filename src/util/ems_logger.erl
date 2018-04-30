@@ -594,6 +594,7 @@ do_log_request(#request{rid = RID,
 						querystring_map = Query,
 						code = Code,
 						reason = Reason,
+						reason_detail = ReasonDetail,
 						latency = Latency,
 						result_cache = ResultCache,
 						result_cache_rid = ResultCacheRid,
@@ -782,21 +783,25 @@ do_log_request(#request{rid = RID,
 											_ -> [integer_to_binary(Client#client.id), <<" ">>, Client#client.name]
 									   end,
 					   <<"\n\tUser: ">>, case User of
-										public -> <<"public">>;
-										undefined -> <<>>;
-										_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
-									 end,
+											public -> <<"public">>;
+											undefined -> <<>>;
+											_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
+										 end,
 					   <<"\n\tNode: ">>, case Node of
-										undefined -> <<>>;
-										_ -> Node
-									 end,
+											undefined -> <<>>;
+											_ -> Node
+										 end,
 					   <<"\n\tFilename: ">>, case Filename of
 												undefined -> <<>>;
 												_ -> Filename
 											 end,
 					   <<"\n\tStatus: ">>, integer_to_binary(Code), 
 					   <<" <<">>, case is_atom(Reason) of
-										true -> atom_to_binary(Reason, utf8);
+										true -> 
+										   case ReasonDetail =/= undefined of
+												true -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8)];
+												false -> atom_to_binary(Reason, utf8)
+										   end;
 										false -> <<"error">>
 								  end, <<">> (">>, integer_to_binary(Latency), <<"ms)\n}">>],
 					   

@@ -79,7 +79,7 @@
 			   service_owner :: binary(),  						%% Quem é o proprietário pelo serviço
 			   service_async :: boolean(),						%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
 			   request_rid,       								%% Request ID (Identificador da requisição gerada automaticamente)
-			   request_latency :: non_neg_integer(),			%% Latência (tempo que levou para processar a requisição)
+			   %request_latency :: non_neg_integer(),			%% Latência (tempo que levou para processar a requisição)
 			   request_type :: binary(),						%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
 			   request_uri :: binary(),							%% URI da requisição do serviço
 			   request_url :: binary(),							%% URL da requisição do serviço
@@ -97,13 +97,14 @@
 			   request_t1,										%% Utilizado para cálculo da latência (Tempo inicial em milisegundos)
 			   request_authorization :: binary(),				%% Dados da autenticação da requisição
 			   request_port :: non_neg_integer(),				
-			   request_response_data,
+			   %request_response_data,
 			   request_bash,
 			   request_host :: binary(),						%% Ip do barramento
 			   request_filename :: string(),					%% Qual arquivo foi lido do disco
 			   request_referer :: binary(),
 			   request_access_token :: binary(),
-			   request_reason :: atom(),						%% Registra a mensagem de erro, quando status indicar um erro
+			   request_reason_detail :: atom(),					%% Registra a constante da mensagem de erro detalhado, quando status indicar um erro
+			   request_reason :: atom(),						%% Registra a constante da mensagem de erro, quando status indicar um erro
 			   request_code :: non_neg_integer(),	 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 			   request_protocol :: atom(),						%% Protocol (http, ldap)
    			   request_timestamp :: binary()					%% Timestamp de quando que a requisição ocorreu
@@ -237,8 +238,9 @@
 					  service,   								%% Contrato que estabelece o serviço que vai atender a requisição
 					  timestamp, 								%% Timestamp de quando que a requisição ocorreu
 					  latency :: non_neg_integer(),				%% Latência (tempo que levou para processar a requisição)
-					  code :: non_neg_integer(), 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
-					  reason = ok :: atom(),					%% Registra a mensagem de erro, quando status indicar um erro
+					  code :: non_neg_integer(), 				%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
+					  reason :: atom(),							%% Registra uma constante para indicar o erro ou status da requisição
+					  reason_detail :: atom(),					%% Registra uma 2 constante para indicar o erro ou status da requisição
 					  type :: binary(),							%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
 					  uri :: binary(),							%% URI da requisição do serviço
 					  url :: string(),							%% URL da requisição do serviço

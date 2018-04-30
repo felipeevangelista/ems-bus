@@ -27,7 +27,8 @@
 		 exist/2,
 		 all/0,
 		 all/1,
-		 add_history/3]).
+		 add_history/3,
+		 add_history/4]).
 
 
 -spec find_by_id(non_neg_integer()) -> {ok, #user{}} | {error, enoent}.
@@ -76,42 +77,34 @@ find_by_codigo_pessoa(Table, Codigo) ->
 	end.
 
 
--spec find_by_login_and_password(binary() | list(), binary() | list()) -> {ok, #user{}} | {error, enoent}.	
-find_by_login_and_password(_, <<>>) -> {error, enoent};
-find_by_login_and_password(<<>>, _) -> {error, enoent};
+-spec find_by_login_and_password(binary() | list(), binary() | list()) -> {ok, #user{}} | {error, enoent | access_denied, einvalid_password | undefined}.	
+find_by_login_and_password(_, <<>>) -> {error, access_denied, epassword_empty};
+find_by_login_and_password(<<>>, _) -> {error, access_denied, elogin_empty};
+find_by_login_and_password(_, "") -> {error, access_denied, epassword_empty};
+find_by_login_and_password("", _) -> {error, access_denied, elogin_empty};
 find_by_login_and_password(Login, Password)  ->
-	LoginStr = case is_list(Login) of
-					true -> string:to_lower(Login);
-					false -> string:to_lower(binary_to_list(Login))
-			   end,
-	LoginStrSemBarra = re:replace(LoginStr, "/", "", [{return, list}]),
-	LoginBin = list_to_binary(LoginStr),
-	LoginSemBarraBin = list_to_binary(LoginStrSemBarra),
 	PasswordStr = case is_list(Password) of
-					true -> Password;
-					false -> binary_to_list(Password)
-			   end,
-	PasswordStrLower = string:to_lower(PasswordStr),
-	PasswordStrUpper = string:to_upper(PasswordStr),
-	PasswordBin = list_to_binary(PasswordStr),
-	PassowrdBinCrypto = ems_util:criptografia_sha1(PasswordStr),
-	PassowrdBinLowerCrypto = ems_util:criptografia_sha1(PasswordStrLower),
-	PassowrdBinUpperCrypto = ems_util:criptografia_sha1(PasswordStrUpper),
-	IndexFind = fun(Table) ->
-		case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
-			[User = #user{password = PasswordUser}|_] -> 
-				case PasswordUser =:= PassowrdBinCrypto 
-					 orelse PasswordUser =:= PasswordBin 
-					 orelse PasswordUser =:= PassowrdBinLowerCrypto 
-					 orelse PasswordUser =:= PasswordStrLower 
-					 orelse PasswordUser =:= PassowrdBinUpperCrypto 
-					 orelse PasswordUser =:= PasswordStrUpper of
-						true -> {ok, User};
-						false -> 
-							{error, enoent}
-				end;
-			_ -> 
-				case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
+					 true -> Password;
+					 false -> binary_to_list(Password)
+				  end,
+	PasswordSize = length(PasswordStr),
+	case PasswordSize >= 4 andalso PasswordSize =< 100 of
+		true ->
+			LoginStr = case is_list(Login) of
+							true -> string:to_lower(Login);
+							false -> string:to_lower(binary_to_list(Login))
+					   end,
+			LoginStrSemBarra = re:replace(LoginStr, "/", "", [{return, list}]),
+			LoginBin = list_to_binary(LoginStr),
+			LoginSemBarraBin = list_to_binary(LoginStrSemBarra),
+			PasswordStrLower = string:to_lower(PasswordStr),
+			PasswordStrUpper = string:to_upper(PasswordStr),
+			PasswordBin = list_to_binary(PasswordStr),
+			PassowrdBinCrypto = ems_util:criptografia_sha1(PasswordStr),
+			PassowrdBinLowerCrypto = ems_util:criptografia_sha1(PasswordStrLower),
+			PassowrdBinUpperCrypto = ems_util:criptografia_sha1(PasswordStrUpper),
+			IndexFind = fun(Table) ->
+				case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
 					[User = #user{password = PasswordUser}|_] -> 
 						case PasswordUser =:= PassowrdBinCrypto 
 							 orelse PasswordUser =:= PasswordBin 
@@ -120,24 +113,46 @@ find_by_login_and_password(Login, Password)  ->
 							 orelse PasswordUser =:= PassowrdBinUpperCrypto 
 							 orelse PasswordUser =:= PasswordStrUpper of
 								true -> {ok, User};
-								false -> 
-									{error, enoent}
+								false -> {error, access_denied, einvalid_password}
 						end;
-					_ -> {error, enoent}
+					_ -> 
+						case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
+							[User = #user{password = PasswordUser}|_] -> 
+								case PasswordUser =:= PassowrdBinCrypto 
+									 orelse PasswordUser =:= PasswordBin 
+									 orelse PasswordUser =:= PassowrdBinLowerCrypto 
+									 orelse PasswordUser =:= PasswordStrLower 
+									 orelse PasswordUser =:= PassowrdBinUpperCrypto 
+									 orelse PasswordUser =:= PasswordStrUpper of
+										true -> {ok, User};
+										false -> {error, access_denied, einvalid_password}
+								end;
+							_ -> {error, enoent, undefined}
+						end
 				end
-		end
-	end,
-	case IndexFind(user_cache_lru) of
-		{error, enoent} -> 
-			case IndexFind(user_db) of
-				{error, enoent} -> 
-					case IndexFind(user_aluno_ativo_db) of
-						{error, enoent} -> 
-							case IndexFind(user_aluno_inativo_db) of
-								{error, enoent} -> 
-									case IndexFind(user_fs) of
-										{error, enoent} -> {error, enoent};
-										{ok, Record} ->
+			end,
+			case IndexFind(user_cache_lru) of
+				{error, _, _} -> 
+					case IndexFind(user_db) of
+						{error, _Reason1, ReasonDetail1} -> 
+							case IndexFind(user_aluno_ativo_db) of
+								{error, _Reason2, ReasonDetail2} -> 
+									case IndexFind(user_aluno_inativo_db) of
+										{error, _Reason3, ReasonDetail3} -> 
+											case IndexFind(user_fs) of
+												{error, _Reason4, ReasonDetail4} -> 
+													case ReasonDetail1 == einvalid_password orelse
+														 ReasonDetail2 == einvalid_password orelse
+														 ReasonDetail3 == einvalid_password orelse
+														 ReasonDetail4 == einvalid_password of
+															true -> {error, access_denied, einvalid_password};
+															false -> {error, enoent, undefined}
+													end;
+												{ok, Record} ->
+													mnesia:dirty_write(user_cache_lru, Record),
+													{ok, Record}
+											end;
+										{ok, Record} -> 
 											mnesia:dirty_write(user_cache_lru, Record),
 											{ok, Record}
 									end;
@@ -150,18 +165,17 @@ find_by_login_and_password(Login, Password)  ->
 							{ok, Record}
 					end;
 				{ok, Record} -> 
-					mnesia:dirty_write(user_cache_lru, Record),
 					{ok, Record}
 			end;
-		{ok, Record} -> 
-			{ok, Record}
+		false -> {error, access_denied, einvalid_password_size}
 	end.
+
 	
 
--spec find_by_login(binary() | string()) -> {ok, #user{}} | {error, enoent}.
-find_by_login(<<>>) -> {error, enoent};	
-find_by_login("") -> {error, enoent};	
-find_by_login(undefined) -> {error, enoent};	
+-spec find_by_login(binary() | string()) -> {ok, #user{}} | {error, enoent, elogin_empty | undefined}.
+find_by_login(<<>>) -> {error, enoent, elogin_empty};	
+find_by_login("") -> {error, enoent, elogin_empty};	
+find_by_login(undefined) -> {error, enoent, elogin_empty};	
 find_by_login(Login) ->
 	LoginStr = case is_list(Login) of
 					true -> string:to_lower(Login);
@@ -187,7 +201,7 @@ find_by_login(Login) ->
 					case IndexFind(user_aluno_inativo_db) of
 						{error, enoent} -> 
 							case IndexFind(user_fs) of
-								{error, enoent} -> {error, enoent};
+								{error, enoent} -> {error, enoent, undefined};
 								{ok, Record} -> {ok, Record}
 							end;
 						{ok, Record} -> {ok, Record}
@@ -506,7 +520,12 @@ exist(Table, Id) ->
 -spec all(user_fs | user_db) -> list() | {error, atom()}.
 all(Table) -> ems_db:all(Table).
 	
+
 -spec add_history(#user{}, #service{}, #request{}) -> ok.
+add_history(User, Service, Request) ->
+	add_history(User, #client{}, Service, Request).
+
+-spec add_history(#user{}, #client{}, #service{}, #request{}) -> ok.
 add_history(#user{id = UserId,
 				  codigo = UserCodigo,
 				  login = UserLogin,
@@ -518,6 +537,8 @@ add_history(#user{id = UserId,
 				  type_email = UserTypeEmail,
 				  active = UserActive,
 				  admin = UserAdmin},
+			#client{id = ClientId,
+					name = ClientName},
 			#service{rowid = ServiceRowid,
 					 name = ServiceName,
 				     url = ServiceUrl,
@@ -531,9 +552,10 @@ add_history(#user{id = UserId,
 			#request{
 					   rid = RequestRid,
 					   timestamp = RequestTimestamp,
-					   latency = RequestLatency,
+					   %latency = RequestLatency,
 					   code  = RequestCode,
 					   reason = RequestReason,
+					   reason_detail = RequestReasonDetail,
 					   type = RequestType,
 					   uri = RequestUri,
 					   url = RequestUrl,
@@ -552,7 +574,7 @@ add_history(#user{id = UserId,
 					   authorization = RequestAuthorization,
 					   protocol = RequestProtocol,
 					   port = RequestPort,
-					   response_data = RequestResponseData,
+					   %response_data = RequestResponseData,
 					   req_hash = RequestReqHash,
 					   host = RequestHost,
 					   filename = RequestFilename,
@@ -572,6 +594,10 @@ add_history(#user{id = UserId,
 					   user_active = UserActive,
 					   user_admin = UserAdmin,
 					   
+					   % dados do cliente
+					   client_id = ClientId,
+					   client_name = ClientName,
+					   
 					   %% dados do serviço
 					   service_rowid = ServiceRowid,
 					   service_name = ServiceName,
@@ -590,9 +616,10 @@ add_history(#user{id = UserId,
 												true -> RequestTimestamp;
 												false -> ems_util:timestamp_binary(RequestTimestamp)
 										   end,
-					   request_latency = RequestLatency,
+					   %request_latency = RequestLatency,
 					   request_code  = RequestCode,
 					   request_reason = RequestReason,
+					   request_reason_detail = RequestReasonDetail,
 					   request_type = RequestType,
 					   request_uri = RequestUri,
 					   request_url = RequestUrl,
@@ -611,7 +638,7 @@ add_history(#user{id = UserId,
 					   request_authorization = RequestAuthorization,
 					   request_protocol = RequestProtocol,
 					   request_port = RequestPort,
-					   request_response_data = RequestResponseData,
+					   %request_response_data = RequestResponseData,
 					   request_bash = RequestReqHash,
 					   request_host = RequestHost,
 					   request_filename = RequestFilename,

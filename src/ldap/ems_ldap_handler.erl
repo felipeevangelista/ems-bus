@@ -388,14 +388,15 @@ handle_request_search_login(UserLogin,
 								   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
 								   Ip, Port) ->	
 	case ems_user:find_by_login(UserLogin) of
-		{error, enoent} ->
+		{error, Reason, ReasonDetail} ->
 			ems_db:inc_counter(SearchInvalidCredentialMetricName),
 			ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
 			ems_user:add_history(#user{login = UserLogin}, 
 								 #service{}, 
 								 #request{timestamp = ems_util:timestamp_binary(),
 										   code = 49,
-										   reason = access_denied,
+										   reason = Reason,
+										   reason_detail = ReasonDetail,
 										   host = Ip,
 										   protocol = ldap,
 										   port = Port}),
@@ -423,7 +424,8 @@ handle_request_search_login(UserLogin,
 											 #service{}, 
 											 #request{timestamp = ems_util:timestamp_binary(),
 													   code = 50,
-													   reason = access_denied_inative_user,
+													   reason = access_denied,
+													   reason_detail = einative_user,
 													   host = Ip,
 													   protocol = ldap,
 													   port = Port}),
@@ -453,18 +455,25 @@ do_authenticate_user(UserLogin, UserPassword, #state{auth_allow_user_inative_cre
 										 #service{}, 
 										 #request{timestamp = ems_util:timestamp_binary(),
 												  code = 50,
-												  reason = access_denied_inative_user,
+												  reason = access_denied,
+												  reason_detail = access_denied_inative_user,
 												  host = Ip,
 												  protocol = ldap,
 												  port = Port}),
 					{error, access_denied_inative_user}
 			end;
-		_ -> 
-			ems_user:add_history(#user{login = UserLogin},  
+		{error, Reason, ReasonDetail} -> 
+			% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
+			case ems_user:find_by_login(UserLogin) of
+				{ok, UserFound} -> User = UserFound;
+				_ -> User = #user{login = UserLogin}
+			end,
+			ems_user:add_history(User,  
 								 #service{}, 
 								 #request{timestamp = ems_util:timestamp_binary(),
 										  code = 50,
-										  reason = access_denied,
+										  reason = Reason,
+										  reason_detail = ReasonDetail,
 										  host = Ip,
 										  protocol = ldap,
 										  port = Port}),
@@ -491,18 +500,25 @@ do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow
 										 #service{}, 
 										 #request{timestamp = ems_util:timestamp_binary(),
 												   code = 50,
-												   reason = access_denied_inative_admin,
+												   reason = access_denied,
+												   reason_detail = access_denied_inative_admin,
 												   host = Ip,
 												   protocol = ldap,
 												   port = Port}),
 					false
 			end;
-		_ -> 
-			ems_user:add_history(#user{login = UserLogin},  
+		{error, Reason, ReasonDetail} -> 
+			% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
+			case ems_user:find_by_login(UserLogin) of
+				{ok, UserFound} -> User = UserFound;
+				_ -> User = #user{login = UserLogin}
+			end,
+			ems_user:add_history(User,  
 								 #service{}, 
 								 #request{timestamp = ems_util:timestamp_binary(),
 										   code = 50,
-										   reason = access_denied_admin,
+										   reason = Reason,
+										   reason_detail = ReasonDetail,
 										   host = Ip,
 										   protocol = ldap,
 										   port = Port}),
