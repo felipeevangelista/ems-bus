@@ -783,7 +783,10 @@ filter(Tab, [{F1, "==", V1}]) ->
 	case field_has_index(FieldPosition, Tab) of
 		false ->
 			Fun = fun() -> 
-						qlc:e(qlc:q([R || R <- mnesia:table(Tab), element(FieldPosition, R) == FieldValue])) 
+						qlc:e(qlc:q([R || R <- mnesia:table(Tab), case element(FieldPosition, R) of
+																	 Value when is_atom(Value) -> atom_to_binary(Value, utf8);
+																	 Value -> Value
+																  end == FieldValue])) 
 				  end,
 			mnesia:activity(async_dirty, Fun);
 		true ->
@@ -792,7 +795,7 @@ filter(Tab, [{F1, "==", V1}]) ->
 filter(Tab, FilterList) when is_list(FilterList) -> 
 	F = fun() ->
 			FieldsTable =  mnesia:table_info(Tab, attributes),
-			Where = string:join([io_lib:format("element(~s, R) ~s ~p", [integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList], ","),
+			Where = string:join([io_lib:format("case element(~s, R) of Value when is_atom(Value) -> atom_to_binary(Value, utf8); Value -> Value end  ~s ~p", [integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList], ","),
 			ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, Where, <<"].">>])),
 			qlc:string_to_handle(ExprQuery)
 		end,

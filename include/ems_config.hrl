@@ -192,6 +192,12 @@
 % Default ports
 -define(LDAP_SERVER_PORT, 2389).
 -define(LDAP_MAX_CONNECTIONS, 100000).
+-define(LDAP_MAX_SIZE_PACKET, 5000).
+-define(LDAP_SUCCESS, 0).
+-define(LDAP_INAPPRORIATE_AUTHENCATION, 48).
+-define(LDAP_INVALID_CREDENTIALS, 49).
+-define(LDAP_INSUFFICIENT_ACCESS_RIGHTS, 50).  
+
 
 -define(HTTP_SERVER_PORT, 2381).
 -define(HTTP_MAX_CONNECTIONS, 100000).
@@ -213,6 +219,7 @@
 -define(SUFIXO_EMAIL_INSTITUCIONAL, "@unb.br").
 
 -define(RESULT_CACHE_MAX_SIZE_ENTRY, 524288). % 512KB
+
 
 
 %  Definição para o arquivo de configuração

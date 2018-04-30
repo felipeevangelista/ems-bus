@@ -13,9 +13,9 @@
     
 -export([authenticate/2]).
 
--spec authenticate(#service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied}.
+-spec authenticate(#service{}, #request{}) -> {ok, #client{} | public, #user{} | public, binary(), binary()} | {error, access_denied, atom()}.
 authenticate(Service = #service{authorization = AuthorizationMode,
-							    authorization_public_check_credential = AuthorizationPublicCheckCredential}, 
+							     authorization_public_check_credential = AuthorizationPublicCheckCredential}, 
 			 Request = #request{type = Type}) ->
 	case Type of
 		<<"OPTIONS">> -> 
@@ -129,6 +129,6 @@ do_check_grant_permission(Service,
 				oauth2 -> ems_db:inc_counter(ems_auth_user_oauth2_denied);
 				_ -> ems_db:inc_counter(ems_auth_user_public_denied)
 			end,
-			{error, access_denied, einsufficient_access_rights}
+			{error, access_denied, eno_grant_permission}
 	end.
 

@@ -25,7 +25,7 @@ execute(Request = #request{type = Type,
 					ems_db:inc_counter(ems_oauth2_grant_type_password),
 					case ems_util:get_client_request_by_id_and_secret(Request) of
 						{ok, Client0} ->	password_grant(Request, Client0);
-						_ -> password_grant(Request, undefined) % cliente é opcional
+						_ -> password_grant(Request, undefined) % cliente é opcional no grant_type password
 					end;
 				<<"client_credentials">> ->
 					case ems_util:get_client_request_by_id_and_secret(Request) of
@@ -116,13 +116,15 @@ execute(Request = #request{type = Type,
 														   <<"\"token_type\":\""/utf8>>, TokenType, <<"\""/utf8>>,
 													   <<"}"/utf8>>]),
 					Request2 = Request#request{code = 200, 
-											   response_data = ResponseData2,
-											   oauth2_grant_type = GrantType,
-											   oauth2_access_token = AccessToken,
-											   oauth2_refresh_token = RefreshToken,
-											   client = Client,
-											   user = User,
-											   content_type_out = ?CONTENT_TYPE_JSON},
+											    reason = ok,
+											    operation = oauth2_authenticate,
+											    response_data = ResponseData2,
+											    oauth2_grant_type = GrantType,
+											    oauth2_access_token = AccessToken,
+											    oauth2_refresh_token = RefreshToken,
+											    client = Client,
+											    user = User,
+											    content_type_out = ?CONTENT_TYPE_JSON},
 					ems_user:add_history(User2, Client2, Service, Request2),
 					{ok, Request2};		
 			{redirect, Client = #client{id = ClientId, redirect_uri = RedirectUri}} ->
@@ -132,9 +134,11 @@ execute(Request = #request{type = Type,
 													 <<"/dados/login/index.html?response_type=code&client_id=">>, ClientIdBin, 
 													 <<"&redirect_uri=">>, RedirectUri]),
 					Request2 = Request#request{code = 302, 
-											   oauth2_grant_type = GrantType,
-											   client = Client,
-											   response_header = #{
+												reason = ok,
+											    operation = oauth2_redirect,
+											    oauth2_grant_type = GrantType,
+											    client = Client,
+											    response_header = #{
 																		<<"location">> => LocationPath
 																	}
 												},
@@ -146,11 +150,12 @@ execute(Request = #request{type = Type,
 						_ -> User = undefined
 					end,
 					Request2 = Request#request{code = 401, 
-											   reason = Reason,
-											   reason_detail = ReasonDetail,
-											   oauth2_grant_type = GrantType,
-											   response_data = ?ACCESS_DENIED_JSON,
-											   user = User},
+											    reason = Reason,
+											    reason_detail = ReasonDetail,
+											    operation = oauth2_authenticate,
+											    oauth2_grant_type = GrantType,
+											    response_data = ?ACCESS_DENIED_JSON,
+											    user = User},
 					ems_user:add_history(case User of 
 											undefined -> #user{};
 											_ -> User
@@ -163,6 +168,7 @@ execute(Request = #request{type = Type,
 			Request3 = Request#request{code = 401, 
 									   reason = access_denied,
 									   reason_detail = eparse_oauth2_authorize_execute_exception,
+									   operation = oauth2_authenticate,
 									   response_data = ?ACCESS_DENIED_JSON},
 			{error, Request3}
 	end.
@@ -183,14 +189,17 @@ code_request(Request) ->
 								Code = element(2, lists:nth(1, Response)),
 								LocationPath = iolist_to_binary([RedirectUri, <<"?code=">>, Code]),
 								Request2 = Request#request{code = 200, 
-													 response_data = <<"{}">>,
-													 response_header = #{<<"location">> => LocationPath}},
+															reason = ok,
+															operation = oauth2_authenticate,
+															response_data = <<"{}">>,
+															response_header = #{<<"location">> => LocationPath}},
 								ems_user:add_history(User, Client, Request2#request.service, Request2),
 								{ok, Request2};
 							{error, Reason, ReasonDetail} ->
 								Request2 = Request#request{code = 401, 
 														reason = Reason,
 														reason_detail = ReasonDetail,
+														operation = oauth2_authenticate,
 														response_data = ?ACCESS_DENIED_JSON},
 								ems_user:add_history(User, Client, Request2#request.service, Request2),
 								{error, Request2}
@@ -203,9 +212,10 @@ code_request(Request) ->
 							_ -> User = undefined
 						end,
 						Request2 = Request#request{code = 401, 
-												  reason = Reason,
-												  reason_detail = ReasonDetail,
-												  response_data = ?ACCESS_DENIED_JSON},
+												   reason = Reason,
+												   reason_detail = ReasonDetail,
+												   operation = oauth2_authenticate,
+												   response_data = ?ACCESS_DENIED_JSON},
 						ems_user:add_history(case User of 
 												undefined -> #user{};
 												_ -> User
@@ -215,17 +225,19 @@ code_request(Request) ->
 				end;
 			{error, Reason, ReasonDetail} ->
 				Request2 = Request#request{code = 401, 
-										reason = Reason,
-										reason_detail = ReasonDetail,
-										response_data = ?ACCESS_DENIED_JSON},
+											reason = Reason,
+											reason_detail = ReasonDetail,
+											operation = oauth2_authenticate,
+											response_data = ?ACCESS_DENIED_JSON},
 				{error, Request2}
 		end
 	catch
 		_:_ ->
 			Request3 = Request#request{code = 401, 
-									reason = access_denied,
-									reason_detail = eparse_code_request_exception,
-									response_data = ?ACCESS_DENIED_JSON},
+										reason = access_denied,
+										reason_detail = eparse_code_request_exception,
+										operation = oauth2_authenticate,
+										response_data = ?ACCESS_DENIED_JSON},
 			{error, Request3}
 	end.
 

@@ -77,7 +77,7 @@ find_by_codigo_pessoa(Table, Codigo) ->
 	end.
 
 
--spec find_by_login_and_password(binary() | list(), binary() | list()) -> {ok, #user{}} | {error, enoent | access_denied, einvalid_password | undefined}.	
+-spec find_by_login_and_password(binary() | list(), binary() | list()) -> {ok, #user{}} | {error, access_denied, enoent | einvalid_password}.	
 find_by_login_and_password(_, <<>>) -> {error, access_denied, epassword_empty};
 find_by_login_and_password(<<>>, _) -> {error, access_denied, elogin_empty};
 find_by_login_and_password(_, "") -> {error, access_denied, epassword_empty};
@@ -127,7 +127,7 @@ find_by_login_and_password(Login, Password)  ->
 										true -> {ok, User};
 										false -> {error, access_denied, einvalid_password}
 								end;
-							_ -> {error, enoent, undefined}
+							_ -> {error, access_denied, enoent}
 						end
 				end
 			end,
@@ -146,7 +146,7 @@ find_by_login_and_password(Login, Password)  ->
 														 ReasonDetail3 == einvalid_password orelse
 														 ReasonDetail4 == einvalid_password of
 															true -> {error, access_denied, einvalid_password};
-															false -> {error, enoent, undefined}
+															false -> {error, access_denied, enoent}
 													end;
 												{ok, Record} ->
 													mnesia:dirty_write(user_cache_lru, Record),
@@ -172,10 +172,10 @@ find_by_login_and_password(Login, Password)  ->
 
 	
 
--spec find_by_login(binary() | string()) -> {ok, #user{}} | {error, enoent, elogin_empty | undefined}.
-find_by_login(<<>>) -> {error, enoent, elogin_empty};	
-find_by_login("") -> {error, enoent, elogin_empty};	
-find_by_login(undefined) -> {error, enoent, elogin_empty};	
+-spec find_by_login(binary() | string()) -> {ok, #user{}} | {error, access_denied, enoent | elogin_empty}.
+find_by_login(<<>>) -> {error, access_denied, elogin_empty};	
+find_by_login("") -> {error, access_denied, elogin_empty};	
+find_by_login(undefined) -> {error, access_denied, elogin_empty};	
 find_by_login(Login) ->
 	LoginStr = case is_list(Login) of
 					true -> string:to_lower(Login);
@@ -201,7 +201,7 @@ find_by_login(Login) ->
 					case IndexFind(user_aluno_inativo_db) of
 						{error, enoent} -> 
 							case IndexFind(user_fs) of
-								{error, enoent} -> {error, enoent, undefined};
+								{error, enoent} -> {error, access_denied, enoent};
 								{ok, Record} -> {ok, Record}
 							end;
 						{ok, Record} -> {ok, Record}
@@ -556,6 +556,7 @@ add_history(#user{id = UserId,
 					   code  = RequestCode,
 					   reason = RequestReason,
 					   reason_detail = RequestReasonDetail,
+					   operation = RequestOperation,
 					   type = RequestType,
 					   uri = RequestUri,
 					   url = RequestUrl,
@@ -620,6 +621,7 @@ add_history(#user{id = UserId,
 					   request_code  = RequestCode,
 					   request_reason = RequestReason,
 					   request_reason_detail = RequestReasonDetail,
+					   request_operation = RequestOperation,
 					   request_type = RequestType,
 					   request_uri = RequestUri,
 					   request_url = RequestUrl,

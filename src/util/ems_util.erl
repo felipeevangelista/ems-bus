@@ -1737,7 +1737,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			node_exec = ems_util:node_binary(),
 			code = 200,
 			reason = ok,
-			reason_detail = undefined
+			reason_detail = undefined,
+			operation = webservice
 		},	
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,
@@ -2853,7 +2854,7 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 			true ->
 				case ems_client:find_by_id(ClientId) of
 					{ok, Client} -> {ok, Client};
-					_ -> {error, enoent, undefined}
+					_ -> {error, access_denied, enoent}
 				end;
 			false ->
 				% O ClientId também pode ser passado via header Authorization
@@ -2866,7 +2867,7 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 									true ->
 										case ems_client:find_by_id(ClientId2) of
 											{ok, Client} -> {ok, Client};
-											_ -> {error, enoent, undefined}
+											_ -> {error, access_denied, enoent}
 										end;
 									false -> {error, access_denied, einvalid_client_id}
 								end;
@@ -2881,8 +2882,8 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 
 
 -spec get_user_request_by_login_and_password(#request{}) -> {ok, #user{}} | {error, 
-																			 enoent | access_denied, 
-																			 einvalid_password | einative_user | einvalid_authorization_header | eparse_authorization_header_exception}.
+																			 access_denied, 
+																			 enoent, einvalid_password | einative_user | einvalid_authorization_header | eparse_authorization_header_exception}.
 get_user_request_by_login_and_password(Request = #request{authorization = Authorization, 
 														  service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}}) ->
     try

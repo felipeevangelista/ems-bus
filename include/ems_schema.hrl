@@ -103,6 +103,7 @@
 			   request_filename :: string(),					%% Qual arquivo foi lido do disco
 			   request_referer :: binary(),
 			   request_access_token :: binary(),
+			   request_operation :: atom(),						%% Descreve melhor a operação sendo realizada
 			   request_reason_detail :: atom(),					%% Registra a constante da mensagem de erro detalhado, quando status indicar um erro
 			   request_reason :: atom(),						%% Registra a constante da mensagem de erro, quando status indicar um erro
 			   request_code :: non_neg_integer(),	 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
@@ -242,6 +243,7 @@
 					  reason :: atom(),							%% Registra uma constante para indicar o erro ou status da requisição
 					  reason_detail :: atom(),					%% Registra uma 2 constante para indicar o erro ou status da requisição
 					  type :: binary(),							%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
+					  operation :: atom(),						%% Descreve a operação sendo realizada
 					  uri :: binary(),							%% URI da requisição do serviço
 					  url :: string(),							%% URL da requisição do serviço
 					  url_masked :: boolean(),					%% Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
