@@ -42,7 +42,6 @@
 			   nome_pai :: binary(),
 			   nome_mae :: binary(),
 			   nacionalidade :: non_neg_integer(),
-			   matricula :: non_neg_integer(),				%% se o usuário tem alguma matrícula proveniente de dados funcionais
 			   remap_user_id :: non_neg_integer(),
 			   admin :: boolean(),							%% alguns web services podem ser acedidos somente por admins
 			   ctrl_path :: string(),

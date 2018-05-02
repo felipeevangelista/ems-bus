@@ -24,14 +24,10 @@
 				"select distinct 
 					   u.UsuId as id, 
 					   Isnull(ca.categocargo, 4) as Type, 
-					   0 as SubType, 
+					   0 as SubType,
 					   case 
 						 when c.dtdesliga < Getdate() then 0 
-						 else 
-							case 
-							   when u.UsuSituacao = 1 and (u.UsuDataTroca + u.UsuFrequenciaTroca) > getdate() then 1
-							   else 0  
-						    end 
+						 else u.UsuSituacao 
 					   end as Active, 
 					   df.MatSipes as Matricula 
 				from   bdacesso.dbo.tb_usuario u  
@@ -51,11 +47,7 @@
 					   0 as SubType, 
 					   case 
 						 when c.dtdesliga < Getdate() then 0 
-						 else 
-							case 
-							   when u.UsuSituacao = 1 and (u.UsuDataTroca + u.UsuFrequenciaTroca) > getdate() then 1
-							   else 0  
-						    end 
+						 else u.UsuSituacao 
 					   end as Active, 
 					   df.MatSipes as Matricula 
 				from   bdacesso.dbo.tb_usuario u  

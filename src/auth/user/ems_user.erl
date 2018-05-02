@@ -477,7 +477,6 @@ new_from_map(Map, Conf) ->
 					nome_mae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
 					nacionalidade = maps:get(<<"nacionalidade">>, Map, undefined),
 					email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
-					matricula = maps:get(<<"matricula">>, Map, undefined),
 					type = maps:get(<<"type">>, Map, 1),
 					subtype = maps:get(<<"subtype">>, Map, 0),
 					active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),

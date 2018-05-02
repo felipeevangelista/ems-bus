@@ -47,10 +47,7 @@
 					   lower(rtrim(p.PesEmail)) as email,
   					   1 as Type,  
 					   0 as SubType, 
-	   				   case  
-							when u.UsuSituacao = 1 and (u.UsuDataTroca + u.UsuFrequenciaTroca) > getdate() then 1 
-							else 0  
-					   end as Active,
+	   				   1 as Active, 
 					   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword    
 				from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 					 on u.UsuPesIdPessoa = p.PesCodigoPessoa 
@@ -82,10 +79,7 @@
 				   lower(rtrim(p.PesEmail)) as email,
 				   1 as Type,  
 				   0 as SubType,	
-				   case 
-					   when u.UsuSituacao = 1 and (u.UsuDataTroca + u.UsuFrequenciaTroca) > getdate() then 1 
-					   else 0  
-				   end as Active,
+				   1 as Active, 
 				   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword   
 			from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 				 on u.UsuPesIdPessoa = p.PesCodigoPessoa  

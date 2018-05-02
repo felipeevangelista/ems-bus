@@ -350,7 +350,7 @@ issue_token({ok, {_, Auth}}, Client) ->
 						{<<"token_type">>, TokenType}], Client};
 		_ -> {error, access_denied, einvalid_issue_token}
 	end;
-issue_token(_, _) -> {error, access_denied, eparse_issue_token_exception}.
+issue_token(_, _) -> {error, access_denied, einvalid_authorization}.
     
 
 issue_token_and_refresh({ok, {_, Auth}}, Client) ->
@@ -375,7 +375,7 @@ issue_token_and_refresh({ok, {_, Auth}}, Client) ->
 		_ -> {error, access_denied, einvalid_issue_token_and_refresh}
 	end;
 issue_token_and_refresh(_, _) -> 
-	{error, access_denied, eparse_issue_token_and_refresh_exception}.
+	{error, access_denied, einvalid_authorization}.
 
 
 issue_code({ok, {_, Auth}}) ->

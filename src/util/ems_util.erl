@@ -872,6 +872,8 @@ value_to_boolean(true) -> true;
 value_to_boolean(1) -> true;
 value_to_boolean(<<"true"/utf8>>) -> true;
 value_to_boolean(<<"1"/utf8>>) -> true;
+value_to_boolean("1") -> true;
+value_to_boolean("true") -> true;
 value_to_boolean(_) -> false.
 
 
@@ -2099,8 +2101,10 @@ parse_basic_authorization_header(<<Basic:5/binary, _:1/binary, Secret/binary>>) 
 		case Basic =:= <<"Basic">> of
 			true ->
 				Secret2 = base64:decode_to_string(binary_to_list(Secret)),
-				case string:tokens(Secret2, ":") of
-					[Login|[Password|_]] -> {ok, Login, Password};
+				case string:split(Secret2, ":") of
+					[Login, Password] -> {ok, Login, Password};
+					[_Login] -> {error, access_denied, epassword_empty};
+					[[]] -> {error, ebasic_authorization_empty};
 					_ -> {error, access_denied, einvalid_basic_authorization_header}
 				end;
 			false -> {error, access_denied, ebasic_authorization_header_required}

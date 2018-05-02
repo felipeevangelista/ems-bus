@@ -61,9 +61,7 @@ update_dados_funcionais_tabela_users(DadosFuncionais, UserTable, IdUser) ->
 	case ems_user:find(UserTable, IdUser) of
 		{ok, User} ->
 			User2 = User#user{type = DadosFuncionais#user_dados_funcionais.type,
-							  subtype = DadosFuncionais#user_dados_funcionais.subtype,
-							  active = DadosFuncionais#user_dados_funcionais.active,
-							  matricula = DadosFuncionais#user_dados_funcionais.matricula},
+							  subtype = DadosFuncionais#user_dados_funcionais.subtype},
 			mnesia:dirty_write(UserTable, User2),
 			ems_db:delete(user_cache_lru, IdUser);
 		_ -> ok
