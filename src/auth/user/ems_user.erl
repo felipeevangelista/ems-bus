@@ -525,6 +525,8 @@ all(Table) -> ems_db:all(Table).
 add_history(Request = #request{user = User, client = Client, service = Service}) ->
 	add_history(case User of
 					undefined -> #user{};
+					public -> #user{name = <<"public">>, 
+									login = <<"public">>};
 					_ -> User
 				end,
 				case Client of 
