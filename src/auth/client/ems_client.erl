@@ -92,6 +92,8 @@ new_from_map(Map, _Conf) ->
 				scope = ?UTF8_STRING(maps:get(<<"scope">>, Map, <<>>)),
 				version = ?UTF8_STRING(maps:get(<<"version">>, Map, <<"1.0.0">>)),
 				active = ems_util:parse_bool(maps:get(<<"active">>, Map, true)),
+				group = ?UTF8_STRING(maps:get(<<"group">>, Map, <<>>)),
+				glyphicon = ?UTF8_STRING(maps:get(<<"glyphicon">>, Map, <<>>)),
 				ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 				ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
 				ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),

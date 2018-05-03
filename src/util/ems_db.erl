@@ -795,8 +795,9 @@ filter(Tab, [{F1, "==", V1}]) ->
 filter(Tab, FilterList) when is_list(FilterList) -> 
 	F = fun() ->
 			FieldsTable =  mnesia:table_info(Tab, attributes),
-			Where = string:join([io_lib:format("case element(~s, R) of Value when is_atom(Value) -> atom_to_binary(Value, utf8); Value -> Value end  ~s ~p", [integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList], ","),
-			ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, Where, <<"].">>])),
+			ExprWhere = string:join([io_lib:format("element(~s, R) ~s ~p", 
+				[integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value_str(V)]) || {F, Op, V} <- FilterList], ","),
+			ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, ExprWhere, <<"].">>])),
 			qlc:string_to_handle(ExprQuery)
 		end,
 	ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {filter, Tab, FilterList}, F),
@@ -955,6 +956,9 @@ field_position(Field, [F|Fs], Idx) ->
 % Return the field as binary
 field_value(V) when is_list(V) -> list_to_binary(V);
 field_value(V) -> V.
+
+field_value_str(V) when is_binary(V) -> binary_to_list(V);
+field_value_str(V) -> V.
 
 
 -spec parse_datasource_type(binary()) -> atom().

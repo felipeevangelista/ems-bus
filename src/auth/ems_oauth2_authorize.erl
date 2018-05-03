@@ -13,7 +13,7 @@ execute(Request = #request{type = Type,
 						   host = Host, 
 						   user_agent = UserAgent, 
 						   user_agent_version = UserAgentVersion,
-						   service  = Service = #service{oauth2_allow_client_credentials = OAuth2AllowClientCredentials}}) -> 
+						   service  = #service{oauth2_allow_client_credentials = OAuth2AllowClientCredentials}}) -> 
 	try
 		case Type of
 			<<"GET">> -> GrantType = ems_util:get_querystring(<<"response_type">>, <<>>, Request);
@@ -24,7 +24,7 @@ execute(Request = #request{type = Type,
 				<<"password">> -> 
 					ems_db:inc_counter(ems_oauth2_grant_type_password),
 					case ems_util:get_client_request_by_id_and_secret(Request) of
-						{ok, Client0} ->	password_grant(Request, Client0);
+						{ok, Client0} -> password_grant(Request, Client0);
 						_ -> password_grant(Request, undefined) % cliente é opcional no grant_type password
 					end;
 				<<"client_credentials">> ->
@@ -55,7 +55,8 @@ execute(Request = #request{type = Type,
 				<<"authorization_code">> ->	
 					ems_db:inc_counter(ems_oauth2_grant_type_authorization_code),
 					case ems_util:get_client_request_by_id_and_secret(Request) of
-						{ok, Client0} -> access_token_request(Request, Client0);
+						{ok, Client0} -> 
+							access_token_request(Request, Client0);
 						Error -> Error
 					end;
 				<<"refresh_token">> ->	
@@ -83,21 +84,17 @@ execute(Request = #request{type = Type,
 						true -> 
 							UserAgentBin = ems_util:user_agent_atom_to_binary(UserAgent),
 							SingleSignonUserAgentMetricName = binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_user_agent_">>, UserAgentBin, <<"_">>, UserAgentVersion]), utf8),
-							ems_db:inc_counter(SingleSignonUserAgentMetricName),
-							User2 = User;
-						false -> 
-							User2 = #user{}
+							ems_db:inc_counter(SingleSignonUserAgentMetricName);
+						false -> ok
 					end,
 					case Client =/= undefined of
 						true ->
 							ClientJson = ems_client:to_json(Client),
 							ResourceOwner = ems_user:to_resource_owner(User, Client#client.id),
-							ClientProp = [<<"\"client\":"/utf8>>, ClientJson, <<","/utf8>>],
-							Client2 = Client;
+							ClientProp = [<<"\"client\":"/utf8>>, ClientJson, <<","/utf8>>];
 						false ->
 							ResourceOwner = ems_user:to_resource_owner(User),
-							ClientProp = <<"\"client\": \"public\","/utf8>>,
-							Client2 = #client{}
+							ClientProp = <<"\"client\": \"public\","/utf8>>
 					end,
 					ResponseData2 = iolist_to_binary([<<"{"/utf8>>,
 															ClientProp,
@@ -125,7 +122,6 @@ execute(Request = #request{type = Type,
 											    client = Client,
 											    user = User,
 											    content_type_out = ?CONTENT_TYPE_JSON},
-					ems_user:add_history(User2, Client2, Service, Request2),
 					{ok, Request2};		
 			{redirect, Client = #client{id = ClientId, redirect_uri = RedirectUri}} ->
 					ClientIdBin = integer_to_binary(ClientId),
@@ -134,11 +130,11 @@ execute(Request = #request{type = Type,
 													 <<"/dados/login/index.html?response_type=code&client_id=">>, ClientIdBin, 
 													 <<"&redirect_uri=">>, RedirectUri]),
 					Request2 = Request#request{code = 302, 
-												reason = ok,
-											    operation = oauth2_redirect,
-											    oauth2_grant_type = GrantType,
-											    client = Client,
-											    response_header = #{
+											   reason = ok,
+											   operation = oauth2_client_redirect,
+											   oauth2_grant_type = GrantType,
+											   client = Client,
+											   response_header = #{
 																		<<"location">> => LocationPath
 																	}
 												},
@@ -150,25 +146,23 @@ execute(Request = #request{type = Type,
 						_ -> User = undefined
 					end,
 					Request2 = Request#request{code = 401, 
-											    reason = Reason,
-											    reason_detail = ReasonDetail,
-											    operation = oauth2_authenticate,
-											    oauth2_grant_type = GrantType,
-											    response_data = ?ACCESS_DENIED_JSON,
-											    user = User},
-					ems_user:add_history(case User of 
-											undefined -> #user{};
-											_ -> User
-										 end,
-										 #client{}, Service, Request2),
+											   reason = Reason,
+											   reason_detail = ReasonDetail,
+											   operation = oauth2_authenticate,
+											   oauth2_grant_type = GrantType,
+											   response_data = ?ACCESS_DENIED_JSON,
+											   user = User},
 					{error, Request2}
 		end
 	catch
-		_:_ ->
+		_:ReasonException ->
 			Request3 = Request#request{code = 401, 
 									   reason = access_denied,
-									   reason_detail = eparse_oauth2_authorize_execute_exception,
+									   reason_detail = eparse_oauth2_authorize_execute,
+									   reason_exception = ReasonException,
 									   operation = oauth2_authenticate,
+									   user = undefined,
+									   client = undefined,
 									   response_data = ?ACCESS_DENIED_JSON},
 			{error, Request3}
 	end.
@@ -189,38 +183,38 @@ code_request(Request) ->
 								Code = element(2, lists:nth(1, Response)),
 								LocationPath = iolist_to_binary([RedirectUri, <<"?code=">>, Code]),
 								Request2 = Request#request{code = 200, 
-															reason = ok,
-															operation = oauth2_authenticate,
-															response_data = <<"{}">>,
-															response_header = #{<<"location">> => LocationPath}},
-								ems_user:add_history(User, Client, Request2#request.service, Request2),
+														   reason = ok,
+														   operation = oauth2_authenticate,
+														   user = User,
+														   client = Client,
+														   response_data = <<"{}">>,
+														   response_header = #{<<"location">> => LocationPath}},
+								%ems_user:add_history(User, Client, Request2#request.service, Request2),
 								{ok, Request2};
 							{error, Reason, ReasonDetail} ->
 								Request2 = Request#request{code = 401, 
-														reason = Reason,
-														reason_detail = ReasonDetail,
-														operation = oauth2_authenticate,
-														response_data = ?ACCESS_DENIED_JSON},
-								ems_user:add_history(User, Client, Request2#request.service, Request2),
+														   reason = Reason,
+														   reason_detail = ReasonDetail,
+														   operation = oauth2_authenticate,
+														   user = User,
+														   client = Client,
+														   response_data = ?ACCESS_DENIED_JSON},
+								%ems_user:add_history(User, Client, Request2#request.service, Request2),
 								{error, Request2}
 						end;
 					{error, Reason, ReasonDetail} ->
 						% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
-						io:format("aqui1 ~p\n", [ems_util:get_user_request_by_login(Request)]),
 						case ems_util:get_user_request_by_login(Request) of
-							{ok, UserFound} -> io:format("aqui2\n"), User = UserFound;
+							{ok, UserFound} -> User = UserFound;
 							_ -> User = undefined
 						end,
 						Request2 = Request#request{code = 401, 
 												   reason = Reason,
 												   reason_detail = ReasonDetail,
 												   operation = oauth2_authenticate,
+												   user = User,
+												   client = Client,
 												   response_data = ?ACCESS_DENIED_JSON},
-						ems_user:add_history(case User of 
-												undefined -> #user{};
-												_ -> User
-											 end,
-											 #client{}, Request2#request.service, Request2),
 						{error, Request2}
 				end;
 			{error, Reason, ReasonDetail} ->
@@ -228,15 +222,20 @@ code_request(Request) ->
 											reason = Reason,
 											reason_detail = ReasonDetail,
 											operation = oauth2_authenticate,
+											user = undefined,
+											client = undefined,
 											response_data = ?ACCESS_DENIED_JSON},
 				{error, Request2}
 		end
 	catch
-		_:_ ->
+		_:ReasonException ->
 			Request3 = Request#request{code = 401, 
 										reason = access_denied,
 										reason_detail = eparse_code_request_exception,
+										reason_exception = ReasonException,
 										operation = oauth2_authenticate,
+										user = undefined,
+										client = undefined,
 										response_data = ?ACCESS_DENIED_JSON},
 			{error, Request3}
 	end.

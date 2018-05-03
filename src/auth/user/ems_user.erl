@@ -27,6 +27,7 @@
 		 exist/2,
 		 all/0,
 		 all/1,
+		 add_history/1,
 		 add_history/3,
 		 add_history/4]).
 
@@ -520,6 +521,24 @@ exist(Table, Id) ->
 all(Table) -> ems_db:all(Table).
 	
 
+-spec add_history(#request{}) -> ok.
+add_history(Request = #request{user = User, client = Client, service = Service}) ->
+	add_history(case User of
+					undefined -> #user{};
+					_ -> User
+				end,
+				case Client of 
+						undefined -> #client{};
+						public -> #client{name = <<"public">>};
+						_ -> Client
+				end,
+				case Service of
+						undefined -> #service{};
+						_ -> Service
+				end, 
+				Request).
+
+
 -spec add_history(#user{}, #service{}, #request{}) -> ok.
 add_history(User, Service, Request) ->
 	add_history(User, #client{}, Service, Request).
@@ -547,6 +566,7 @@ add_history(#user{id = UserId,
 					 public = ServicePublic,
 					 version = ServiceVersion,
 					 owner = ServiceOwner,
+					 group = ServiceGroup,
 					 async = ServiceAsync},
 			#request{
 					   rid = RequestRid,
@@ -608,6 +628,7 @@ add_history(#user{id = UserId,
 					   service_public = ServicePublic,
 					   service_version = ServiceVersion,
 					   service_owner = ServiceOwner,
+					   service_group = ServiceGroup,
 					   service_async = ServiceAsync,
 					   
 					   %% dados da requisição

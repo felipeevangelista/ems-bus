@@ -52,6 +52,9 @@
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 		
+%
+% Muitos atributos são armazenados no histórico para histórico pois na tabelas origem tais atributos podem mudar
+%
 -record(user_history, {
 			   id :: non_neg_integer(), 						%% identificador do history
 			   user_id :: non_neg_integer(), 					%% identificador do user
@@ -76,6 +79,8 @@
 			   service_public :: boolean(), 					%% Identificador da expressão regular que vai verificar se a URL bate com a URL da requisição
 			   service_version :: binary(), 					%% Versão do serviço executado
 			   service_owner :: binary(),  						%% Quem é o proprietário pelo serviço
+			   service_group :: binary(),  						%% Quem é o grupo do serviço
+			   owner :: binary(),  								%% Quem é o proprietário pelo serviço. Ex.: auth
 			   service_async :: boolean(),						%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
 			   request_rid,       								%% Request ID (Identificador da requisição gerada automaticamente)
 			   %request_latency :: non_neg_integer(),			%% Latência (tempo que levou para processar a requisição)
@@ -171,10 +176,10 @@
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 
--record(user_permission, {id :: non_neg_integer(),			%% identificador do perfil (required) (Na UnB é o campo TB_Perfil_Transacao.PTrid)
-						  user_id :: non_neg_integer(),		%% identificador do usuário (required) (Na UnB é o campo Tb_Usuario.UsuId)
-						  client_id :: non_neg_integer(),	%% identificador do cliente (required) (Na UnB é o campo Tb_Sistemas.PerSisId)
-						  perfil_id :: non_neg_integer(),	%% identificador do perfil  (required) (Na UnB é o campo Tb_Perfil.PerId)
+-record(user_permission, {id :: non_neg_integer(),				%% identificador do perfil (required) (Na UnB é o campo TB_Perfil_Transacao.PTrid)
+						  user_id :: non_neg_integer(),			%% identificador do usuário (required) (Na UnB é o campo Tb_Usuario.UsuId)
+						  client_id :: non_neg_integer(),		%% identificador do cliente (required) (Na UnB é o campo Tb_Sistemas.PerSisId)
+						  perfil_id :: non_neg_integer(),		%% identificador do perfil  (required) (Na UnB é o campo Tb_Perfil.PerId)
 						  hash :: non_neg_integer(),
 						  hash2 :: non_neg_integer(),
 						  name :: binary(),
@@ -214,6 +219,8 @@
 				 active :: boolean(),
 				 scope :: binary(),
 				 version :: binary(),
+				 group :: binary(), 						%% Quem é o grupo do client
+				 glyphicon :: binary(),						%% classe do glyphicon
 				 ctrl_path :: string(),
 				 ctrl_file :: string(),
 				 ctrl_insert,								%% Data que foi inserido no banco mnesia
@@ -223,10 +230,6 @@
 		}).
 
 
-
-
-
-
 -record(ctrl_params, {name :: string(),
 					  value
 		}).
@@ -234,13 +237,14 @@
 			   
 -record(request, {
 					  rid,       								%% Request ID (Identificador da requisição gerada automaticamente)
-					  rowid,									%% Identificador interno da requisição
+					  rowid,									%% Identificador interno da requisição. Ver ems_util:hashsym_and_params
 					  service,   								%% Contrato que estabelece o serviço que vai atender a requisição
 					  timestamp, 								%% Timestamp de quando que a requisição ocorreu
 					  latency :: non_neg_integer(),				%% Latência (tempo que levou para processar a requisição)
 					  code :: non_neg_integer(), 				%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 					  reason :: atom(),							%% Registra uma constante para indicar o erro ou status da requisição
 					  reason_detail :: atom(),					%% Registra uma 2 constante para indicar o erro ou status da requisição
+					  reason_exception :: any(),				%% Registra a exception ocorrida em run time
 					  type :: binary(),							%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
 					  operation :: atom(),						%% Descreve a operação sendo realizada
 					  uri :: binary(),							%% URI da requisição do serviço
@@ -250,8 +254,8 @@
 					  payload :: binary(),						%% Corpo da requisição (aceita somente JSON)
 					  payload_map :: map(),						%% Corpo da requisição convertida para map após o parser e validação
 					  querystring :: binary(),					%% Querystring da requisição
-					  querystring_map,							%% Querystring convertida para map após o parser e validação
-					  params_url,								%% Map com os parâmetros da URL
+					  querystring_map :: map(),					%% Querystring convertida para map após o parser e validação
+					  params_url :: map(),						%% Map com os parâmetros da URL
 					  content_type_in :: binary(),				%% Tipo de conteúdo de entrada (Ex.: application/json)
 					  content_type_out :: binary(),				%% Tipo de conteúdo de saída. (Ex.: application/json)
 					  content_length :: non_neg_integer(), 		%% Largura da requisição
@@ -266,7 +270,6 @@
 					  ip :: tuple(),
 					  ip_bin :: binary(),						%% Peer que iniciou a requisição
 					  t1,										%% Utilizado para cálculo da latência (Tempo inicial em milisegundos)
-					  socket :: gen_tcp:socket(),				%% Socket da requisição
 					  worker :: pid(),							%% Processo worker http que vai atender a requisição
 					  authorization :: binary(),				%% Dados da autenticação da requisição
 					  client :: #client{},
@@ -281,7 +284,7 @@
 					  result_cache_rid,
 					  response_data = <<>>,
 					  response_header = #{},
-					  req_hash,
+					  req_hash :: non_neg_integer(),			%% Hash gerado para comparar requisições. Função utilizada: erlang:phash2
 					  host :: binary(),							%% Ip do barramento
 					  filename :: string(),						%% Qual arquivo foi lido do disco
 					  referer :: binary(),
@@ -359,13 +362,14 @@
 					public = true :: boolean(), 				%% Indica se o contrato estará listado no Portal API Management
 					comment :: binary(), 						%% Comentário sobre o que o contrato oferece em termos de serviço
 					version :: binary(), 						%% Versão do contrato do serviço
-					owner :: binary(),  						%% Quem é o proprietário pelo serviço
+					owner :: binary(),  						%% Quem é o proprietário pelo serviço. Ex.: auth
+					group :: binary(),							%% Quem é o grupo do serviço. Ex.: auth/user
 					async :: boolean(),							%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
 					querystring :: list(map()),					%% Definição da querystring para o contrato do serviço
 					qtd_querystring_req :: non_neg_integer(), 	%% Indica quantas querystrings são obrigatórias
 					host :: atom(),  							%% Atom do host onde está o módulo do serviço que vai processar a requisição
 					host_name,				  					%% Nome do host onde está o módulo do serviço que vai processar a requisição
-					result_cache :: non_neg_integer(), 			%% Indica quanto tempo em milisegundos o resultado vai ficar armazenado em cache (somente para o módulo msbus_static_file_service)
+					result_cache :: non_neg_integer(), 			%% Indica quanto tempo em milisegundos o resultado vai ficar armazenado em cache
 					authorization :: atom(),					%% Forma de autenticação (public, basic, oauth2)
 					authorization_public_check_credential :: boolean(),		%% Faz a checagem da credencial do usuário quando o serviço é publico
 					oauth2_with_check_constraint :: boolean(),
@@ -424,7 +428,8 @@
 					service_resend_msg1 :: atom(),
 					http_max_content_length :: non_neg_integer(),
 					http_headers :: map(),
-					restricted :: boolean(),			%% Serviços restrito para admins
+					restricted :: boolean(),					%% Serviços restrito para admins
+					glyphicon :: binary(),						%% classe do glyphicon
 					metadata :: binary()						%% Representação em json do que será enviado para o web service /catalog
 				}).
 

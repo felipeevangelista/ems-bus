@@ -79,6 +79,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 scope = NewClient#client.scope,
 												 active = NewClient#client.active,
 												 version = NewClient#client.version,
+												 group = NewClient#client.group,
+												 glyphicon = NewClient#client.glyphicon,
 												 ctrl_path = NewClient#client.ctrl_path,
 												 ctrl_file = NewClient#client.ctrl_file,
 												 ctrl_update = CtrlDate,

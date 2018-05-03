@@ -174,6 +174,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												comment = NewCatalog#service.comment,
 												version = NewCatalog#service.version,
 												owner = NewCatalog#service.owner,
+												group = NewCatalog#service.group,
+												glyphicon = NewCatalog#service.glyphicon,
 												async = NewCatalog#service.async,
 												querystring = NewCatalog#service.querystring,
 												qtd_querystring_req = NewCatalog#service.qtd_querystring_req,
