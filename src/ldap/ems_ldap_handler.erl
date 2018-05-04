@@ -61,7 +61,8 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 								{ok, LdapMessage} ->
 									ems_logger:debug2("ems_ldap_handler request: ~p\n.", [LdapMessage]),
 									MessageID = LdapMessage#'LDAPMessage'.messageID,
-									Result = handle_request(LdapMessage, State, IpBin, Port),
+									TimestampBin = ems_util:timestamp_binary(),
+									Result = handle_request(LdapMessage, State, IpBin, Port, TimestampBin),
 									case Result of
 										{ok, unbindRequest} ->
 											?DEBUG("ems_ldap_handler unbindRequest and close socket."),
@@ -126,7 +127,7 @@ handle_request(LDAPMessage = {'LDAPMessage', _,
 							   bind_uid_success_metric_name = BindUidSuccessMetricName,
 							   bind_cn_invalid_credential_metric_name = BindCnInvalidCredentialMetricName,
 							   bind_uid_invalid_credential_metric_name = BindUidInvalidCredentialMetricName},
-			  Ip, Port) ->
+			  Ip, Port, TimestampBin) ->
 	NameSize = byte_size(Name),
 	PasswordSize = byte_size(Password),
 	case (Name =:= <<>>) orelse (NameSize < 4) orelse (NameSize > 100) orelse 
@@ -137,8 +138,8 @@ handle_request(LDAPMessage = {'LDAPMessage', _,
 		false ->
 			case parse_name(Name) of
 				{ok, cn, UserLogin, _LdapBaseFilter} ->
-					case do_authenticate_admin_with_admin_user(Name, UserLogin, Password, State, Ip, Port) orelse
-						  do_authenticate_admin_with_list_users(UserLogin, Password, State, Ip, Port) of
+					case do_authenticate_admin_with_admin_user(Name, UserLogin, Password, State, Ip, Port, TimestampBin) orelse
+						  do_authenticate_admin_with_list_users(UserLogin, Password, State, Ip, Port, TimestampBin) of
 						true -> 
 							ems_db:inc_counter(BindCnSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind_cn ~p success.", [Name]),
@@ -150,7 +151,7 @@ handle_request(LDAPMessage = {'LDAPMessage', _,
 					end,
 					BindResponse;
 				{ok, _, UserLogin, _LdapBaseFilter} when LDAPMessage#'LDAPMessage'.messageID > 1 ->
-					case do_authenticate_user(UserLogin, Password, State, Ip, Port) of
+					case do_authenticate_user(UserLogin, Password, State, Ip, Port, TimestampBin) of
 						ok -> 
 							ems_db:inc_counter(BindUidSuccessMetricName),
 							ems_logger:info("ems_ldap_handler bind_uid ~p success.", [Name]),
@@ -181,18 +182,18 @@ handle_request({'LDAPMessage', _,
 													typesOnly = _TypesOnly, 
 													filter =  {equalityMatch, {'AttributeValueAssertion', <<"uid">>, UsuLoginBin}},
 													attributes = _Attributes}},
-				 _}, State, Ip, Port) ->
-	handle_request_search_login(UsuLoginBin, State, Ip, Port);
+				 _}, State, Ip, Port, TimestampBin) ->
+	handle_request_search_login(UsuLoginBin, State, Ip, Port, TimestampBin);
 handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-													scope = _Scope, 
-													derefAliases = _DerefAliases, 
-													sizeLimit = _SizeLimit, 
-													timeLimit = _TimeLimit, 
-													typesOnly = _TypesOnly, 
-													filter =  {present, ObjectClass},
-													attributes = _Attributes}},
-				 _}, #state{request_capabilities_metric_name = RequestCapabilitiesMetricName}, _Ip, _Port) ->
+													 scope = _Scope, 
+													 derefAliases = _DerefAliases, 
+													 sizeLimit = _SizeLimit, 
+													 timeLimit = _TimeLimit, 
+													 typesOnly = _TypesOnly, 
+													 filter =  {present, ObjectClass},
+													 attributes = _Attributes}},
+				 _}, #state{request_capabilities_metric_name = RequestCapabilitiesMetricName}, _Ip, _Port, _TimestampBin) ->
 	ems_db:inc_counter(RequestCapabilitiesMetricName),	
 	ObjectName = make_object_name(ObjectClass),
 	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
@@ -220,15 +221,15 @@ handle_request({'LDAPMessage', _,
 																	{equalityMatch, {'AttributeValueAssertion', <<"uid">>, UsuLoginBin}}
 																]},
 													attributes = _Attributes}},
-				_}, State, Ip, Port) ->
-	handle_request_search_login(UsuLoginBin, State, Ip, Port);
+				_}, State, Ip, Port, TimestampBin) ->
+	handle_request_search_login(UsuLoginBin, State, Ip, Port, TimestampBin);
 handle_request({'LDAPMessage', _, 
 					{unbindRequest, _},
-				 _}, _State, _Ip, _Port) ->
+				 _}, _State, _Ip, _Port, _TimestampBin) ->
 	{ok, unbindRequest};
 handle_request({'LDAPMessage', _, 
 					_UnknowMsg,
-				 _} = LdapMsg, _State, _Ip, _Port) ->
+				 _} = LdapMsg, _State, _Ip, _Port, _TimestampBin) ->
 	ems_logger:warn("ems_ldap_handler received unknow msg ~p\n", [LdapMsg]),
 	{ok, unbindRequest}.
 	
@@ -379,27 +380,27 @@ make_result_done(ResultCode) ->
 	}.
 	
 
--spec handle_request_search_login(binary(), #state{}, binary(), non_neg_integer()) -> {ok, tuple()}.
+-spec handle_request_search_login(binary(), #state{}, binary(), non_neg_integer(), binary()) -> {ok, tuple()}.
 handle_request_search_login(UserLogin, 
 							#state{admin = AdminLdap,
 								   search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
 								   search_success_metric_name = SearchSuccessMetricName,
 								   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
-								   Ip, Port) ->	
+								   Ip, Port, TimestampBin) ->	
 	case ems_user:find_by_login(UserLogin) of
 		{error, Reason, ReasonDetail} ->
 			ems_db:inc_counter(SearchInvalidCredentialMetricName),
 			ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
 			ems_user:add_history(#user{login = UserLogin}, 
 								 #service{}, 
-								 #request{timestamp = ems_util:timestamp_binary(),
-										   code = ?LDAP_INVALID_CREDENTIALS,
-										   reason = Reason,
-										   reason_detail = ReasonDetail,
-										   operation = search_login,
-										   host = Ip,
-										   protocol = ldap,
-										   port = Port}),
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INVALID_CREDENTIALS,
+										  reason = Reason,
+										  reason_detail = ReasonDetail,
+										  operation = search_login,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
 			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]};
 		{ok, User = #user{active = Active}} -> 
@@ -411,26 +412,26 @@ handle_request_search_login(UserLogin,
 						ResultDone = make_result_done(success),
 						ems_user:add_history(User, 
 											 #service{}, 
-											 #request{timestamp = ems_util:timestamp_binary(),
-													   code = ?LDAP_SUCCESS,
-													   reason = success,
-													   operation = search_login,
-													   host = Ip,
-													   protocol = ldap,
-													   port = Port}),
+											 #request{timestamp = TimestampBin,
+													  code = ?LDAP_SUCCESS,
+													  reason = success,
+													  operation = search_login,
+													  host = Ip,
+													  protocol = ldap,
+													  port = Port}),
 						{ok, [ResultEntry, ResultDone]};
 					false -> 
 						ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
 						ems_user:add_history(User, 
 											 #service{}, 
-											 #request{timestamp = ems_util:timestamp_binary(),
-													   code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
-													   reason = access_denied,
-													   reason_detail = einative_user,
-													   operation = search_login,
-													   host = Ip,
-													   protocol = ldap,
-													   port = Port}),
+											 #request{timestamp = TimestampBin,
+													  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
+													  reason = access_denied,
+													  reason_detail = einative_user,
+													  operation = search_login,
+													  host = Ip,
+													  protocol = ldap,
+													  port = Port}),
 						ResultDone = make_result_done(insufficientAccessRights),
 						{ok, [ResultDone]}
 				end
@@ -438,14 +439,14 @@ handle_request_search_login(UserLogin,
 	
 
 % Autentica users possibilitando users inativos se autenticarem se o flag AuthAllowUserInativeCredentials for true  
-do_authenticate_user(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port) ->
+do_authenticate_user(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port, TimestampBin) ->
 	case ems_user:find_by_login_and_password(UserLogin, UserPassword) of
 		{ok, User = #user{active = Active}} -> 
 			case Active orelse AuthAllowUserInativeCredentials of
 				true -> 
 					ems_user:add_history(User, 
 										 #service{}, 
-										 #request{timestamp = ems_util:timestamp_binary(),
+										 #request{timestamp = TimestampBin,
 												  code = ?LDAP_SUCCESS,
 												  reason = success,
 												  operation = authenticate_user,
@@ -456,7 +457,7 @@ do_authenticate_user(UserLogin, UserPassword, #state{auth_allow_user_inative_cre
 				false -> 
 					ems_user:add_history(User, 
 										 #service{}, 
-										 #request{timestamp = ems_util:timestamp_binary(),
+										 #request{timestamp = TimestampBin,
 												  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
 												  reason = access_denied,
 												  reason_detail = einative_user,
@@ -474,7 +475,7 @@ do_authenticate_user(UserLogin, UserPassword, #state{auth_allow_user_inative_cre
 			end,
 			ems_user:add_history(User,  
 								 #service{}, 
-								 #request{timestamp = ems_util:timestamp_binary(),
+								 #request{timestamp = TimestampBin,
 										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
 										  reason = Reason,
 										  reason_detail = ReasonDetail,
@@ -486,14 +487,14 @@ do_authenticate_user(UserLogin, UserPassword, #state{auth_allow_user_inative_cre
 	end.
 
 % Autentica o admin a partir da base de usuários de users com flag admin = true	
-do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port) ->
+do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port, TimestampBin) ->
 	case ems_user:find_by_login_and_password(UserLogin, UserPassword) of
 		{ok, User = #user{active = Active, admin = true}} -> 
 			case Active orelse AuthAllowUserInativeCredentials of
 				true -> 
 					ems_user:add_history(User, 
 										 #service{}, 
-										 #request{timestamp = ems_util:timestamp_binary(),
+										 #request{timestamp = TimestampBin,
 												  code = ?LDAP_SUCCESS,
 												  reason = success,
 												  operation = authenticate_admin,
@@ -504,7 +505,7 @@ do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow
 				false -> 
 					ems_user:add_history(User, 
 										 #service{}, 
-										 #request{timestamp = ems_util:timestamp_binary(),
+										 #request{timestamp = TimestampBin,
 												   code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
 												   reason = access_denied,
 												   reason_detail = einative_user,
@@ -517,14 +518,14 @@ do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow
 		{ok, User = #user{admin = false}} -> 
 			ems_user:add_history(User, 
 								 #service{}, 
-								 #request{timestamp = ems_util:timestamp_binary(),
-										   code = ?LDAP_INAPPRORIATE_AUTHENCATION,
-										   reason = access_denied,
-										   reason_detail = eadmin_only,
-										   operation = authenticate_admin,
-										   host = Ip,
-										   protocol = ldap,
-										   port = Port}),
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INAPPRORIATE_AUTHENCATION,
+										  reason = access_denied,
+										  reason_detail = eadmin_only,
+										  operation = authenticate_admin,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
 			false;
 		{error, Reason, ReasonDetail} -> 
 			% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
@@ -534,43 +535,43 @@ do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow
 			end,
 			ems_user:add_history(User,  
 								 #service{}, 
-								 #request{timestamp = ems_util:timestamp_binary(),
-										   code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
-										   reason = Reason,
-										   reason_detail = ReasonDetail,
-										   operation = authenticate_admin,
-										   host = Ip,
-										   protocol = ldap,
-										   port = Port}),
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
+										  reason = Reason,
+										  reason_detail = ReasonDetail,
+										  operation = authenticate_admin,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
 			false
 	end.
 
 % Autentica o admin com o admin fornecido na configuração do processo ldap
-do_authenticate_admin_with_admin_user(Name, LdapUser, Password, #state{admin = AdminLdap, password_admin = PasswordAdminLdap}, Ip, Port) ->
+do_authenticate_admin_with_admin_user(Name, LdapUser, Password, #state{admin = AdminLdap, password_admin = PasswordAdminLdap}, Ip, Port, TimestampBin) ->
 	case (Name =:= AdminLdap orelse LdapUser =:= AdminLdap) andalso 
 		 (Password =:= PasswordAdminLdap orelse ems_util:criptografia_sha1(Password) =:= PasswordAdminLdap) of
 		true -> 
 			ems_user:add_history(#user{login = LdapUser},  
 								 #service{}, 
-								 #request{timestamp = ems_util:timestamp_binary(),
-										   code = ?LDAP_SUCCESS,
-										   reason = success,
-										   operation = authenticate_admin,
-										   host = Ip,
-										   protocol = ldap,
-										   port = Port}),
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_SUCCESS,
+										  reason = success,
+										  operation = authenticate_admin,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
 			true;
 		false -> 
 			ems_user:add_history(#user{login = LdapUser},  
 								 #service{}, 
-								 #request{timestamp = ems_util:timestamp_binary(),
-										   code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
-										   reason = access_denied,
-										   reason_detail = enoent,
-										   operation = authenticate_admin,
-										   host = Ip,
-										   protocol = ldap,
-										   port = Port}),
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
+										  reason = access_denied,
+										  reason_detail = enoent,
+										  operation = authenticate_admin,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
 			false
 	end.
 						 
