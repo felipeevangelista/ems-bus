@@ -177,7 +177,7 @@ push_release(){
 make_release(){
 	cd $WORKING_DIR
 
-	# Get the build version of the bus that is in the file src/ems_bus.app.src
+	# Get ErlangMS version in the file src/ems_bus.app.src
 	VERSION_RELEASE=$(cat ../src/ems_bus.app.src | sed -rn  's/^.*\{vsn.*([0-9]{1,2}\.[0-9]{1,2}.[0-9]{1,2}).*$/\1/p')
 	[ -z "$VERSION_RELEASE" ] && die "Could not get version to be generated in rebar.config"
 	echo "Please wait, generating the release $VERSION_RELEASE of the ems-bus, this may take a while!"

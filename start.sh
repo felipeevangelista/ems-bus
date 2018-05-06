@@ -3,11 +3,19 @@
 # author Everton de Vargas Agilar <<evertonagilar@gmail.com>>
 #
 
+VERSION_SCRIPT="3.0.0"
+
 # Erlang Runtime version required > 20
 ERLANG_VERSION=20
 
-# Erlang Runtime version installled
-ERLANG_VERSION_OS=`erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().'  -noshell 2> /dev/null | sed 's/[^0-9]//g'`
+OBSERVER="false"
+
+PROFILE="local"
+
+if [ ! "$ERLANGMS_IN_DOCKER" = "true" ]; then
+	echo "Start erlangms tool ( Version: $VERSION_SCRIPT   Hostname: `hostname` )"
+fi	
+
 
 # Prints a message and ends the system
 # Parâmetros:
@@ -19,9 +27,13 @@ die () {
     exit $2
 }
 
-# Checks if the version of erlang installed is compatible with this script
+# Checks if the version of erlang installed is compatible
 check_erlang_version(){
 	printf "Checking Erlang Runtime version... "
+
+	# Erlang Runtime version installled
+	ERLANG_VERSION_OS=`erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().'  -noshell 2> /dev/null | sed 's/[^0-9]//g'`
+
 	if [ -n "$ERLANG_VERSION_OS" ]; then
 		if [ $ERLANG_VERSION_OS -ge $ERLANG_VERSION ]; then
 			printf "OK\n"
@@ -34,27 +46,63 @@ check_erlang_version(){
 	fi
 }
 
-check_erlang_version
+# Prints on the screen the command help
+help() {
+	echo
+	echo "How to use: ./start.sh"
+	echo ""
+	echo "Additional parameters:"
+	echo "  --observer              -> Show Erlang Observer"
+	echo "  --profile=local|docker  -> Profile to use"
+	echo
+	exit 1
+}
 
-current_dir=$(dirname $0)
-cd $current_dir
-deps=$(ls -d deps/*/ebin)
+if [ "$ERLANGMS_IN_DOCKER" != "true" ]; then
+	check_erlang_version
+fi	
 
-if [ "$1" == "observer" ]; then
-	echo "Start with observer daemon..."
-	/usr/bin/erl -pa $current_dir/ebin $deps \
-		-sname emsbus -setcookie erlangms \
-		-eval "ems_bus:start()" \
-		-boot start_sasl \
-		-config $current_dir/priv/conf/elog \
-		-run observer \
-		--enable-dirty-schedulers
+
+# Read command line parameters
+for P in $*; do
+	if [[ "$P" =~ ^--.+$ ]]; then
+		if [[ "$P" =~ ^--profile=(local|docker)$ ]]; then
+			PROFILE="$(echo $P | cut -d= -f2)"
+		elif [ "$P" = "--help" ]; then
+			help
+		elif [ "$P" = "--observer" ]; then
+			OBSERVER="true"
+		else
+			echo "Invalid parameter: $P"
+			help
+		fi
+	fi
+done
+
+if [ "$PROFILE" = "local" ]; then
+	current_dir=$(dirname $0)
+	cd $current_dir
+	deps=$(ls -d deps/*/ebin)
+
+	if [ "$OBSERVER" == "true" ]; then
+		echo "Start with observer daemon..."
+		erl -pa $current_dir/ebin $deps \
+			-sname emsbus -setcookie erlangms \
+			-eval "ems_bus:start()" \
+			-boot start_sasl \
+			-config $current_dir/priv/conf/elog \
+			-run observer \
+			--enable-dirty-schedulers
+	else
+		erl -pa $current_dir/ebin $deps \
+			-sname emsbus -setcookie erlangms \
+			-eval "ems_bus:start()" \
+			-boot start_sasl \
+			-config $current_dir/priv/conf/elog \
+			--enable-dirty-schedulers
+	fi
 else
-	/usr/bin/erl -pa $current_dir/ebin $deps \
-		-sname emsbus -setcookie erlangms \
-		-eval "ems_bus:start()" \
-		-boot start_sasl \
-		-config $current_dir/priv/conf/elog \
-		--enable-dirty-schedulers
+	epmd -kill 2> /dev/null
+	sudo docker run -p 2300:2300 -p 2301:2301 -p 2389:2389 -p 4369:4369 -v ~/.erlangms:/var/opt/erlangms/.erlangms -it erlangms 
 fi
 
