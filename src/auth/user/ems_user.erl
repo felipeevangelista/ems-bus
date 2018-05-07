@@ -450,7 +450,7 @@ new_from_map(Map, Conf) ->
 		Login = ?UTF8_STRING(LoginBin),
 		{ok, #user{	id = maps:get(<<"id">>, Map),
 					codigo = maps:get(<<"codigo">>, Map),
-					login = Login,
+					login = list_to_binary(string:to_lower(binary_to_list(?UTF8_STRING(Login)))),
 					name = ?UTF8_STRING(maps:get(<<"name">>, Map)),
 					cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
 					password = case PasswdCrypto of

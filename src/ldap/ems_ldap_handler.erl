@@ -70,7 +70,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 									case Result of
 										{ok, unbindRequest} ->
 											?DEBUG("ems_ldap_handler unbindRequest and close socket."),
-											io:format("não fechar!!!\n"),
 											Transport:close(Socket),
 											ok;
 										{ok, Msg} -> 
@@ -84,8 +83,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 									ResultDone = make_result_done(inappropriateMatching),
 									Response = [ encode_response(1, ResultDone) ],
 									Transport:send(Socket, Response),
-									
-									io:format("ERRO!!!!!!!!!!!! ~p  (nao fechar socket)\n", [Reason]),
 									Transport:close(Socket),
 									ok
 							end;
@@ -95,7 +92,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 							ResultDone = make_result_done(insufficientAccessRights),
 							Response = [ encode_response(1, ResultDone) ],
 							Transport:send(Socket, Response),
-							io:format("FECHAR SOCKET\n"),
 							Transport:close(Socket),
 							ok
 					end;
@@ -107,7 +103,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 			end,
 			loop(Socket, Transport, State);		
 		_ ->
-			io:format("fim do limite!!!!!!!!!!!!!!!!!!!\n\n"),
 			Transport:close(Socket),
 			ok
 	end.
@@ -150,7 +145,7 @@ handle_request({'LDAPMessage', _,
 													filter =  {equalityMatch, {'AttributeValueAssertion', Attribute = <<"objectClass">>, _Name = <<"organizationalRole">>}},
 													attributes = _Attributes}},
 				 _}, _State, _Ip, _Port, _TimestampBin) ->
-	io:format("aqui1\n"),
+	io:format("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa\n"),
 	io:format("atribute is ~p\n", [Attribute]),
 	io:format("scope is singleLevel\n"),
 	ResultEntry = make_result_entry(#user{login = <<"evertonagilar">>, name = <<"evertonagilar">>}, <<"admin">>),
@@ -165,65 +160,145 @@ handle_request({'LDAPMessage', _,
 													sizeLimit = _SizeLimit, 
 													timeLimit = _TimeLimit, 
 													typesOnly = _TypesOnly, 
-													filter =  {equalityMatch, {'AttributeValueAssertion', Attribute = <<"roleOccupant">>, ObjectName}},
+													filter =  {equalityMatch, {'AttributeValueAssertion', _Attribute = <<"roleOccupant">>, ObjectName}},
 													attributes = _Attributes}},
-				 _}, _State, _Ip, _Port, _TimestampBin) ->
-	io:format("aqui2!!!!!!!!!!!!!!!!!!!!!!!\n"),
-	io:format("atribute is ~p\n", [Attribute]),
-	io:format("scope is singleLevel\n"),
+				 _}, #state{search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
+							search_success_metric_name = SearchSuccessMetricName,
+							auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
+					Ip, Port, TimestampBin) ->
+	case ems_util:parse_ldap_name(ObjectName) of
+		{ok, _, UserLogin, _BaseFilter} ->
+			case ems_user:find_by_login(UserLogin) of
+				{error, Reason, ReasonDetail} ->
+					ems_db:inc_counter(SearchInvalidCredentialMetricName),
+					ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
+					ems_user:add_history(#user{login = UserLogin}, 
+										 #service{}, 
+										 #request{timestamp = TimestampBin,
+												  code = ?LDAP_INVALID_CREDENTIALS,
+												  reason = Reason,
+												  reason_detail = ReasonDetail,
+												  operation = search_login,
+												  host = Ip,
+												  protocol = ldap,
+												  port = Port}),
+					ResultDone = make_result_done(invalidCredentials),
+					{ok, [ResultDone]};
+				{ok, User = #user{active = Active}} -> 
+						case Active orelse AuthAllowUserInativeCredentials of
+							true -> 
+								ems_db:inc_counter(SearchSuccessMetricName),
+								ems_logger:info("ems_ldap_handler search ~p ~p success.", [UserLogin, User#user.name]),
+								io:format("ems_user_perfil:find_by_user_and_client(~p, 1, [id, name]).\n", [User#user.id]),
+								{ok, ListaPerfil} = ems_user_perfil:find_by_user(User#user.id, [id, name]),
+								ListaPerfil2 = [ maps:get(<<"name">>, R) || R <- ListaPerfil ],
+								io:format("lista perfil is ~p\n", [ListaPerfil]),
+								ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
+																	  attributes = [#'PartialAttribute'{type = <<"cn">>, vals = ListaPerfil2}]
+																}
+											  },
+								ems_user:add_history(User, 
+													 #service{}, 
+													 #request{timestamp = TimestampBin,
+															  code = ?LDAP_SUCCESS,
+															  reason = success,
+															  operation = role_occupant,
+															  host = Ip,
+															  protocol = ldap,
+															  port = Port}),
+								ResultDone = make_result_done(success),
+								{ok, [ResultEntry, ResultDone]};
+							false -> 
+								ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
+								ems_user:add_history(User, 
+													 #service{}, 
+													 #request{timestamp = TimestampBin,
+															  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
+															  reason = access_denied,
+															  reason_detail = einative_user,
+															  operation = search_login,
+															  host = Ip,
+															  protocol = ldap,
+															  port = Port}),
+								ResultDone = make_result_done(insufficientAccessRights),
+								{ok, [ResultDone]}
+						end
+			end;
+		{error, Reason} -> 
+			ems_logger:error("ems_ldap_handler handle_request_search_login parse invalid name ~p.", [ObjectName]),
+			ems_user:add_history(#user{login = ObjectName},  
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
+										  reason = access_denied,
+										  reason_detail = einvalid_search_name,
+										  reason_exception = Reason,
+										  operation = bind_request,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			ResultDone = make_result_done(invalidCredentials),
+			{ok, [ResultDone]}
+	end;
+
+
+
+%	io:format("roleOcupant query!!!!!!!!!!!!!!!!!!!!!!!\n"),
+%	io:format("atribute is ~p\n", [Attribute]),
+%	io:format("scope is singleLevel\n"),
 	%ObjectName = make_object_name(UsuLogin),
-	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
-										  attributes = [#'PartialAttribute'{type = <<"uid">>, vals = [ObjectName]},
- 														#'PartialAttribute'{type = <<"employeeNumber">>, vals = [<<"1">>]},
-														#'PartialAttribute'{type = <<"uidNumber">>, vals = [<<"1">>]},
+%	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
+%										  attributes = [%#'PartialAttribute'{type = <<"uid">>, vals = [ObjectName]},
+ 														%#'PartialAttribute'{type = <<"employeeNumber">>, vals = [<<"1">>]},
+														%#'PartialAttribute'{type = <<"uidNumber">>, vals = [<<"1">>]},
 														
-														#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"top">>]},
-														#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"person">>]},
-														#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"organizationalPerson">>]},
-														#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"inetOrgPerson">>]},
-														#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"posixAccount">>]},
+														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"top">>]},
+														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"person">>]},
+														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"organizationalPerson">>]},
+														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"inetOrgPerson">>]},
+														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"posixAccount">>]},
 														
-														#'PartialAttribute'{type = <<"gecos">>, vals = [<<"evertonagilar">>]},
-														#'PartialAttribute'{type = <<"cn">>, vals = [<<"evertonagilar">>]},
-														#'PartialAttribute'{type = <<"givenName">>, vals = [<<"evertonagilar">>]},
-														#'PartialAttribute'{type = <<"memberUid">>, vals = [<<"evertonagilar">>]},
-														#'PartialAttribute'{type = <<"sAMAccountName">>, vals = [<<"evertonagilar">>]},  % shortened user name in Active Directory
-														#'PartialAttribute'{type = <<"displayName">>, vals = [<<"evertonagilar">>]},     % full user name in Active Directory
-														#'PartialAttribute'{type = <<"member">>, vals = [<<"evertonagilar">>]},     % full user name in Active Directory
-														#'PartialAttribute'{type = <<"sn">>, vals = [<<"evertonagilar">>]},
+														%#'PartialAttribute'{type = <<"gecos">>, vals = [<<"evertonagilar">>]},
+	%													#'PartialAttribute'{type = <<"cn">>, vals = [<<"Administrator">>, <<"PowerUser">>]}
+														%#'PartialAttribute'{type = <<"givenName">>, vals = [<<"evertonagilar">>]},
+														%#'PartialAttribute'{type = <<"memberUid">>, vals = [<<"evertonagilar">>]},
+														%#'PartialAttribute'{type = <<"sAMAccountName">>, vals = [<<"evertonagilar">>]},  % shortened user name in Active Directory
+														%#'PartialAttribute'{type = <<"displayName">>, vals = [<<"evertonagilar">>]},     % full user name in Active Directory
+														%#'PartialAttribute'{type = <<"member">>, vals = [<<"evertonagilar">>]},     % full user name in Active Directory
+														%#'PartialAttribute'{type = <<"sn">>, vals = [<<"evertonagilar">>]},
 														
 
-														#'PartialAttribute'{type = <<"o">>, vals = [<<"UnB">>]},
+														%#'PartialAttribute'{type = <<"o">>, vals = [<<"UnB">>]},
 														
 														
-														#'PartialAttribute'{type = <<"login">>, vals = [<<"evertonagilar">>]},
-														#'PartialAttribute'{type = <<"passwd">>, vals = [<<"960101">>]},
-														#'PartialAttribute'{type = <<"roles">>, vals = [<<"Administrator">>]},
-														#'PartialAttribute'{type = <<"roleOccupant">>, vals = [<<"Administrator">>]},
-														#'PartialAttribute'{type = <<"organizationalRole">>, vals = [<<"Administrator">>]}
+														%#'PartialAttribute'{type = <<"login">>, vals = [<<"evertonagilar">>]},
+														%#'PartialAttribute'{type = <<"passwd">>, vals = [<<"960101">>]},
+														%#'PartialAttribute'{type = <<"roles">>, vals = [<<"Administrator">>]},
+														%#'PartialAttribute'{type = <<"roleOccupant">>, vals = [<<"Administrator">>, <<"PowerUser">>]},
+														%#'PartialAttribute'{type = <<"organizationalRole">>, vals = [<<"Administrator">>]}
 
-														]
-										}
-	},
-	ResultDone = make_result_done(success),
-	{ok, [ResultEntry, ResultDone]};
+%														]
+%										}
+%	},
+%	ResultDone = make_result_done(success),
+%	{ok, [ResultEntry, ResultDone]};
 	%BindResponse = make_bind_response(success, ObjectName),
 	%{ok, [BindResponse]};
 
 
 
 % sei e redmine
-handle_request({'LDAPMessage', _,
+handle_request(M={'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
 													scope = Scope, % wholeSubtree or baseObject or singleLevel
 													derefAliases = _DerefAliases,  % derefAlways or neverDerefAliases
 													sizeLimit = _SizeLimit, 
 													timeLimit = _TimeLimit, 
 													typesOnly = _TypesOnly, 
-													filter =  {equalityMatch, {'AttributeValueAssertion', Attribute, UsuLoginBin}},
+													filter =  {equalityMatch, {'AttributeValueAssertion', _Attribute, UsuLoginBin}},
 													attributes = _Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
-	io:format("atribute is ~p\n", [Attribute]),
+	io:format("SEI!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
 	io:format("scope is ~p\n", [Scope]),
 	handle_request_search_login(UsuLoginBin, State, Ip, Port, TimestampBin);
 
@@ -238,7 +313,7 @@ handle_request(M={'LDAPMessage', _,
 													filter = {present, <<"objectClass">>},
 													attributes = _Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
-	io:format("msg is ~p\n", [M]),
+	io:format("PENTAHO!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
 	io:format("scope is ~p\n", [Scope]),
 	handle_request_search_login(BaseObject, State, Ip, Port, TimestampBin);
 
@@ -270,7 +345,7 @@ handle_request({'LDAPMessage', _,
 																]},
 													attributes = _Attributes}},
 				_}, State, Ip, Port, TimestampBin) ->
-	io:format("atribute is ~p\n", [Attribute]),
+	io:format("PENTAHO 22222222222222222222222222222  atribute is ~p\n", [Attribute]),
 	handle_request_search_login(UsuLoginBin, State, Ip, Port, TimestampBin);
 	
 handle_request({'LDAPMessage', _, 
@@ -286,7 +361,7 @@ handle_request({'LDAPMessage', _,
 	
 
 make_object_name(UsuId) ->
-	R1 = [<<"uid="/utf8>>, UsuId, <<",ou=funcdis,ou=Classes,ou=Authenticated,ou=USERS,ou=GROUPS,dc=unb,dc=br"/utf8>>],
+	R1 = [<<"uid="/utf8>>, UsuId, <<",dc=unb,dc=br"/utf8>>],
 	R2 = iolist_to_binary(R1),
 	R2.
 
@@ -448,15 +523,12 @@ make_result_done(ResultCode) ->
 	}.
 
 
-handle_bind_request_user_or_admin(Name, Password, State = #state{base_search = _BaseSearchConfig,
-																   bind_cn_success_metric_name = BindCnSuccessMetricName,
-																   bind_uid_success_metric_name = BindUidSuccessMetricName,
-																   bind_cn_invalid_credential_metric_name = BindCnInvalidCredentialMetricName,
-																   bind_uid_invalid_credential_metric_name = BindUidInvalidCredentialMetricName},
-			  Ip, Port, TimestampBin, MessageID) ->
+handle_bind_request_user_or_admin(Name, 
+								  Password, 
+								  State = #state{base_search = _BaseSearchConfig},
+								  Ip, Port, TimestampBin, _MessageID) ->
 	NameSize = byte_size(Name),
 	PasswordSize = byte_size(Password),
-	io:format("message id is ~p\n", [MessageID]),
 	case (Name =:= <<>>) orelse (NameSize < 4) orelse (NameSize > 100) orelse 
 		 (Password =:= <<>>) orelse (PasswordSize < 4) orelse (PasswordSize > 100) of
 		true ->
@@ -464,38 +536,15 @@ handle_bind_request_user_or_admin(Name, Password, State = #state{base_search = _
 			BindResponse = make_bind_response(invalidCredentials, Name);
 		false ->
 			case ems_util:parse_ldap_name(Name) of
-				{ok, _, AdminLogin, _LdapAdminBaseFilter} when MessageID == 1 ->
-							ems_db:inc_counter(BindCnSuccessMetricName),
-							ems_logger:info("ems_ldap_handler bind_cn ~p success.", [Name]),
-							BindResponse = make_bind_response(success, Name),
-
-					%case do_authenticate_admin_with_admin_user(Name, AdminLogin, Password, State, Ip, Port, TimestampBin) orelse
-					%	  do_authenticate_admin_with_list_users(AdminLogin, Password, State, Ip, Port, TimestampBin) of
-					%	true -> 
-					%		ems_db:inc_counter(BindCnSuccessMetricName),
-					%		ems_logger:info("ems_ldap_handler bind_cn ~p success.", [Name]),
-					%		BindResponse = make_bind_response(success, Name);
-					%	_-> 
-					%		ems_db:inc_counter(BindCnInvalidCredentialMetricName),
-					%		ems_logger:error("ems_ldap_handler bind_cn ~p invalid credential.", [Name]),
-					%		BindResponse = make_bind_response(invalidCredentials, Name)
-					%end,
-					BindResponse;
-				{ok, _, UserLogin, _LdapBaseFilter} ->
-					case do_authenticate_user(UserLogin, Password, State, Ip, Port, TimestampBin) of
-						ok -> 
-							ems_db:inc_counter(BindUidSuccessMetricName),
-							ems_logger:info("ems_ldap_handler bind_uid ~p success.", [Name]),
+				{ok, UidOrCn, AdminLogin, _LdapAdminBaseFilter} ->
+					case do_authenticate_admin_with_admin_user(Name, AdminLogin, Password, State, Ip, Port, TimestampBin) orelse
+						  do_authenticate_admin_with_list_users(AdminLogin, Password, State, Ip, Port, TimestampBin) of
+						true -> 
+							ems_logger:info("ems_ldap_handler bind_~s ~p success.", [atom_to_list(UidOrCn), Name]),
 							BindResponse = make_bind_response(success, Name);
-						{error, Reason} ->	
-							ems_db:inc_counter(BindUidInvalidCredentialMetricName),
-							ems_logger:error("ems_ldap_handler bind_uid ~p invalid credential.", [Name]),
-							case Reason of
-								access_denied_inative_user -> 
-									BindResponse = make_bind_response(insufficientAccessRights, Name);
-								access_denied -> 
-									BindResponse = make_bind_response(invalidCredentials, Name)
-							end
+						_-> 
+							ems_logger:error("ems_ldap_handler bind_~s ~p invalid credential.", [atom_to_list(UidOrCn), Name]),
+							BindResponse = make_bind_response(invalidCredentials, Name)
 					end,
 					BindResponse;
 				{error, Reason} -> 
