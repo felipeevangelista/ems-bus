@@ -11,8 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([parse_querystring/1,
-		 version/0,
+-export([version/0,
 		 server_name/0,
 		 sleep/1,
 		 json_encode/1,
@@ -90,6 +89,7 @@
 		 is_letter/1,
 		 is_letter_lower/1,
 		 posix_error_description/1,
+		 parse_querystring/1,
 		 parse_if_modified_since/1,
 		 parse_basic_authorization_header/1,
 		 parse_result_cache/1,
@@ -114,6 +114,7 @@
 		 parse_range/3,
 		 parse_range/4,
 		 parse_email/1,
+		 parse_ldap_name/1,
 		 match_ip_address/2,
  		 allow_ip_address/2,
 		 mask_ipaddress_to_tuple/1,
@@ -2976,3 +2977,22 @@ list_tuple_to_list_map([H|T], Result) ->
 	list_tuple_to_list_map(T, [maps:from_list(H) | Result]).
 
 
+-spec parse_ldap_name(binary()) -> {ok, cn | uid, binary(), binary()} | {error, einvalid_name}.
+parse_ldap_name(undefined) -> {error, einvalid_name};	
+parse_ldap_name(<<>>) -> {error, einvalid_name};	
+parse_ldap_name(Name) -> 	
+	case binary:split(Name, <<",">>) of
+		[UserFilterValue, BaseFilterValue] ->
+			case UserFilterValue of
+				<<"cn=", Value/binary>> -> {ok, cn, Value, BaseFilterValue};
+				<<"uid=", Value/binary>> -> {ok, uid, Value, BaseFilterValue};
+				_ -> {error, einvalid_name}
+			end;
+		[UserFilterValue] ->
+			case UserFilterValue of
+				<<"cn=", Value/binary>> -> {ok, cn, Value, <<>>};
+				<<"uid=", Value/binary>> -> {ok, uid, Value, <<>>};
+				Value -> {ok, other, Value, <<>>}
+			end;
+		_ -> {error, einvalid_name}
+	end.

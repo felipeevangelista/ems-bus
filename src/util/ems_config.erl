@@ -173,7 +173,7 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilenameZip]),
 					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
 				_ ->
-					ems_logger:format_info("ems_config cannot read catalog ~p.\n", [CatFilename2]),
+					ems_logger:format_error("ems_config cannot read catalog ~p.\n", [CatFilename2]),
 					parse_cat_path_search(T, Result)
 			end
 	end.
