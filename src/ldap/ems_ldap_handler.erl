@@ -302,6 +302,77 @@ handle_request(M={'LDAPMessage', _,
 	io:format("scope is ~p\n", [Scope]),
 	handle_request_search_login(UsuLoginBin, State, Ip, Port, TimestampBin);
 
+
+% isGlobalCatalogReady
+handle_request(M={'LDAPMessage', _,
+					{searchRequest, #'SearchRequest'{baseObject = <<>>, 
+													scope = Scope, 
+													derefAliases = _DerefAliases, 
+													sizeLimit = _SizeLimit, 
+													timeLimit = _TimeLimit, 
+													typesOnly = _TypesOnly, 
+													filter = {present, <<"objectClass">>}, attributes = [<<"isGlobalCatalogReady">>]}},
+				 _}, State, Ip, Port, TimestampBin) ->
+	io:format("isGlobalCatalogReady!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
+	io:format("scope is ~p\n", [Scope]),
+	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = <<>>,
+										  attributes = [#'PartialAttribute'{type = <<"isGlobalCatalogReady">>, vals = [<<"ErlangMS">>]}]
+										}
+	},
+	ems_logger:info("ems_ldap_handler request isGlobalCatalogReady."),
+	ResultDone = make_result_done(success),
+	{ok, [ResultEntry, ResultDone]};
+
+
+% Fetch DNs
+handle_request(M={'LDAPMessage', _,
+					{searchRequest, #'SearchRequest'{baseObject = <<>>, 
+													scope = Scope, 
+													derefAliases = _DerefAliases, 
+													sizeLimit = _SizeLimit, 
+													timeLimit = _TimeLimit, 
+													typesOnly = _TypesOnly, 
+													filter = {present, <<"objectClass">>}, attributes = [<<"namingContexts">>]}},
+				 _}, State, Ip, Port, TimestampBin) ->
+	io:format("Fetch DNs!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
+	io:format("scope is ~p\n", [Scope]),
+	handle_request_search_login(<<"unb">>, State, Ip, Port, TimestampBin);
+
+
+% Filter or
+handle_request(M={'LDAPMessage', _,
+					{searchRequest, #'SearchRequest'{baseObject = BaseObject, 
+													scope = Scope, 
+													derefAliases = _DerefAliases, 
+													sizeLimit = _SizeLimit, 
+													timeLimit = _TimeLimit, 
+													typesOnly = _TypesOnly, 
+													filter = FilterOr = {'or', _}, attributes = [<<"objectclass">>]}},
+				 _}, State, Ip, Port, TimestampBin) ->
+	io:format("Filter or!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
+	io:format("scope is ~p\n", [Scope]),
+	case ems_util:parse_ldap_filter(FilterOr) of
+		{ok, Filter} ->
+			handle_request_search_login(<<"evertonagilar">>, State, Ip, Port, TimestampBin);
+		{error, Reason} -> 
+			ems_logger:error("ems_ldap_handler handle_request parse invalid filter or ~p.", [FilterOr]),
+			ems_user:add_history(#user{login = BaseObject},  
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
+										  reason = access_denied,
+										  reason_detail = einvalid_search_request_filter_or,
+										  reason_exception = Reason,
+										  operation = bind_request,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			BindResponse = make_bind_response(invalidCredentials, BaseObject),
+			{ok, [BindResponse]}
+	end;
+
+
+
 % pentaho
 handle_request(M={'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = BaseObject, 
@@ -318,8 +389,23 @@ handle_request(M={'LDAPMessage', _,
 	handle_request_search_login(BaseObject, State, Ip, Port, TimestampBin);
 
 
-
+% Search request present objectclass
+handle_request(M={'LDAPMessage', _,
+					{searchRequest, #'SearchRequest'{baseObject = BaseObject, 
+													 scope = Scope, 
+													 derefAliases = _DerefAliases, 
+													 sizeLimit = _SizeLimit, 
+													 timeLimit = _TimeLimit, 
+													 typesOnly = _TypesOnly, 
+													 filter =  {present, <<"objectclass">>}, attributes = _Attributes}},
+				 _}, State, Ip, Port, TimestampBin) ->
+	io:format("Search request present objectclass!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
+	io:format("scope is ~p\n", [Scope]),
+	handle_request_search_login(BaseObject, State, Ip, Port, TimestampBin);
 	
+
+
+% Request capabilities
 handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
 													 scope = _Scope, 
@@ -327,8 +413,7 @@ handle_request({'LDAPMessage', _,
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
 													 typesOnly = _TypesOnly, 
-													 filter =  {present, ObjectClass},
-													 attributes = _Attributes}},
+													 filter =  {present, ObjectClass}, attributes = _Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
 	handle_request_capabilities(ObjectClass, State, Ip, Port, TimestampBin);
 	
@@ -471,6 +556,8 @@ make_result_entry(#user{id = UsuId,
 														
 
 														#'PartialAttribute'{type = <<"creatorsName">>, vals = [AdminLdap]},
+
+														#'PartialAttribute'{type = <<"namingContexts">>, vals = [<<"dc=unb,dc=br">>]},
 														#'PartialAttribute'{type = <<"o">>, vals = [<<"UnB">>]},
 														
 														

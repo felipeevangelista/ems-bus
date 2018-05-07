@@ -89,6 +89,7 @@
 		 is_letter/1,
 		 is_letter_lower/1,
 		 posix_error_description/1,
+		 parse_ldap_filter/1,
 		 parse_querystring/1,
 		 parse_if_modified_since/1,
 		 parse_basic_authorization_header/1,
@@ -2996,3 +2997,22 @@ parse_ldap_name(Name) ->
 			end;
 		_ -> {error, einvalid_name}
 	end.
+
+
+
+
+parse_ldap_filter_or([], Result) -> {ok, lists:reverse(Result)};
+parse_ldap_filter_or([{substrings,
+                           {'SubstringFilter', Fieldname,
+                            [{any, Value}]}}|TFilter], Result) ->
+	parse_ldap_filter_or(TFilter, [{Fieldname, <<"==">>, Value} | Result]);
+parse_ldap_filter_or(_, _) -> {error, einvalid_filter}.
+
+-spec parse_ldap_filter(tuple()) -> {ok, list(tuple())} | {error, einvalid_filter}.
+parse_ldap_filter({'or', LdapFilter}) ->
+	parse_ldap_filter_or(LdapFilter, []);
+parse_ldap_filter(_) -> {error, einvalid_filter}.
+	
+                            
+	
+
