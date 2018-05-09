@@ -783,7 +783,7 @@ filter(Tab, [{F1, "==", V1}]) ->
 	case field_has_index(FieldPosition, Tab) of
 		false ->
 			Fun = fun() -> 
-						qlc:e(qlc:q([R || R <- mnesia:table(Tab), element(FieldPosition, R)== FieldValue])) 
+						qlc:e(qlc:q([R || R <- mnesia:table(Tab), element(FieldPosition, R) == FieldValue])) 
 				  end,
 			mnesia:activity(async_dirty, Fun);
 		true ->
@@ -791,10 +791,12 @@ filter(Tab, [{F1, "==", V1}]) ->
 	end;
 filter(Tab, FilterList) when is_list(FilterList) -> 
 	F = fun() ->
-			FieldsTable =  mnesia:table_info(Tab, attributes),
-			ExprWhere = string:join([io_lib:format("element(~s, R) ~s ~p", 
-				[integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList], ","),
+			%FieldsTable =  mnesia:table_info(Tab, attributes),
+			%ExprWhere0 = [io_lib:format("element(~s, R) ~s ~p", integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList],
+			%ExprWhere = string:join(ExprWhere0, ","),
+			ExprWhere = filter_condition(Tab, FilterList),
 			ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, ExprWhere, <<"].">>])),
+			?DEBUG("ems_db find smnt ~p.", [ExprQuery]),
 			qlc:string_to_handle(ExprQuery)
 		end,
 	ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {filter, Tab, FilterList}, F),
@@ -802,6 +804,50 @@ filter(Tab, FilterList) when is_list(FilterList) ->
 filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
 	filter(Tab, [FilterTuple]).
 
+
+filter_condition(Tab, FilterList) -> 
+	FieldsTable =  mnesia:table_info(Tab, attributes),
+	filter_condition(Tab, FilterList, FieldsTable, []).
+	
+filter_condition(_, [], _, Result) -> 
+	iolist_to_binary(Result);
+
+filter_condition(Tab, [{'or', FilterList}|[]], FieldsTable, Result) ->
+	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
+	filter_condition(Tab, [], FieldsTable, [ResultOr | Result]);
+filter_condition(Tab, [{'or', FilterList}|T], FieldsTable, Result) ->
+	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
+	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultOr] | Result]);
+
+filter_condition(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
+	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V) ],
+	filter_condition(Tab, [], FieldsTable, [Condition | Result]);
+filter_condition(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
+	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V), <<", ">> ],
+	filter_condition(Tab, T, FieldsTable, [Condition | Result]).
+
+
+filter_condition_or(_, [], _, Result) -> 
+	lists:reverse(Result);
+
+filter_condition_or(Tab, [{'or', FilterList}|[]], FieldsTable, Result) ->
+	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
+	filter_condition(Tab, [], FieldsTable, [[<<" orelse ">> | ResultOr] | Result]);
+filter_condition_or(Tab, [{'or', FilterList}|T], FieldsTable, Result) ->
+	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
+	filter_condition(Tab, T, FieldsTable, [[<<" orelse ">> | ResultOr] | Result]);
+
+filter_condition_or(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
+	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V) ],
+	filter_condition_or(Tab, [], FieldsTable, [Condition | Result]);
+filter_condition_or(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
+	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V), <<" orelse ">> ],
+	filter_condition_or(Tab, T, FieldsTable, [Condition | Result]).
+
+filter_condition_value(V) when is_binary(V) -> [ <<"<<\"">>, V, <<"\">>">>];
+filter_condition_value(V) when is_integer(V) -> integer_to_binary(V);
+filter_condition_value(V) when is_atom(V) -> atom_to_binary(V, utf8);
+filter_condition_value(V) -> V.
 
 
 filter_with_sort(Tab, []) -> 
@@ -953,9 +999,6 @@ field_position(Field, [F|Fs], Idx) ->
 % Return the field as binary
 field_value(V) when is_list(V) -> list_to_binary(V);
 field_value(V) -> V.
-
-field_value_str(V) when is_binary(V) -> binary_to_list(V);
-field_value_str(V) -> V.
 
 
 -spec parse_datasource_type(binary()) -> atom().

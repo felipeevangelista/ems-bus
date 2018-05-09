@@ -19,6 +19,7 @@
 		 find_by_cpf/1, 
 		 find_by_login_and_password/2,
 		 find_by_codigo_pessoa/1, find_by_codigo_pessoa/2,
+		 find_by_filter_or/2,
 		 to_resource_owner/1,
 		 to_resource_owner/2,
  		 new_from_map/2,
@@ -47,6 +48,12 @@ all() ->
 	{ok, ListaUserFs} = ems_db:all(user_fs),
 	{ok, ListaUserDb ++ ListaUserAlunoAtivoDb ++ ListaUserAlunoInativoDb ++ ListaUserFs}.
 	
+
+-spec find_by_filter_or(list(binary()), tuple()) -> {ok, list(#user{})} | {error, atom(), atom()}.
+find_by_filter_or(Fields, Filter) -> 
+	ems_db:find([user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs], Fields, Filter).
+
+
 
 -spec find_by_codigo_pessoa(non_neg_integer()) -> {ok, list(#user{})} | {error, enoent}.
 find_by_codigo_pessoa(Codigo) ->

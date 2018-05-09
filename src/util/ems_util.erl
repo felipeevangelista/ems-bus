@@ -89,6 +89,7 @@
 		 is_letter/1,
 		 is_letter_lower/1,
 		 posix_error_description/1,
+		 parse_ldap_attributes/1,
 		 parse_ldap_filter/1,
 		 parse_querystring/1,
 		 parse_if_modified_since/1,
@@ -3001,11 +3002,14 @@ parse_ldap_name(Name) ->
 
 
 
-parse_ldap_filter_or([], Result) -> {ok, lists:reverse(Result)};
+parse_ldap_filter_or([], Result) -> {ok, {'or', lists:usort(Result)}};
 parse_ldap_filter_or([{substrings,
-                           {'SubstringFilter', Fieldname,
+                           {'SubstringFilter', Field,
                             [{any, Value}]}}|TFilter], Result) ->
-	parse_ldap_filter_or(TFilter, [{Fieldname, <<"==">>, Value} | Result]);
+	case parse_ldap_attribute(Field) of
+		{ok, Field2} -> parse_ldap_filter_or(TFilter, [{Field2, <<"==">>, Value} | Result]);
+		_ -> {error, einvalid_filter}
+	end;
 parse_ldap_filter_or(_, _) -> {error, einvalid_filter}.
 
 -spec parse_ldap_filter(tuple()) -> {ok, list(tuple())} | {error, einvalid_filter}.
@@ -3013,6 +3017,63 @@ parse_ldap_filter({'or', LdapFilter}) ->
 	parse_ldap_filter_or(LdapFilter, []);
 parse_ldap_filter(_) -> {error, einvalid_filter}.
 	
-                            
-	
+
+-spec parse_ldap_attribute(binary()) -> binary().
+parse_ldap_attribute(Field) -> 
+	parse_ldap_attribute_(list_to_binary(string:to_lower(binary_to_list(Field)))).
+parse_ldap_attribute_(<<"uid">>) -> {ok, <<"id">>};
+parse_ldap_attribute_(<<"employeenumber">>) -> {ok, <<"id">>};
+parse_ldap_attribute_(<<"uidnumber">>) -> {ok, <<"id">>};
+parse_ldap_attribute_(<<"gecos">>) -> {ok, <<"name">>};
+parse_ldap_attribute_(<<"displayname">>) -> {ok, <<"name">>};
+parse_ldap_attribute_(<<"cn">>) -> {ok, <<"name">>};
+parse_ldap_attribute_(<<"sn">>) -> {ok, <<"name">>};
+parse_ldap_attribute_(<<"name">>) -> {ok, <<"name">>};
+parse_ldap_attribute_(<<"login">>) -> {ok, <<"login">>};
+parse_ldap_attribute_(<<"email">>) -> {ok, <<"email">>};
+parse_ldap_attribute_(<<"mail">>) -> {ok, <<"email">>};
+parse_ldap_attribute_(<<"cpf">>) -> {ok, <<"cpf">>};
+parse_ldap_attribute_(<<"codigo">>) -> {ok, <<"codigo">>};
+parse_ldap_attribute_(_) -> {error, einvalid_field}.
+
+
+
+         
+-spec parse_ldap_attributes(list(binary())) -> list(binary()).             
+parse_ldap_attributes([]) -> [];
+parse_ldap_attributes([<<"objectclass">>]) -> [];
+parse_ldap_attributes([<<"objectClass">>]) -> [];
+parse_ldap_attributes(List) -> 
+	List2 = [ list_to_binary(string:to_lower(binary_to_list(R))) || R <- List ],
+	parse_ldap_attributes_(List2, []).
+
+parse_ldap_attributes_([], Result) -> lists:usort(Result);
+parse_ldap_attributes_([<<"uid">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"id">> | Result]);
+parse_ldap_attributes_([<<"employeenumber">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"id">> | Result]);
+parse_ldap_attributes_([<<"uidnumber">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"id">> | Result]);
+parse_ldap_attributes_([<<"gecos">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"gecos">> | Result]);
+parse_ldap_attributes_([<<"displayname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"name">> | Result]);
+parse_ldap_attributes_([<<"cn">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"name">> | Result]);
+parse_ldap_attributes_([<<"sn">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"name">> | Result]);
+parse_ldap_attributes_([<<"name">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"name">> | Result]);
+parse_ldap_attributes_([<<"login">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"login">> | Result]);
+parse_ldap_attributes_([<<"email">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"email">> | Result]);
+parse_ldap_attributes_([<<"mail">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"email">> | Result]);
+parse_ldap_attributes_([<<"cpf">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cpf">> | Result]);
+parse_ldap_attributes_([<<"codigo">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"codigo">> | Result]);
+parse_ldap_attributes_([_|T], Result) -> 
+	parse_ldap_attributes_(T, Result).
 
