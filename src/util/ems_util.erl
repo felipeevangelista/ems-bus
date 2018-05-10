@@ -89,6 +89,7 @@
 		 is_letter/1,
 		 is_letter_lower/1,
 		 posix_error_description/1,
+		 parse_ldap_attribute/1,
 		 parse_ldap_attributes/1,
 		 parse_ldap_filter/1,
 		 parse_querystring/1,
@@ -3005,9 +3006,19 @@ parse_ldap_name(Name) ->
 parse_ldap_filter_or([], Result) -> {ok, {'or', lists:usort(Result)}};
 parse_ldap_filter_or([{substrings,
                            {'SubstringFilter', Field,
-                            [{any, Value}]}}|TFilter], Result) ->
+                            [{any, Value}]}}|T], Result) ->
 	case parse_ldap_attribute(Field) of
-		{ok, Field2} -> parse_ldap_filter_or(TFilter, [{Field2, <<"==">>, Value} | Result]);
+		{ok, Field2} -> 
+			io:format("field is ~p\n", [Field2]),
+			case Field2 of
+				<<"login">> when is_binary(Value) -> 
+					LoginSemBarra = list_to_binary(re:replace(Value, "/", "", [{return, list}])),
+					Result2 = [{Field2, <<"==">>, Value} | Result],
+					Result3 = [{Field2, <<"==">>, LoginSemBarra} | Result2],
+					parse_ldap_filter_or(T, Result3);
+				_ ->
+					parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result])
+			end;
 		_ -> {error, einvalid_filter}
 	end;
 parse_ldap_filter_or(_, _) -> {error, einvalid_filter}.
@@ -3026,7 +3037,7 @@ parse_ldap_attribute_(<<"employeenumber">>) -> {ok, <<"id">>};
 parse_ldap_attribute_(<<"uidnumber">>) -> {ok, <<"id">>};
 parse_ldap_attribute_(<<"gecos">>) -> {ok, <<"name">>};
 parse_ldap_attribute_(<<"displayname">>) -> {ok, <<"name">>};
-parse_ldap_attribute_(<<"cn">>) -> {ok, <<"name">>};
+parse_ldap_attribute_(<<"cn">>) -> {ok, <<"login">>};
 parse_ldap_attribute_(<<"sn">>) -> {ok, <<"name">>};
 parse_ldap_attribute_(<<"name">>) -> {ok, <<"name">>};
 parse_ldap_attribute_(<<"login">>) -> {ok, <<"login">>};

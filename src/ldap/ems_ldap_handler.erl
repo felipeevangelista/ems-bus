@@ -166,6 +166,7 @@ handle_request({'LDAPMessage', _,
 							search_success_metric_name = SearchSuccessMetricName,
 							auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
 					Ip, Port, TimestampBin) ->
+	io:format("roleOccupant!!!!!!!!!!!!!!!!!!\n"),
 	case ems_util:parse_ldap_name(ObjectName) of
 		{ok, _, UserLogin, _BaseFilter} ->
 			case ems_user:find_by_login(UserLogin) of
@@ -293,12 +294,12 @@ handle_request(M={'LDAPMessage', _,
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
 													 typesOnly = _TypesOnly, 
-													 filter =  {equalityMatch, {'AttributeValueAssertion', _Attribute, UsuLoginBin}},
+													 filter =  {equalityMatch, {'AttributeValueAssertion', Attribute, UsuLoginBin}},
 													 attributes = Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
 	io:format("SEI!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
 	io:format("scope is ~p\n", [Scope]),
-	handle_request_search_login(UsuLoginBin, State, Ip, Port, TimestampBin, Attributes);
+	handle_request_search_login(UsuLoginBin, Attribute, State, Ip, Port, TimestampBin, Attributes);
 
 
 % isGlobalCatalogReady
@@ -344,7 +345,7 @@ handle_request(M={'LDAPMessage', _,
 				 _}, State, Ip, Port, TimestampBin) ->
 	io:format("Search ObjectClass!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
 	io:format("scope is ~p\n", [Scope]),
-	handle_request_search_login(ObjectClass, State, Ip, Port, TimestampBin, Attributes);
+	handle_request_search_login(ObjectClass, <<>>, State, Ip, Port, TimestampBin, Attributes);
 
 
 % pentaho
@@ -360,7 +361,7 @@ handle_request(M={'LDAPMessage', _,
 %				 _}, State, Ip, Port, TimestampBin) ->
 %	io:format("PENTAHO!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
 %	io:format("scope is ~p\n", [Scope]),
-%	handle_request_search_login(BaseObject, State, Ip, Port, TimestampBin, Attributes);
+%	handle_request_search_login(BaseObject, <<>>, State, Ip, Port, TimestampBin, Attributes);
 
 
 
@@ -373,7 +374,7 @@ handle_request(M={'LDAPMessage', _,
 													 timeLimit = _TimeLimit, 
 													 typesOnly = _TypesOnly, 
 													 filter = FilterOr = {'or', _}, 
-													 attributes = Attributes = [<<"objectclass">>]}},
+													 attributes = Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
 	io:format("Filter or!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
 	io:format("scope is ~p\n", [Scope]),
@@ -407,7 +408,7 @@ handle_request({'LDAPMessage', _,
 													attributes = Attributes}},
 				_}, State, Ip, Port, TimestampBin) ->
 	io:format("PENTAHO 22222222222222222222222222222  atribute is ~p\n", [Attribute]),
-	handle_request_search_login(UsuLoginBin, State, Ip, Port, TimestampBin, Attributes);
+	handle_request_search_login(UsuLoginBin, Attribute, State, Ip, Port, TimestampBin, Attributes);
 	
 handle_request({'LDAPMessage', _, 
 					{unbindRequest, _},
@@ -440,41 +441,42 @@ make_bind_response(ResultCode, MatchedDN, DiagnosticMessage) ->
 												  serverSaslCreds = asn1_NOVALUE}
 	}.
 
-make_result_entry(#user{id = UsuId, 
-                        codigo = CodigoPessoa,
-					    login = UsuLogin,	
-					    name = UsuName, 
-					    cpf = UsuCpf, 
-					    email = UsuEmail, 
-					    password = UsuPasswd, 
-					    type = UsuType, 
-					    subtype = UsuSubType,
-					    type_email = UsuTypeEmail, 
-					    ctrl_insert = UsuCtrlInsert, 
-						ctrl_update = UsuCtrlUpdate,
-						active = Active,
-						endereco = Endereco,
-						complemento_endereco = ComplementoEndereco,
-						bairro = Bairro,
-						cidade = Cidade,
-						uf = UF,
-						rg = RG,
-						data_nascimento = DataNascimento,
-						sexo = Sexo,
-						telefone = Telefone,
-						celular = Celular,
-						ddd = DDD,
-						nome_pai = NomePai,
-						nome_mae = NomeMae,
-						nacionalidade = Nacionalidade
-}, 
+
+
+make_result_entry_item(#user{id = UsuId, 
+							codigo = CodigoPessoa,
+							login = UsuLogin,	
+							name = UsuName, 
+							cpf = UsuCpf, 
+							email = UsuEmail, 
+							password = UsuPasswd, 
+							type = UsuType, 
+							subtype = UsuSubType,
+							type_email = UsuTypeEmail, 
+							ctrl_insert = UsuCtrlInsert, 
+							ctrl_update = UsuCtrlUpdate,
+							active = Active,
+							endereco = Endereco,
+							complemento_endereco = ComplementoEndereco,
+							bairro = Bairro,
+							cidade = Cidade,
+							uf = UF,
+							rg = RG,
+							data_nascimento = DataNascimento,
+							sexo = Sexo,
+							telefone = Telefone,
+							celular = Celular,
+							ddd = DDD,
+							nome_pai = NomePai,
+							nome_mae = NomeMae,
+							nacionalidade = Nacionalidade
+				}, 
 				  AdminLdap, AtrributesToReturn) ->
 	UsuId2 = format_user_field(UsuId),
 	ObjectName = make_object_name(UsuLogin),
 	CodigoPessoa2 = format_user_field(CodigoPessoa),
 	UsuName2 = format_user_field(UsuName),
 	UsuLogin2 = format_user_field(UsuLogin),
-	UsuNome2 = format_user_field(UsuName),
 	UsuCpf2 = format_user_field(UsuCpf),
 	UsuEmail2 = format_user_field(UsuEmail),
 	UsuSenha2 = format_user_field(UsuPasswd),
@@ -523,23 +525,25 @@ make_result_entry(#user{id = UsuId,
 					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"organizationalPerson">>]},
 					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"inetOrgPerson">>]},
 					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"posixAccount">>]},
-					#'PartialAttribute'{type = <<"gecos">>, vals = [UsuNome2]},
-					#'PartialAttribute'{type = <<"cn">>, vals = [UsuNome2]},
+					#'PartialAttribute'{type = <<"gecos">>, vals = [UsuName2]},
+					#'PartialAttribute'{type = <<"cn">>, vals = [UsuLogin2]},
 					#'PartialAttribute'{type = <<"givenName">>, vals = [GivenName]},
 					#'PartialAttribute'{type = <<"memberUid">>, vals = [GivenName]},
-					#'PartialAttribute'{type = <<"sAMAccountName">>, vals = [GivenName]},  % shortened user name in Active Directory
-					#'PartialAttribute'{type = <<"displayName">>, vals = [GivenName]},     % full user name in Active Directory
-					#'PartialAttribute'{type = <<"member">>, vals = [GivenName]},     	   % full user name in Active Directory
-					#'PartialAttribute'{type = <<"sn">>, vals = [SN]},					   % surname
+					#'PartialAttribute'{type = <<"sAMAccountName">>, vals = [GivenName]}, % shortened user name in Active Directory
+					#'PartialAttribute'{type = <<"displayName">>, vals = [UsuName2]},     % full user name in Active Directory
+					#'PartialAttribute'{type = <<"member">>, vals = [GivenName]},     	  % full user name in Active Directory
+					#'PartialAttribute'{type = <<"sn">>, vals = [SN]},					  % surname
 					#'PartialAttribute'{type = <<"creatorsName">>, vals = [AdminLdap]},
 					#'PartialAttribute'{type = <<"namingContexts">>, vals = [<<"dc=unb,dc=br">>]},
 					#'PartialAttribute'{type = <<"o">>, vals = [<<"UnB">>]},
 					#'PartialAttribute'{type = <<"mail">>, vals = [UsuEmail2]},
 					#'PartialAttribute'{type = <<"email">>, vals = [UsuEmail2]},
 					#'PartialAttribute'{type = <<"login">>, vals = [UsuLogin2]},
+					#'PartialAttribute'{type = <<"name">>, vals = [UsuName2]},
 					#'PartialAttribute'{type = <<"cpf">>, vals = [UsuCpf2]},
 					#'PartialAttribute'{type = <<"passwd">>, vals = [UsuSenha2]},
 					#'PartialAttribute'{type = <<"roles">>, vals = ListaPerfil2},
+					#'PartialAttribute'{type = <<"roleOccupant">>, vals = ListaPerfil2},
 					#'PartialAttribute'{type = <<"distinguishedName">>, vals = [UsuLogin2]},
 					#'PartialAttribute'{type = <<"active">>, vals = [Active2]},
 					#'PartialAttribute'{type = <<"endereco">>, vals = [Endereco2]},
@@ -573,10 +577,24 @@ make_result_entry(#user{id = UsuId,
 		[] -> Attributes2 = Attributes;
 		_ -> Attributes2 = [ R || R <- Attributes, lists:member(R#'PartialAttribute'.type, AtrributesToReturn) ]
 	end,
-	{searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
+	#'SearchResultEntry'{objectName = ObjectName,
 										  attributes = Attributes2
-										}
-	}.
+										}.
+
+
+make_result_entry_list_([], _, _, ItemList) -> 
+	{searchResEntry, ItemList};
+make_result_entry_list_([H|T], AdminLdap, AtrributesToReturn, ItemList) ->
+	Item = make_result_entry_item(H, AdminLdap, AtrributesToReturn),
+	make_result_entry_list_(T, AdminLdap, AtrributesToReturn, [Item | ItemList]).
+
+make_result_entry_list(L, AdminLdap, AtrributesToReturn) -> make_result_entry_list_(L, AdminLdap, AtrributesToReturn, []).
+
+make_result_entry(User, AdminLdap, AtrributesToReturn) -> 
+	Item = make_result_entry_item(User, AdminLdap, AtrributesToReturn),
+	{searchResEntry, Item}.
+
+											
 
 
 make_result_done(ResultCode) ->
@@ -631,131 +649,107 @@ handle_bind_request_admin(Name,
 	{ok, [BindResponse]}.
 	
 
--spec handle_request_search_login(binary(), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
+-spec handle_request_search_login(binary(), binary(), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
 handle_request_search_login(Name, 
-							#state{ldap_admin = AdminLdap,
-								   search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
-								   search_success_metric_name = SearchSuccessMetricName,
-								   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
-								   Ip, Port, TimestampBin, AttributesToReturn) ->	
+						    Attribute,
+							State = #state{ldap_admin = AdminLdap,
+										   search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
+										   search_success_metric_name = SearchSuccessMetricName,
+										   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
+										   Ip, Port, TimestampBin, AttributesToReturn) ->	
 	case ems_util:parse_ldap_name(Name) of
 		{ok, _, UserLogin, _BaseFilter} ->
 			case ems_user:find_by_login(UserLogin) of
 				{error, Reason, ReasonDetail} ->
 					ems_db:inc_counter(SearchInvalidCredentialMetricName),
-					ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
-					ems_user:add_history(#user{login = UserLogin}, 
-										 #service{}, 
-										 #request{timestamp = TimestampBin,
-												  code = ?LDAP_INVALID_CREDENTIALS,
-												  reason = Reason,
-												  reason_detail = ReasonDetail,
-												  operation = search_login,
-												  host = Ip,
-												  protocol = ldap,
-												  port = Port}),
-					ResultDone = make_result_done(invalidCredentials),
-					{ok, [ResultDone]};
-				{ok, User = #user{active = Active}} -> 
-						case Active orelse AuthAllowUserInativeCredentials of
-							true -> 
-								ems_db:inc_counter(SearchSuccessMetricName),
-								ems_logger:info("ems_ldap_handler search ~p ~p success.", [UserLogin, User#user.name]),
-								ResultEntry = make_result_entry(User, AdminLdap, AttributesToReturn),
-								ResultDone = make_result_done(success),
-								ems_user:add_history(User, 
-													 #service{}, 
-													 #request{timestamp = TimestampBin,
-															  code = ?LDAP_SUCCESS,
-															  reason = success,
-															  operation = search_login,
-															  host = Ip,
-															  protocol = ldap,
-															  port = Port}),
-								{ok, [ResultEntry, ResultDone]};
-							false -> 
-								ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
-								ems_user:add_history(User, 
-													 #service{}, 
-													 #request{timestamp = TimestampBin,
-															  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
-															  reason = access_denied,
-															  reason_detail = einative_user,
-															  operation = search_login,
-															  host = Ip,
-															  protocol = ldap,
-															  port = Port}),
-								ResultDone = make_result_done(insufficientAccessRights),
-								{ok, [ResultDone]}
-						end
-			end;
-		{error, Reason} -> 
-			ems_logger:error("ems_ldap_handler handle_request_search_login parse invalid name ~p.", [Name]),
-			ems_user:add_history(#user{login = Name},  
-								 #service{}, 
-								 #request{timestamp = TimestampBin,
-										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
-										  reason = access_denied,
-										  reason_detail = einvalid_search_name,
-										  reason_exception = Reason,
-										  operation = bind_request,
-										  host = Ip,
-										  protocol = ldap,
-										  port = Port}),
-			ResultDone = make_result_done(invalidCredentials),
-			{ok, [ResultDone]}
-	end.
-	
--spec handle_request_search_filter_or(list(tuple()), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
-handle_request_search_filter_or(FilterOr, 
-								#state{ldap_admin = AdminLdap}, 
-								Ip, Port, TimestampBin, AttributesToReturn) ->	
-	case ems_util:parse_ldap_filter(FilterOr) of
-		{ok, Filter} ->
-			case ems_user:find_by_filter_or([], Filter) of
-				{error, Reason, ReasonDetail} ->
-					ems_logger:error("ems_ldap_handler search filter_or ~p does not exist.", [Filter]),
-					ems_user:add_history(#user{}, 
-										 #service{}, 
-										 #request{timestamp = TimestampBin,
-												  code = ?LDAP_INVALID_CREDENTIALS,
-												  reason = Reason,
-												  reason_detail = ReasonDetail,
-												  operation = search_filter_or,
-												  host = Ip,
-												  protocol = ldap,
-												  port = Port}),
-					ResultDone = make_result_done(invalidCredentials),
-					{ok, [ResultDone]};
-				{ok, Users} -> 
-					ems_logger:info("ems_ldap_handler search filter_or ~p success.", [Filter]),
-					ResultEntry = make_result_entry(hd(Users), AdminLdap, AttributesToReturn),
+					case Attribute of
+						<<>> ->
+							ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
+							ems_user:add_history(#user{login = UserLogin}, 
+												 #service{}, 
+												 #request{timestamp = TimestampBin,
+														  code = ?LDAP_NO_SUCH_OBJECT,
+														  reason = Reason,
+														  reason_detail = ReasonDetail,
+														  operation = search_login,
+														  host = Ip,
+														  protocol = ldap,
+														  port = Port}),
+							ResultDone = make_result_done(noSuchObject),
+							{ok, [ResultDone]};
+						_ -> 
+							case ems_util:parse_ldap_attribute(Attribute) of
+								{ok, Field} -> 
+									do_find_by_filter_or([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn);
+								{error, einvalid_field} ->
+									ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
+									ems_user:add_history(#user{login = UserLogin}, 
+														 #service{}, 
+														 #request{timestamp = TimestampBin,
+																  code = ?LDAP_NO_SUCH_ATTRIBUTE,
+																  reason = einvalid_field,
+																  reason_detail = noSuchAttribute,
+																  operation = search_login,
+																  host = Ip,
+																  protocol = ldap,
+																  port = Port}),
+									ResultDone = make_result_done(noSuchAttribute),
+									{ok, [ResultDone]}
+							end
+					end;
+				{ok, User} -> 
+					ems_db:inc_counter(SearchSuccessMetricName),
+					ems_logger:info("ems_ldap_handler search ~p ~p success.", [UserLogin, User#user.name]),
+					ResultEntry = make_result_entry(User, AdminLdap, AttributesToReturn),
 					ResultDone = make_result_done(success),
-					ems_user:add_history(#user{}, 
+					ems_user:add_history(User, 
 										 #service{}, 
 										 #request{timestamp = TimestampBin,
 												  code = ?LDAP_SUCCESS,
 												  reason = success,
-												  operation = search_filter_or,
+												  operation = search_login,
 												  host = Ip,
 												  protocol = ldap,
 												  port = Port}),
 					{ok, [ResultEntry, ResultDone]}
 			end;
 		{error, Reason} -> 
+			ems_logger:error("ems_ldap_handler handle_request_search_login inappropriate matching name ~p.", [Name]),
+			ems_user:add_history(#user{login = Name},  
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INAPPROPRIATE_MATCHING,
+										  reason = inappropriateMatching,
+										  reason_detail = einvalid_search_name,
+										  reason_exception = Reason,
+										  operation = search_login,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			ResultDone = make_result_done(inappropriateMatching),
+			{ok, [ResultDone]}
+	end.
+	
+-spec handle_request_search_filter_or(list(tuple()), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
+handle_request_search_filter_or(FilterOr, 
+								State = #state{ldap_admin = AdminLdap}, 
+								Ip, Port, TimestampBin, AttributesToReturn) ->	
+	case ems_util:parse_ldap_filter(FilterOr) of
+		{ok, Filter} -> do_find_by_filter_or(Filter, State, Ip, Port, TimestampBin, AttributesToReturn);
+		{error, Reason} -> 
 			ems_logger:error("ems_ldap_handler handle_request parse invalid filter or ~p.", [FilterOr]),
 			ems_user:add_history(#user{},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
-										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
-										  reason = access_denied,
+										  code = ?LDAP_INAPPROPRIATE_MATCHING,
+										  reason = inappropriateMatching,
 										  reason_detail = einvalid_search_request_filter_or,
 										  reason_exception = Reason,
-										  operation = bind_request,
+										  operation = search_filter_or,
 										  host = Ip,
 										  protocol = ldap,
 										  port = Port}),
-			BindResponse = make_bind_response(invalidCredentials, <<>>),
+			BindResponse = make_bind_response(inappropriateMatching, <<>>),
 			{ok, [BindResponse]}
 	end.
 
@@ -777,6 +771,56 @@ handle_request_search_filter_or(FilterOr,
 %	ems_logger:info("ems_ldap_handler request supported capabilities."),
 %	ResultDone = make_result_done(success),
 %	{ok, [ResultEntry, ResultDone]}.
+
+
+do_find_by_filter_or(Filter, 
+					 #state{ldap_admin = AdminLdap}, 
+					 Ip, Port, TimestampBin, AttributesToReturn) ->
+	case ems_user:find_by_filter_or([], Filter) of
+		{error, Reason, ReasonDetail} ->
+			ems_logger:error("ems_ldap_handler search filter_or ~p does not exist.", [Filter]),
+			ems_user:add_history(#user{}, 
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_NO_SUCH_OBJECT,
+										  reason = Reason,
+										  reason_detail = ReasonDetail,
+										  operation = search_filter_or,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			ResultDone = make_result_done(noSuchObject),
+			{ok, [ResultDone]};
+		{ok, [User|_]} -> 
+			io:format("users is ~p\n", [User]),
+			ems_logger:info("ems_ldap_handler search filter_or ~p success.", [Filter]),
+			ResultEntry = make_result_entry(User, AdminLdap, AttributesToReturn),
+			ResultDone = make_result_done(success),
+			ems_user:add_history(User, 
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_SUCCESS,
+										  reason = success,
+										  operation = search_filter_or,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			{ok, [ResultEntry, ResultDone]};
+		{ok, []} -> 
+			ems_logger:error("ems_ldap_handler search filter_or ~p does not exist.", [Filter]),
+			ems_user:add_history(#user{}, 
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_NO_SUCH_OBJECT,
+										  reason = enoent,
+										  reason_detail = empty_list,
+										  operation = search_filter_or,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			ResultDone = make_result_done(noSuchObject),
+			{ok, [ResultDone]}
+	end.
 
 
 % Autentica users possibilitando users inativos se autenticarem se o flag AuthAllowUserInativeCredentials for true  

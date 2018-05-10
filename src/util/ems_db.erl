@@ -14,8 +14,8 @@
 		 match/2, 
 		 find/1, find/2, find/3, find/4, find/5, 
 		 find_by_id/2, find_by_id/3, filter/2,
-		 find_first/2, find_first/3, find_first/4, 
-		 field_position/3, sort/2]).
+		 find_first/2, find_first/3, find_first/4,
+		 sort/2]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
 -export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/3]).
@@ -666,12 +666,10 @@ sort(Records, SortList) ->
 
 sort_(List, _, []) -> List;
 sort_(List, FieldsTable, [SortField|SortFieldT]) ->
-	io:format("field_position(~p, ~p, 1),\n", [SortField, FieldsTable]),
 	FldPos = field_position(SortField, FieldsTable, 1),
 	List2 = lists:sort(fun(A, B) -> 
 			{_, FldValue1} = lists:nth(FldPos, A),
 			{_, FldValue2} = lists:nth(FldPos, B),
-			io:format("aqui ~p ~p \n", [FldPos, A]),
 			FldValue1 < FldValue2 
 		end, List),
 	sort_(List2, FieldsTable, SortFieldT).
@@ -776,32 +774,22 @@ filter(Tab, []) ->
 		  )
 	   end,
 	mnesia:activity(async_dirty, F);
-filter(Tab, [{F1, "==", V1}]) ->
-	Fields =  mnesia:table_info(Tab, attributes),
-	FieldPosition = field_position(F1, Fields, 2),
-	FieldValue = field_value(V1),
-	case field_has_index(FieldPosition, Tab) of
-		false ->
-			Fun = fun() -> 
-						qlc:e(qlc:q([R || R <- mnesia:table(Tab), element(FieldPosition, R) == FieldValue])) 
-				  end,
-			mnesia:activity(async_dirty, Fun);
-		true ->
-			mnesia:dirty_index_read(Tab, FieldValue, FieldPosition)
-	end;
 filter(Tab, FilterList) when is_list(FilterList) -> 
+	io:format("Filter ~p !!!!!!!!!!!!!  ~p\n", [Tab, FilterList]),
 	F = fun() ->
 			%FieldsTable =  mnesia:table_info(Tab, attributes),
 			%ExprWhere0 = [io_lib:format("element(~s, R) ~s ~p", integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList],
 			%ExprWhere = string:join(ExprWhere0, ","),
 			ExprWhere = filter_condition(Tab, FilterList),
 			ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, ExprWhere, <<"].">>])),
-			?DEBUG("ems_db find smnt ~p.", [ExprQuery]),
+			io:format("ExprQuery is ~p\n", [ExprQuery]),
+			?DEBUG("ems_db filter generate expression query ~p to table ~p.", [ExprQuery, Tab]),
 			qlc:string_to_handle(ExprQuery)
 		end,
 	ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {filter, Tab, FilterList}, F),
 	mnesia:activity(async_dirty, fun () -> qlc:eval(ParsedQuery) end);
 filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
+	io:format("filter tuple !!!!!!!!!!!!!  ~p\n", [FilterTuple]),
 	filter(Tab, [FilterTuple]).
 
 
@@ -820,12 +808,11 @@ filter_condition(Tab, [{'or', FilterList}|T], FieldsTable, Result) ->
 	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultOr] | Result]);
 
 filter_condition(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
-	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V) ],
+	Condition = filter_condition_create(F, Op, V, FieldsTable, <<>>),
 	filter_condition(Tab, [], FieldsTable, [Condition | Result]);
 filter_condition(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
-	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V), <<", ">> ],
+	Condition = filter_condition_create(F, Op, V, FieldsTable, <<", ">>),
 	filter_condition(Tab, T, FieldsTable, [Condition | Result]).
-
 
 filter_condition_or(_, [], _, Result) -> 
 	lists:reverse(Result);
@@ -838,13 +825,40 @@ filter_condition_or(Tab, [{'or', FilterList}|T], FieldsTable, Result) ->
 	filter_condition(Tab, T, FieldsTable, [[<<" orelse ">> | ResultOr] | Result]);
 
 filter_condition_or(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
-	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V) ],
+	Condition = filter_condition_create(F, Op, V, FieldsTable, <<>>),
 	filter_condition_or(Tab, [], FieldsTable, [Condition | Result]);
 filter_condition_or(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
-	Condition = [ <<"element(">>, integer_to_binary(field_position(F, FieldsTable, 2)), <<", R) ">>, Op, <<" ">>, filter_condition_value(V), <<" orelse ">> ],
+	Condition = filter_condition_create(F, Op, V, FieldsTable, <<" orelse ">>),
 	filter_condition_or(Tab, T, FieldsTable, [Condition | Result]).
 
+filter_condition_create(F, Op, V, FieldsTable, BoolOp) ->
+	io:format("------------>F is ~p\n", [F]),
+	FieldAtom = filter_condition_parse_field(F),
+	FieldPos = field_position(FieldAtom, FieldsTable, 2),
+	FieldPosBinary = integer_to_binary(FieldPos),
+	case FieldAtom == login of
+		true ->
+			case is_integer(V) of
+				true -> LoginSemBarra = integer_to_binary(V);
+				false -> LoginSemBarra = list_to_binary(re:replace(V, "/", "", [{return, list}]))
+			end,
+			Condition1 = [ <<"(element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(LoginSemBarra), <<" orelse ">> ],
+			Condition2 = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(V), <<")">>, BoolOp ],
+			io:format("aqui3 ~p\n", [[Condition1, Condition2]]),
+			[Condition1 | Condition2];
+		false ->
+			Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(V), BoolOp ],
+			Condition
+	end.
+
+filter_condition_parse_field(F) when is_list(F) -> list_to_atom(string:to_lower(F));
+filter_condition_parse_field(F) when is_binary(F) -> list_to_atom(string:to_lower(binary_to_list(F)));
+filter_condition_parse_field(F) when is_atom(F) -> F;
+filter_condition_parse_field(_) -> erlang:error(einvalid_field_filter).
+
+
 filter_condition_value(V) when is_binary(V) -> [ <<"<<\"">>, V, <<"\">>">>];
+filter_condition_value(V) when is_list(V) -> [ <<"\"">>, V, <<"\"">>];
 filter_condition_value(V) when is_integer(V) -> integer_to_binary(V);
 filter_condition_value(V) when is_atom(V) -> atom_to_binary(V, utf8);
 filter_condition_value(V) -> V.
@@ -985,6 +999,7 @@ field_has_index(FldPos, Tab) ->
 
 
 % Return the field position on record
+-spec field_position(binary() | string() | atom(), list(atom()), non_neg_integer()) -> non_neg_integer().
 field_position(_, [], _) -> erlang:error(einvalid_field_filter);
 field_position(Field, Fields, Idx) when is_list(Field) -> 
 	field_position(list_to_atom(Field), Fields, Idx);
