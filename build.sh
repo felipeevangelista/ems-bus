@@ -131,24 +131,23 @@ function clean_deps(){
 	find ./deps  -maxdepth 1 -type d -not -name "*jiffy*" | sed '1d' | xargs rm -rf 
 }
 
-function prerequisites(){
+function prerequisites_docker(){
   printf "Checking ErlangMS prerequisites... "
   apt-get -y install libodbc1
 
-  # Create .hosts.erlang if it not exist
+  echo "Create .hosts.erlang if it not exist..."
   if [ ! -f $HOME/.hosts.erlang ]; then
 	echo \'$(hostname | cut -d. -f1)\'. > $HOME/.hosts.erlang 
   fi
 
-  # Config /etc/odbcinst.ini if necessary for FreeTDS SQL-server driver
+  echo "Config /etc/odbcinst.ini FreeTDS SQL-server driver..."
   JTDS_ENTRY_CONF=$(sed -rn '/\[FreeTDS\]/, /(^$|^#)/p' /etc/odbcinst.ini 2> /dev/null)
   if [ -z "$JTDS_ENTRY_CONF" ]; then
-	updatedb
-	LIB_TDODBC_PATH=$(locate libtdsodbc.so | sed -n '1p')
+	#LIB_TDODBC_PATH=$(locate libtdsodbc.so | sed -n '1p')
+	LIB_TDODBC_PATH="/usr/lib/x86_64-linux-gnu/libodbc.so.2"
 	if [ ! -z "$LIB_TDODBC_PATH" ]; then
 		echo " " >> /etc/odbcinst.ini 
 		echo "# Driver for SQL-server" >> /etc/odbcinst.ini 
-		echo "# Setup from the ems-bus package" >> /etc/odbcinst.ini 
 		echo "[FreeTDS]" >> /etc/odbcinst.ini 
 		echo "Description=FreeTDS Driver" >> /etc/odbcinst.ini 
 		echo "Driver=$LIB_TDODBC_PATH" >> /etc/odbcinst.ini 
@@ -156,20 +155,7 @@ function prerequisites(){
 	fi
   fi
 
-  # Config /etc/security/limits.conf if necessary for erlangms group
-  #if ! grep -q '@erlangms' /etc/security/limits.conf ; then
-  #	echo " " >> /etc/security/limits.conf
-  #	echo "# Security for ERLANGMS ESB" >> /etc/security/limits.conf
-  # echo "@erlangms         hard    nofile      500000" >> /etc/security/limits.conf
-  #	echo "@erlangms         soft    nofile      500000" >> /etc/security/limits.conf
-  #	echo "@erlangms         hard    nproc       500000" >> /etc/security/limits.conf
-  #	echo "@erlangms         soft    nproc       500000" >> /etc/security/limits.conf
-  #	echo "" >> /etc/security/limits.conf
-  #	sed -ri '/^# *End of file$/d;' /etc/security/limits.conf
-  #	sed -i '$ a # End of file' /etc/security/limits.conf	 
-  #fi
-
-  # Tunning fs.file-max. At least it should be 1000000
+  echo "Tunning fs.file-max. At least it should be 1000000..."
   FILE_MAX_DEF=1000000
   FILE_MAX=$(cat /proc/sys/fs/file-max)
   if [ $FILE_MAX -lt $FILE_MAX_DEF ]; then
@@ -254,7 +240,7 @@ if [ "$PROFILE" = "docker" ]; then
 	sudo docker tag "$ID" $IMAGE:$VERSION
 else
 	if [ "$ERLANGMS_IN_DOCKER" = "true" ]; then
-		prerequisites
+		prerequisites_docker
 	fi
 
 	# Erlang Runtime version installled
