@@ -253,6 +253,9 @@ if [ "$PROFILE" = "docker" ]; then
 	sudo docker tag "$ID" $IMAGE:latest
 	sudo docker tag "$ID" $IMAGE:$VERSION
 else
+	if [ "$ERLANGMS_IN_DOCKER" = "true" ]; then
+		prerequisites
+	fi
 
 	# Erlang Runtime version installled
 	ERLANG_VERSION_OS=`erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().'  -noshell 2> /dev/null | sed 's/[^0-9]//g'`
@@ -264,7 +267,6 @@ else
 								   }'  /etc/os-release)
 
 	if [ -s "$ERLANGMS_IN_DOCKER" ]; then
-		prerequisites
 		check_erlang_version	
 	fi
 
