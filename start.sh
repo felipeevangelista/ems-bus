@@ -103,6 +103,12 @@ if [ "$PROFILE" = "local" ]; then
 	fi
 else
 	epmd -kill 2> /dev/null
-	sudo docker run -p 2300:2300 -p 2301:2301 -p 2389:2389 -p 4369:4369 -v ~/.erlangms:/var/opt/erlangms/.erlangms -it erlangms 
+	sudo docker run -p 2300:2300 \
+					-p 2301:2301 \
+					-p 2389:2389 \
+					-p 4369:4369 \
+					-v ~/.erlangms:/var/opt/erlangms/.erlangms \
+					-v ~/.odbc.ini:/var/opt/erlangms/.odbc.ini \
+					-it erlangms /bin/bash
 fi
 

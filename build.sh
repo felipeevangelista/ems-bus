@@ -131,6 +131,64 @@ function clean_deps(){
 	find ./deps  -maxdepth 1 -type d -not -name "*jiffy*" | sed '1d' | xargs rm -rf 
 }
 
+function prerequisites(){
+  apt-get -y install libodbc1
+
+  # Create .hosts.erlang if it not exist
+  if [ ! -f $HOME/.hosts.erlang ]; then
+	echo \'$(hostname | cut -d. -f1)\'. > $HOME/.hosts.erlang 
+  fi
+
+  # Config /etc/odbcinst.ini if necessary for FreeTDS SQL-server driver
+  JTDS_ENTRY_CONF=$(sed -rn '/\[FreeTDS\]/, /(^$|^#)/p' /etc/odbcinst.ini 2> /dev/null)
+  if [ -z "$JTDS_ENTRY_CONF" ]; then
+	updatedb
+	LIB_TDODBC_PATH=$(locate libtdsodbc.so | sed -n '1p')
+	if [ ! -z "$LIB_TDODBC_PATH" ]; then
+		echo " " >> /etc/odbcinst.ini 
+		echo "# Driver for SQL-server" >> /etc/odbcinst.ini 
+		echo "# Setup from the ems-bus package" >> /etc/odbcinst.ini 
+		echo "[FreeTDS]" >> /etc/odbcinst.ini 
+		echo "Description=FreeTDS Driver" >> /etc/odbcinst.ini 
+		echo "Driver=$LIB_TDODBC_PATH" >> /etc/odbcinst.ini 
+		echo " " >> /etc/odbcinst.ini 
+	fi
+  fi
+
+  # Config /etc/security/limits.conf if necessary for erlangms group
+  #if ! grep -q '@erlangms' /etc/security/limits.conf ; then
+  #	echo " " >> /etc/security/limits.conf
+  #	echo "# Security for ERLANGMS ESB" >> /etc/security/limits.conf
+  # echo "@erlangms         hard    nofile      500000" >> /etc/security/limits.conf
+  #	echo "@erlangms         soft    nofile      500000" >> /etc/security/limits.conf
+  #	echo "@erlangms         hard    nproc       500000" >> /etc/security/limits.conf
+  #	echo "@erlangms         soft    nproc       500000" >> /etc/security/limits.conf
+  #	echo "" >> /etc/security/limits.conf
+  #	sed -ri '/^# *End of file$/d;' /etc/security/limits.conf
+  #	sed -i '$ a # End of file' /etc/security/limits.conf	 
+  #fi
+
+  # Tunning fs.file-max. At least it should be 1000000
+  FILE_MAX_DEF=1000000
+  FILE_MAX=$(cat /proc/sys/fs/file-max)
+  if [ $FILE_MAX -lt $FILE_MAX_DEF ]; then
+		# Ajusta ou adiciona o valor para fs.file-max
+		if grep -q 'fs.file-max' /etc/sysctl.conf ; then
+			sed -ri "s/^fs.file-max=[0-9]{1,10}$/fs.file-max=$FILE_MAX_DEF/" /etc/sysctl.conf
+		else
+			echo "" >> /etc/sysctl.conf
+			echo "# File descriptors limit" >> /etc/sysctl.conf
+			echo "fs.file-max=$FILE_MAX_DEF" >> /etc/sysctl.conf
+		fi
+		sysctl -p > /dev/null 2>&1
+  fi
+
+
+}	
+	
+	
+	
+
 # ========================== main ==============================
 
 if [ "$1" = "--help" ]; then
@@ -179,6 +237,8 @@ if [ "$PROFILE" = "docker" ]; then
 	sudo docker tag "$ID" $IMAGE:latest
 	sudo docker tag "$ID" $IMAGE:$VERSION
 else
+	prerequisites
+
 	# Erlang Runtime version installled
 	ERLANG_VERSION_OS=`erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().'  -noshell 2> /dev/null | sed 's/[^0-9]//g'`
 
@@ -191,6 +251,7 @@ else
 	if [ -s "$ERLANGMS_IN_DOCKER" ]; then
 		check_erlang_version	
 	fi
+
 
 	echo "============================================================================="
 	echo "Distro: $LINUX_DESCRIPTION"
