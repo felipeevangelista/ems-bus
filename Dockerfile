@@ -14,10 +14,10 @@ RUN echo deb http://ftp.br.debian.org/debian/ stretch-updates main contrib non-f
 
 # Atualiza o apt
 RUN apt-get update
-
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
 
 # Define o locale para pt_BR.UTF-8
-RUN apt-get install locales -q -y && locale-gen pt_BR.UTF-8  
+RUN apt-get install locales locales-all -q -y && locale-gen pt_BR.UTF-8  
 ENV LANG pt_BR.UTF-8  
 ENV LANGUAGE pt_BR:pt:en 
 ENV LC_ALL pt_BR.UTF-8
