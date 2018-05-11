@@ -858,7 +858,7 @@ filter_condition_parse_field(_) -> erlang:error(einvalid_field_filter).
 
 
 filter_condition_value(V) when is_binary(V) -> [ <<"<<\"">>, V, <<"\">>">>];
-filter_condition_value(V) when is_list(V) -> [ <<"\"">>, V, <<"\"">>];
+filter_condition_value(V) when is_list(V) -> [ <<"<<\"">>, list_to_binary(V), <<"\">>">>];
 filter_condition_value(V) when is_integer(V) -> integer_to_binary(V);
 filter_condition_value(V) when is_atom(V) -> atom_to_binary(V, utf8);
 filter_condition_value(V) -> V.
