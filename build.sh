@@ -228,8 +228,23 @@ done
 
 
 if [ "$PROFILE" = "docker" ]; then
-	VERSION=$(cat src/ems_bus.app.src | sed -rn  's/^.*\{vsn.*([0-9]{1,2}\.[0-9]{1,2}.[0-9]{1,2}).*$/\1/p')
+	#VERSION=$(cat src/ems_bus.app.src | sed -rn  's/^.*\{vsn.*([0-9]{1,2}\.[0-9]{1,2}.[0-9]{1,2}).*$/\1/p')
+	VERSION=$$
 	IMAGE=erlangms
+
+	ID_IMAGE=$(sudo docker ps -f name=erlangms | awk '{print $1}' | sed '1d')
+	if [ ! -z "$ID_IMAGE" ]; then
+		echo "Stop current image $IMAGE..."
+		sudo docker stop $ID_IMAGE > /dev/null 2>&1
+	fi
+
+	LS_IMAGES=$(sudo docker images $IMAGE)
+	if [ ! -z "$LS_IMAGE" ]; then
+		echo "Remove previous images $LS_IMAGES..."
+		sudo docker rmi $LS_IMAGES > /dev/null 2>&1
+	fi
+
+	sudo docker rm erlangms > /dev/null 2>&1
 
 	sudo docker build -t $IMAGE:$VERSION $(dirname $0)
 
