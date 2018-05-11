@@ -17,7 +17,7 @@ RUN apt-get update
 
 
 # Define o locale para pt_BR.UTF-8
-RUN apt-get install locales && locale-gen pt_BR.UTF-8  
+RUN apt-get install locales -q -y && locale-gen pt_BR.UTF-8  
 ENV LANG pt_BR.UTF-8  
 ENV LANGUAGE pt_BR:pt:en 
 ENV LC_ALL pt_BR.UTF-8
@@ -31,12 +31,11 @@ ENV TZ America/Sao_Paulo
 
 
 # Alguns softwares uteis para administracao
-RUN apt-get update && \
-    apt-get install -q -y --no-install-recommends curl wget zip unzip vim
+RUN apt-get install -q -y --no-install-recommends curl wget zip unzip vim
     
 
 # Alguns softwares importantes para o barramento
-RUN apt-get install unixodbc tdsodbc freetds-common odbcinst1debian2 odbcinst libcppdb-sqlite3-0 libodbc1 libiodbc2 libcppdb-odbc0 libltdl7 libcppdb0 ldap-utils
+RUN apt-get install -q -y unixodbc tdsodbc freetds-common odbcinst1debian2 odbcinst libcppdb-sqlite3-0 libodbc1 libiodbc2 libcppdb-odbc0 libltdl7 libcppdb0 ldap-utils
 
 
 RUN cd $HOME && \
