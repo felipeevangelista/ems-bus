@@ -7,6 +7,13 @@ ENV ERLANGMS_IN_DOCKER true
 
 WORKDIR $HOME
 
+# Source list
+RUN echo deb http://ftp.br.debian.org/debian stretch main contrib non-free             >> /etc/apt/sources.list
+RUN echo deb http://security.debian.org/ stretch/updates main contrib non-free         >> /etc/apt/sources.list
+RUN echo deb http://ftp.br.debian.org/debian/ stretch-updates main contrib non-free    >> /etc/apt/sources.list
+
+RUN apt-get install locales
+
 # Define o locale para pt_BR.UTF-8
 RUN locale-gen pt_BR.UTF-8  
 ENV LANG pt_BR.UTF-8  
@@ -19,12 +26,6 @@ RUN echo America/Sao_Paulo > /etc/timezone && \
     ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && \
     dpkg-reconfigure --frontend noninteractive tzdata
 ENV TZ America/Sao_Paulo
-
-
-# Source list
-RUN echo deb http://ftp.br.debian.org/debian stretch main contrib non-free             >> /etc/apt/sources.list
-RUN echo deb http://security.debian.org/ stretch/updates main contrib non-free         >> /etc/apt/sources.list
-RUN echo deb http://ftp.br.debian.org/debian/ stretch-updates main contrib non-free    >> /etc/apt/sources.list
 
 
 # Alguns softwares uteis para administracao
