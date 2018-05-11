@@ -102,7 +102,7 @@ if [ "$PROFILE" = "local" ]; then
 			--enable-dirty-schedulers
 	fi
 else
-	epmd -kill 2> /dev/null
+	epmd -kill > /dev/null 2>&1
 	
 	ID_IMAGE=$(sudo docker ps -f name=erlangms | awk '{print $1}' | sed '1d')
 	if [ ! -z "$ID_IMAGE" ]; then

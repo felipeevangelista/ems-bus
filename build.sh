@@ -246,7 +246,7 @@ if [ "$PROFILE" = "docker" ]; then
 
 	sudo docker rm erlangms > /dev/null 2>&1
 
-	sudo docker build -t $IMAGE:$VERSION $(dirname $0)
+	sudo docker build --no-cache -t $IMAGE:$VERSION $(dirname $0)
 
 	ID=$(sudo docker images | grep "$IMAGE" | head -n 1 | awk '{print $3}')
 
