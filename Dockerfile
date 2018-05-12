@@ -28,6 +28,7 @@ ENV LANGUAGE pt_BR:pt:en
 ENV LC_ALL pt_BR.UTF-8
 ENV LS_OPTIONS='--color=auto'
 
+
 # Define timezone para horario de Brasilia (America/Sao_Paulo)
 RUN echo America/Sao_Paulo > /etc/timezone && \
     ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && \
@@ -50,14 +51,27 @@ RUN apt-get install -q -y tmux git vim nano -y && \
     echo "alias tmux='tmux -u'" >> ~/.bashrc && \
     echo "alias ls='ls $LS_OPTIONS'" >> ~/.bashrc && \
 	echo "alias ll='ls $LS_OPTIONS -l'" >> ~/.bashrc && \
-	echo "alias l='ls $LS_OPTIONS -lA'" >> ~/.bashrc \
-    echo 'set -g default-terminal "screen-256color"' >> ~/.tmux.conf 
+	echo "alias l='ls $LS_OPTIONS -lA'" >> ~/.bashrc && \
+    echo 'set -g default-terminal "screen-256color"' >> ~/.tmux.conf && \
+    git clone --depth=1 https://github.com/amix/vimrc.git ~/.vim_runtime && \
+	sh ~/.vim_runtime/install_awesome_vimrc.sh
 
 
 
 
-# Alguns softwares importantes para o barramento
-RUN apt-get install -q -y unixodbc tdsodbc freetds-common odbcinst1debian2 odbcinst libcppdb-sqlite3-0 libodbc1 libiodbc2 libcppdb-odbc0 libltdl7 libcppdb0 ldap-utils
+# Algumas bibliotecas importantes para o barramento
+RUN apt-get install -q -y unixodbc \
+						  tdsodbc \
+						  freetds-common \
+						  odbcinst1debian2 \
+						  odbcinst \
+						  libcppdb-sqlite3-0 \
+						  libodbc1 \
+						  libiodbc2 \
+						  libcppdb-odbc0 \
+						  libltdl7 \
+						  libcppdb0 \
+						  ldap-utils
 
 
 RUN cd $HOME && \
@@ -67,6 +81,8 @@ RUN cd $HOME && \
 	git checkout v1.0.25.ldap && \
 	./build.sh --profile=local
 
+
+RUN apt-get clean && apt-get --purge -y autoremove
 
 
 # Expose the ports we're interested in
