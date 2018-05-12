@@ -34,8 +34,17 @@ ENV TZ America/Sao_Paulo
 
 
 # Alguns softwares uteis para administracao
-RUN apt-get install -q -y --no-install-recommends curl wget zip unzip vim
+RUN apt-get install -q -y --no-install-recommends curl wget zip unzip
     
+
+# Easy development
+RUN apt-get install -q -y tmux git vim -y && \
+    mkdir -p ~/.vim/autoload ~/.vim/bundle && \
+    curl -LSso ~/.vim/autoload/pathogen.vim \
+        https://tpo.pe/pathogen.vim && \
+    echo "alias tmux='tmux -u'" >> ~/.bashrc && \
+    echo 'set -g default-terminal "screen-256color"' >> ~/.tmux.conf
+
 
 # Alguns softwares importantes para o barramento
 RUN apt-get install -q -y unixodbc tdsodbc freetds-common odbcinst1debian2 odbcinst libcppdb-sqlite3-0 libodbc1 libiodbc2 libcppdb-odbc0 libltdl7 libcppdb0 ldap-utils
@@ -48,13 +57,14 @@ RUN cd $HOME && \
 	git checkout v1.0.25.ldap && \
 	./build.sh --profile=local
 
+
+
 # Expose the ports we're interested in
 EXPOSE 2300 2301 2389 4369
 
 VOLUME ~/.erlangms
 VOLUME ~/.odbc.ini
 
-ENV DEBIAN_FRONTEND teletype
 
 CMD ["/var/opt/erlangms/ems-bus/start.sh"]
 
