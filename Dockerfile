@@ -3,13 +3,9 @@ FROM erlang:20.3.6
 MAINTAINER evertonagilar <evertonagilar@gmail.com>
 
 ENV HOME /var/opt/erlangms
-ENV ERLANGMS_IN_DOCKER true
 ENV DEBIAN_FRONTEND=noninteractive
+ENV ERLANGMS_IN_DOCKER true
 ENV TERM xterm-256color
-ENV LANG pt_BR.UTF-8  
-ENV LANGUAGE pt_BR:pt:en 
-ENV LC_ALL pt_BR.UTF-8
-ENV LS_OPTIONS='--color=auto'
 
 WORKDIR $HOME
 
@@ -27,6 +23,10 @@ RUN apt-get install -y --no-install-recommends apt-utils
 
 # Define o locale para pt_BR.UTF-8
 RUN apt-get install locales locales-all -q -y && locale-gen pt_BR.UTF-8  
+ENV LANG pt_BR.UTF-8  
+ENV LANGUAGE pt_BR:pt:en 
+ENV LC_ALL pt_BR.UTF-8
+ENV LS_OPTIONS='--color=auto'
 
 # Define timezone para horario de Brasilia (America/Sao_Paulo)
 RUN echo America/Sao_Paulo > /etc/timezone && \
