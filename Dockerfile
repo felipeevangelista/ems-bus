@@ -5,6 +5,7 @@ MAINTAINER evertonagilar <evertonagilar@gmail.com>
 ENV HOME /var/opt/erlangms
 ENV ERLANGMS_IN_DOCKER true
 ENV DEBIAN_FRONTEND noninteracti
+ENV TERM xterm-256color
 
 WORKDIR $HOME
 
