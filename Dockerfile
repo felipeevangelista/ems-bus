@@ -18,7 +18,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 
 # Atualiza o apt
 RUN apt-get update
-RUN apt-get install -y --no-install-recommends apt-utils
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
 
 
 # Define o locale para pt_BR.UTF-8
@@ -41,8 +41,8 @@ RUN apt-get install -q -y --no-install-recommends curl wget zip unzip
 
 # Easy development
 RUN apt-get install -q -y tmux git vim nano -y && \
-	ln -s /root/.bashrc .bashrc \
-	ln -s /root/.profile .profile \
+	ln -s /root/.bashrc ~/.bashrc && \
+	ln -s /root/.profile ~/.profile && \
     mkdir -p ~/.vim/autoload ~/.vim/bundle && \
     curl -LSso ~/.vim/autoload/pathogen.vim \
         https://tpo.pe/pathogen.vim && \
