@@ -41,17 +41,19 @@ RUN apt-get install -q -y --no-install-recommends curl wget zip unzip
 
 # Easy development
 RUN apt-get install -q -y tmux git vim nano -y && \
+	ln -s /root/.bashrc .bashrc \
+	ln -s /root/.profile .profile \
     mkdir -p ~/.vim/autoload ~/.vim/bundle && \
     curl -LSso ~/.vim/autoload/pathogen.vim \
         https://tpo.pe/pathogen.vim && \
+    echo "export LS_OPTIONS='--color=auto'" >> ~/.bashrc && \
     echo "alias tmux='tmux -u'" >> ~/.bashrc && \
+    echo "alias ls='ls $LS_OPTIONS'" >> ~/.bashrc && \
+	echo "alias ll='ls $LS_OPTIONS -l'" >> ~/.bashrc && \
+	echo "alias l='ls $LS_OPTIONS -lA'" >> ~/.bashrc \
     echo 'set -g default-terminal "screen-256color"' >> ~/.tmux.conf 
 
 
-# ls colored    
-RUN alias ls='ls $LS_OPTIONS' \
-	alias ll='ls $LS_OPTIONS -l' \
-	alias l='ls $LS_OPTIONS -lA'
 
 
 # Alguns softwares importantes para o barramento
