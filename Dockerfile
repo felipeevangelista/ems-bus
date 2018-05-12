@@ -4,8 +4,12 @@ MAINTAINER evertonagilar <evertonagilar@gmail.com>
 
 ENV HOME /var/opt/erlangms
 ENV ERLANGMS_IN_DOCKER true
-ENV DEBIAN_FRONTEND noninteracti
+ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM xterm-256color
+ENV LANG pt_BR.UTF-8  
+ENV LANGUAGE pt_BR:pt:en 
+ENV LC_ALL pt_BR.UTF-8
+ENV LS_OPTIONS='--color=auto'
 
 WORKDIR $HOME
 
@@ -14,17 +18,15 @@ RUN echo deb http://ftp.br.debian.org/debian stretch main contrib non-free      
 RUN echo deb http://security.debian.org/ stretch/updates main contrib non-free         >> /etc/apt/sources.list
 RUN echo deb http://ftp.br.debian.org/debian/ stretch-updates main contrib non-free    >> /etc/apt/sources.list
 
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
 # Atualiza o apt
 RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
+RUN apt-get install -y --no-install-recommends apt-utils
 
 
 # Define o locale para pt_BR.UTF-8
 RUN apt-get install locales locales-all -q -y && locale-gen pt_BR.UTF-8  
-ENV LANG pt_BR.UTF-8  
-ENV LANGUAGE pt_BR:pt:en 
-ENV LC_ALL pt_BR.UTF-8
-
 
 # Define timezone para horario de Brasilia (America/Sao_Paulo)
 RUN echo America/Sao_Paulo > /etc/timezone && \
@@ -43,7 +45,13 @@ RUN apt-get install -q -y tmux git vim nano -y && \
     curl -LSso ~/.vim/autoload/pathogen.vim \
         https://tpo.pe/pathogen.vim && \
     echo "alias tmux='tmux -u'" >> ~/.bashrc && \
-    echo 'set -g default-terminal "screen-256color"' >> ~/.tmux.conf
+    echo 'set -g default-terminal "screen-256color"' >> ~/.tmux.conf 
+
+
+# ls colored    
+RUN alias ls='ls $LS_OPTIONS' \
+	alias ll='ls $LS_OPTIONS -l' \
+	alias l='ls $LS_OPTIONS -lA'
 
 
 # Alguns softwares importantes para o barramento
