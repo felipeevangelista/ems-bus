@@ -4,6 +4,7 @@ MAINTAINER evertonagilar <evertonagilar@gmail.com>
 
 ENV HOME /var/opt/erlangms
 ENV ERLANGMS_IN_DOCKER true
+ENV DEBIAN_FRONTEND noninteracti
 
 WORKDIR $HOME
 
@@ -15,6 +16,7 @@ RUN echo deb http://ftp.br.debian.org/debian/ stretch-updates main contrib non-f
 # Atualiza o apt
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
+
 
 # Define o locale para pt_BR.UTF-8
 RUN apt-get install locales locales-all -q -y && locale-gen pt_BR.UTF-8  
@@ -50,6 +52,8 @@ EXPOSE 2300 2301 2389 4369
 
 VOLUME ~/.erlangms
 VOLUME ~/.odbc.ini
+
+ENV DEBIAN_FRONTEND teletype
 
 CMD ["/var/opt/erlangms/ems-bus/start.sh"]
 
