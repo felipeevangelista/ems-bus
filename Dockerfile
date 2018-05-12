@@ -38,7 +38,7 @@ RUN apt-get install -q -y --no-install-recommends curl wget zip unzip
     
 
 # Easy development
-RUN apt-get install -q -y tmux git vim -y && \
+RUN apt-get install -q -y tmux git vim nano -y && \
     mkdir -p ~/.vim/autoload ~/.vim/bundle && \
     curl -LSso ~/.vim/autoload/pathogen.vim \
         https://tpo.pe/pathogen.vim && \
