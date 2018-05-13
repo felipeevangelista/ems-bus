@@ -34,7 +34,6 @@
 
 start() ->
 	create_database([node()]),
-	ems_cache:new(ems_db_odbc_connection_cache),
 	ems_cache:new(ems_db_parsed_query_cache).
 	
 -spec create_database(list()) -> ok.	
@@ -798,7 +797,7 @@ filter_condition(Tab, FilterList) ->
 	filter_condition(Tab, FilterList, FieldsTable, []).
 	
 filter_condition(_, [], _, Result) -> 
-	iolist_to_binary(Result);
+	iolist_to_binary(lists:reverse(Result));
 
 filter_condition(Tab, [{'or', FilterList}|[]], FieldsTable, Result) ->
 	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
@@ -836,15 +835,14 @@ filter_condition_create(F, Op, V, FieldsTable, BoolOp) ->
 	FieldAtom = filter_condition_parse_field(F),
 	FieldPos = field_position(FieldAtom, FieldsTable, 2),
 	FieldPosBinary = integer_to_binary(FieldPos),
-	case FieldAtom == login of
+	FieldValue = filter_condition_value(V),
+	case FieldAtom == login andalso ((is_binary(V) andalso string:find(binary_to_list(V), "/") =/= nomatch) orelse
+								       (is_list(V) andalso string:find(V, "/") =/= nomatch)) of
 		true ->
-			case is_integer(V) of
-				true -> LoginSemBarra = integer_to_binary(V);
-				false -> LoginSemBarra = list_to_binary(re:replace(V, "/", "", [{return, list}]))
-			end,
+			LoginSemBarra = list_to_binary(re:replace(V, "/", "", [{return, list}])),
 			Condition1 = [ <<"(element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(LoginSemBarra), <<" orelse ">> ],
 			Condition2 = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(V), <<")">>, BoolOp ],
-			io:format("aqui3 ~p\n", [[Condition1, Condition2]]),
+			io:format("gera condicao login sem barra ~p\n", [[Condition1, Condition2]]),
 			[Condition1 | Condition2];
 		false ->
 			Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(V), BoolOp ],
@@ -855,6 +853,7 @@ filter_condition_parse_field(F) when is_list(F) -> list_to_atom(string:to_lower(
 filter_condition_parse_field(F) when is_binary(F) -> list_to_atom(string:to_lower(binary_to_list(F)));
 filter_condition_parse_field(F) when is_atom(F) -> F;
 filter_condition_parse_field(_) -> erlang:error(einvalid_field_filter).
+
 
 
 filter_condition_value(V) when is_binary(V) -> [ <<"<<\"">>, V, <<"\">>">>];

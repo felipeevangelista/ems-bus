@@ -12,45 +12,85 @@
 -record(counter, {key :: atom(), 
      			  value :: non_neg_integer()}).
 
--record(user, {id :: non_neg_integer(), 					%% identificador do usuário (required) (B_Usuario.UsuId)
-			   codigo :: non_neg_integer(),					%% código da pessoa (required) (Tb_Pessoa.PesCodigoPessoa)
-			   login :: binary(),							%% login do usuário (required)
-			   name :: binary(), 							%% nome do usuário (required)
-			   cpf :: binary(),
-			   email :: binary(), 							
-			   password :: binary(),						%% password (required)
-			   dt_expire_password :: binary(),				%% data que o password expira
-			   type :: non_neg_integer(),					%% 0 = interno  1 = tecnico  2 = docente  3 = discente, 4 = terceiros
-			   subtype :: non_neg_integer(),				%% se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
-															%%            6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 
-															%%           10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
-			   passwd_crypto :: binary(),					%% Algoritmo criptografia: SHA1
-			   type_email :: non_neg_integer(),				%% undefined = desconhecido  1 = Institucional  2 = Pessoal
-			   active :: boolean(),							
-			   endereco :: binary(),
-			   complemento_endereco :: binary(),
-			   bairro :: binary(),
-			   cidade :: binary(),
-			   uf :: binary(),
-			   cep :: binary(),
-			   rg :: binary(),
-			   data_nascimento :: binary(),
-			   sexo :: non_neg_integer(),
-			   telefone :: binary(),
-			   celular :: binary(),
-			   ddd :: binary(),
-			   nome_pai :: binary(),
-			   nome_mae :: binary(),
-			   nacionalidade :: non_neg_integer(),
-			   remap_user_id :: non_neg_integer(),
-			   admin :: boolean(),							%% alguns web services podem ser acedidos somente por admins
-			   ctrl_path :: string(),
-			   ctrl_file :: string(),
-			   ctrl_insert,									%% Data que foi inserido no banco mnesia
-			   ctrl_update, 								%% Data que foi atualiado no banco mnesia			
-			   ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-			   ctrl_hash									%% Hash gerado para poder comparar dois registros
+-record(user, {id :: non_neg_integer(), 					%%  1 > id       				-> TB_Usuario.UsuId
+			   codigo :: non_neg_integer(),					%%  2 - codigo   				-> Tb_Pessoa.PesCodigoPessoa
+			   login :: binary(),							%%  3 - login	
+			   name :: binary(), 							%%  4 - name		
+			   cpf :: binary(),								%%  5 - cpf		
+			   email :: binary(), 							%%  6 - email	
+			   password :: binary(),						%%  7 - password 
+			   dt_expire_password :: binary(),				%%  8 - dt_expire_password
+			   type :: non_neg_integer(),					%%  9 - type       				-> 0 = interno  1 = tecnico  2 = docente  3 = discente, 4 = terceiros
+			   subtype :: non_neg_integer(),				%% 10 - subtype 				-> se aluno códigos abaixo:
+															%%			  		 			      1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
+															%%   					              6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 
+															%%           					     10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
+			   passwd_crypto :: binary(),					%% 11 - passwd_crypto 			-> Algoritmo criptografia: SHA1
+			   type_email :: non_neg_integer(),				%% 12 - type_email				-> undefined = desconhecido  1 = Institucional  2 = Pessoal
+			   active :: boolean(),							%% 13 - active
+			   endereco :: binary(),						%% 14 - endereco
+			   complemento_endereco :: binary(),			%% 15 - complemento_endereco
+			   bairro :: binary(),							%% 16 - bairro
+			   cidade :: binary(),							%% 17 - cidade
+			   uf :: binary(),								%% 18 - uf
+			   cep :: binary(),								%% 19 - cep
+			   rg :: binary(),								%% 20 - rg	
+			   data_nascimento :: binary(),					%% 21 - data_nascimento
+			   sexo :: non_neg_integer(),					%% 22 - sexo
+			   telefone :: binary(),						%% 23 - telefone
+			   celular :: binary(),							%% 24 - celular
+			   ddd :: binary(),								%% 25 - ddd
+			   nome_pai :: binary(),						%% 26 - nome_pai
+			   nome_mae :: binary(),						%% 27 - nome_ae
+			   nacionalidade :: non_neg_integer(),			%% 28 - nacionalidade
+			   remap_user_id :: non_neg_integer(),			%% 29 - remap_user_id
+			   admin :: boolean(),							%% 30 - admin					-> alguns web services podem ser acedidos somente por admins
+			   ctrl_path :: string(),						%% 31 - ctrl_path
+			   ctrl_file :: string(),						%% 32 - ctrl_file
+			   ctrl_insert :: calendar:timestamp(),			%% 33 - ctrl_insert				-> Data que foi inserido no banco mnesia
+			   ctrl_update :: calendar:timestamp(), 		%% 34 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+			   ctrl_modified :: calendar:timestamp(),		%% 35 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_hash :: non_neg_integer()				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
 		}).
+		
+-define(USER_DATA_TYPE, {
+			   non_neg_integer_type, 				%%  1 > id   
+			   non_neg_integer_type,				%%  2 - codigo
+			   binary_type,							%%  3 - login	
+			   binary_type, 						%%  4 - name		
+			   binary_type,							%%  5 - cpf		
+			   binary_type, 						%%  6 - email	
+			   binary_type,							%%  7 - password 
+			   binary_type,							%%  8 - dt_expire_password
+			   non_neg_integer_type,				%%  9 - type
+			   non_neg_integer_type,				%% 10 - subtype
+			   binary_type,							%% 11 - passwd_crypto
+			   non_neg_integer_type,				%% 12 - type_email
+			   boolean_type,						%% 13 - active
+			   binary_type,							%% 14 - endereco
+			   binary_type,							%% 15 - complemento_endereco
+			   binary_type,							%% 16 - bairro
+			   binary_type,							%% 17 - cidade
+			   binary_type,							%% 18 - uf
+			   binary_type,							%% 19 - cep
+			   binary_type,							%% 20 - rg	
+			   binary_type,							%% 21 - data_nascimento
+			   non_neg_integer_type,				%% 22 - sexo
+			   binary_type,							%% 23 - telefone
+			   binary_type,							%% 24 - celular
+			   binary_type,							%% 25 - ddd
+			   binary_type,							%% 26 - nome_pai
+			   binary_type,							%% 27 - nome_ae
+			   non_neg_integer_type,				%% 28 - nacionalidade
+			   non_neg_integer_type,				%% 29 - remap_user_id
+			   boolean_type,						%% 30 - admin	
+			   string_type,							%% 31 - ctrl_path
+			   string_type,							%% 32 - ctrl_file
+			   timestamp_type,						%% 33 - ctrl_insert
+			   timestamp_type, 						%% 34 - ctrl_update
+			   timestamp_type,						%% 35 - ctrl_modified
+			   non_neg_integer_type					%% 36 - ctrl_hash 	
+			}).		
 		
 %
 % Muitos atributos são armazenados no histórico para histórico pois na tabelas origem tais atributos podem mudar

@@ -12,7 +12,7 @@
 
 -include("include/ems_schema.hrl").
 
--export([to_record/2, to_list/1, to_list/2, to_json/1, new/1, new_/1, prop_list_to_json/1]).
+-export([to_record/2, to_list/1, to_list/2, to_json/1, new/1, new_/1, prop_list_to_json/1, get_data_type_table/1]).
 
 -export_records([user, user_history, user_permission, user_perfil, 
 				 user_email, user_dados_funcionais, user_endereco, user_telefone,
@@ -201,4 +201,10 @@ new_(client) -> #client{_ = '_'};
 new_(stat_counter_hist) -> #stat_counter_hist{_ = '_'};
 new_(counter) -> #counter{_ = '_'};
 new_(_) -> erlang:error(einvalid_type).
+
+
+-spec get_data_type_table(atom()) -> tuple() | undefined.
+get_data_type_table(user) -> ?USER_DATA_TYPE;
+get_data_type_table(_) -> undefined.
+
 
