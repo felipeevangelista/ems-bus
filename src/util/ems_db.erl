@@ -794,17 +794,23 @@ filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
 
 filter_condition(Tab, FilterList) -> 
 	FieldsTable =  mnesia:table_info(Tab, attributes),
-	filter_condition(Tab, FilterList, FieldsTable, []).
+	iolist_to_binary(filter_condition(Tab, FilterList, FieldsTable, [])).
 	
 filter_condition(_, [], _, Result) -> 
-	iolist_to_binary(lists:reverse(Result));
-
+	Result;
 filter_condition(Tab, [{'or', FilterList}|[]], FieldsTable, Result) ->
 	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
 	filter_condition(Tab, [], FieldsTable, [ResultOr | Result]);
 filter_condition(Tab, [{'or', FilterList}|T], FieldsTable, Result) ->
 	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
 	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultOr] | Result]);
+
+filter_condition(Tab, [{'and', FilterList}|[]], FieldsTable, Result) ->
+	ResultAnd = filter_condition(Tab, FilterList, FieldsTable, Result),
+	filter_condition(Tab, [], FieldsTable, [ResultAnd | Result]);
+filter_condition(Tab, [{'and', FilterList}|T], FieldsTable, Result) ->
+	ResultAnd = filter_condition(Tab, FilterList, FieldsTable, Result),
+	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultAnd] | Result]);
 
 filter_condition(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
 	Condition = filter_condition_create(F, Op, V, FieldsTable, <<>>),
@@ -815,7 +821,6 @@ filter_condition(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
 
 filter_condition_or(_, [], _, Result) -> 
 	lists:reverse(Result);
-
 filter_condition_or(Tab, [{'or', FilterList}|[]], FieldsTable, Result) ->
 	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
 	filter_condition(Tab, [], FieldsTable, [[<<" orelse ">> | ResultOr] | Result]);
@@ -835,7 +840,6 @@ filter_condition_create(F, Op, V, FieldsTable, BoolOp) ->
 	FieldAtom = filter_condition_parse_field(F),
 	FieldPos = field_position(FieldAtom, FieldsTable, 2),
 	FieldPosBinary = integer_to_binary(FieldPos),
-	FieldValue = filter_condition_value(V),
 	case FieldAtom == login andalso ((is_binary(V) andalso string:find(binary_to_list(V), "/") =/= nomatch) orelse
 								       (is_list(V) andalso string:find(V, "/") =/= nomatch)) of
 		true ->

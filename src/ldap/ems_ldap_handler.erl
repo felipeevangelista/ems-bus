@@ -378,8 +378,22 @@ handle_request(M={'LDAPMessage', _,
 				 _}, State, Ip, Port, TimestampBin) ->
 	io:format("Filter or!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
 	io:format("scope is ~p\n", [Scope]),
-	handle_request_search_filter_or(FilterOr, State, Ip, Port, TimestampBin, Attributes);
+	handle_request_search_filter(FilterOr, State, Ip, Port, TimestampBin, Attributes);
 
+% Filter or
+handle_request(M={'LDAPMessage', _,
+					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
+													 scope = Scope, 
+													 derefAliases = _DerefAliases, 
+													 sizeLimit = _SizeLimit, 
+													 timeLimit = _TimeLimit, 
+													 typesOnly = _TypesOnly, 
+													 filter = FilterOr = {'and', _}, 
+													 attributes = Attributes}},
+				 _}, State, Ip, Port, TimestampBin) ->
+	io:format("Filter or!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
+	io:format("scope is ~p\n", [Scope]),
+	handle_request_search_filter(FilterOr, State, Ip, Port, TimestampBin, Attributes);
 
 
 % Request capabilities
@@ -394,21 +408,20 @@ handle_request(M={'LDAPMessage', _,
 %				 _}, State, Ip, Port, TimestampBin) ->
 %	handle_request_capabilities(ObjectClass, State, Ip, Port, TimestampBin);
 	
-handle_request({'LDAPMessage', _,
-					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-													scope = _Scope, 
-													derefAliases = _DerefAliases, 
-													sizeLimit = _SizeLimit, 
-													timeLimit = _TimeLimit, 
-													typesOnly = _TypesOnly, 
-													filter =  {'and',
-																[{present,<<"objectClass">>},
-																	{equalityMatch, {'AttributeValueAssertion', Attribute, UsuLoginBin}}
-																]},
-													attributes = Attributes}},
-				_}, State, Ip, Port, TimestampBin) ->
-	io:format("PENTAHO 22222222222222222222222222222  atribute is ~p\n", [Attribute]),
-	handle_request_search_login(UsuLoginBin, Attribute, State, Ip, Port, TimestampBin, Attributes);
+%handle_request({'LDAPMessage', _,
+%					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
+%													scope = _Scope, 
+%													derefAliases = _DerefAliases, 
+%													sizeLimit = _SizeLimit, 
+%													timeLimit = _TimeLimit, 
+%													typesOnly = _TypesOnly, 
+%													filter =  {'and',
+%																[{present,<<"objectClass">>},
+%																	{equalityMatch, {'AttributeValueAssertion', Attribute, UsuLoginBin}}
+%													attributes = Attributes}},
+%				_}, State, Ip, Port, TimestampBin) ->
+%	io:format("PENTAHO 22222222222222222222222222222  atribute is ~p\n", [Attribute]),
+%	handle_request_search_login(UsuLoginBin, Attribute, State, Ip, Port, TimestampBin, Attributes);
 	
 handle_request({'LDAPMessage', _, 
 					{unbindRequest, _},
@@ -680,7 +693,7 @@ handle_request_search_login(Name,
 						_ -> 
 							case ems_util:parse_ldap_attribute(Attribute) of
 								{ok, Field} -> 
-									do_find_by_filter_or([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn);
+									do_find_by_filter([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn);
 								{error, einvalid_field} ->
 									ems_logger:error("ems_ldap_handler search ~p does not exist.", [UserLogin]),
 									ems_user:add_history(#user{login = UserLogin}, 
@@ -730,12 +743,12 @@ handle_request_search_login(Name,
 			{ok, [ResultDone]}
 	end.
 	
--spec handle_request_search_filter_or(list(tuple()), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
-handle_request_search_filter_or(FilterOr, 
+-spec handle_request_search_filter(list(tuple()), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
+handle_request_search_filter(FilterOr, 
 								State = #state{ldap_admin = AdminLdap}, 
 								Ip, Port, TimestampBin, AttributesToReturn) ->	
 	case ems_util:parse_ldap_filter(FilterOr) of
-		{ok, Filter} -> do_find_by_filter_or(Filter, State, Ip, Port, TimestampBin, AttributesToReturn);
+		{ok, Filter} -> do_find_by_filter(Filter, State, Ip, Port, TimestampBin, AttributesToReturn);
 		{error, Reason} -> 
 			ems_logger:error("ems_ldap_handler handle_request parse invalid filter or ~p.", [FilterOr]),
 			ems_user:add_history(#user{},  
@@ -773,10 +786,10 @@ handle_request_search_filter_or(FilterOr,
 %	{ok, [ResultEntry, ResultDone]}.
 
 
-do_find_by_filter_or(Filter, 
+do_find_by_filter(Filter, 
 					 #state{ldap_admin = AdminLdap}, 
 					 Ip, Port, TimestampBin, AttributesToReturn) ->
-	case ems_user:find_by_filter_or([], Filter) of
+	case ems_user:find_by_filter([], Filter) of
 		{error, Reason, ReasonDetail} ->
 			ems_logger:error("ems_ldap_handler search filter_or ~p does not exist.", [Filter]),
 			ems_user:add_history(#user{}, 

@@ -19,7 +19,7 @@
 		 find_by_cpf/1, 
 		 find_by_login_and_password/2,
 		 find_by_codigo_pessoa/1, find_by_codigo_pessoa/2,
-		 find_by_filter_or/2,
+		 find_by_filter/2,
 		 to_resource_owner/1,
 		 to_resource_owner/2,
  		 new_from_map/2,
@@ -49,8 +49,8 @@ all() ->
 	{ok, ListaUserDb ++ ListaUserAlunoAtivoDb ++ ListaUserAlunoInativoDb ++ ListaUserFs}.
 	
 
--spec find_by_filter_or(list(binary()), tuple()) -> {ok, list(#user{})} | {error, atom(), atom()}.
-find_by_filter_or(Fields, Filter) -> 
+-spec find_by_filter(list(binary()), tuple()) -> {ok, list(#user{})} | {error, atom(), atom()}.
+find_by_filter(Fields, Filter) -> 
 	ems_db:find([user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs], Fields, Filter).
 
 

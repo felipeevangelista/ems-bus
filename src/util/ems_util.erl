@@ -3008,24 +3008,32 @@ parse_ldap_filter_or([{substrings,
                            {'SubstringFilter', Field,
                             [{any, Value}]}}|T], Result) ->
 	case parse_ldap_attribute(Field) of
-		{ok, Field2} -> 
-			io:format("field is ~p\n", [Field2]),
-			case Field2 of
-				<<"login">> when is_binary(Value) -> 
-					LoginSemBarra = list_to_binary(re:replace(Value, "/", "", [{return, list}])),
-					Result2 = [{Field2, <<"==">>, Value} | Result],
-					Result3 = [{Field2, <<"==">>, LoginSemBarra} | Result2],
-					parse_ldap_filter_or(T, Result3);
-				_ ->
-					parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result])
-			end;
+		{ok, Field2} -> parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result]);
 		_ -> {error, einvalid_filter}
 	end;
 parse_ldap_filter_or(_, _) -> {error, einvalid_filter}.
 
+parse_ldap_filter_and([], Result) -> {ok, {'and', lists:usort(Result)}};
+parse_ldap_filter_and([{substrings,
+                           {'SubstringFilter', Field,
+                            [{any, Value}]}}|T], Result) ->
+	case parse_ldap_attribute(Field) of
+		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
+		_ -> {error, einvalid_filter}
+	end;
+parse_ldap_filter_and([{'or', LdapFilter}|T], Result) ->
+	case parse_ldap_filter_or(LdapFilter, []) of
+		{ok, Condition} -> parse_ldap_filter_and(T, [Condition | Result]);
+		_ -> {error, einvalid_filter}
+	end;
+parse_ldap_filter_and(_, _) -> {error, einvalid_filter}.
+
+
 -spec parse_ldap_filter(tuple()) -> {ok, list(tuple())} | {error, einvalid_filter}.
 parse_ldap_filter({'or', LdapFilter}) ->
 	parse_ldap_filter_or(LdapFilter, []);
+parse_ldap_filter({'and', LdapFilter}) ->
+	parse_ldap_filter_and(LdapFilter, []);
 parse_ldap_filter(_) -> {error, einvalid_filter}.
 	
 
