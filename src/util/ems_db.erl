@@ -813,10 +813,10 @@ filter_condition(Tab, [{'and', FilterList}|T], FieldsTable, Result) ->
 	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultAnd] | Result]);
 
 filter_condition(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
-	Condition = filter_condition_create(F, Op, V, FieldsTable, <<>>),
+	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<>>),
 	filter_condition(Tab, [], FieldsTable, [Condition | Result]);
 filter_condition(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
-	Condition = filter_condition_create(F, Op, V, FieldsTable, <<", ">>),
+	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<", ">>),
 	filter_condition(Tab, T, FieldsTable, [Condition | Result]).
 
 filter_condition_or(_, [], _, Result) -> 
@@ -829,30 +829,36 @@ filter_condition_or(Tab, [{'or', FilterList}|T], FieldsTable, Result) ->
 	filter_condition(Tab, T, FieldsTable, [[<<" orelse ">> | ResultOr] | Result]);
 
 filter_condition_or(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
-	Condition = filter_condition_create(F, Op, V, FieldsTable, <<>>),
+	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<>>),
 	filter_condition_or(Tab, [], FieldsTable, [Condition | Result]);
 filter_condition_or(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
-	Condition = filter_condition_create(F, Op, V, FieldsTable, <<" orelse ">>),
+	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<" orelse ">>),
 	filter_condition_or(Tab, T, FieldsTable, [Condition | Result]).
 
-filter_condition_create(F, Op, V, FieldsTable, BoolOp) ->
-	io:format("------------>F is ~p\n", [F]),
+filter_condition_create(Tab, F, Op, V, FieldsTable, BoolOp) ->
 	FieldAtom = filter_condition_parse_field(F),
 	FieldPos = field_position(FieldAtom, FieldsTable, 2),
 	FieldPosBinary = integer_to_binary(FieldPos),
-	case FieldAtom == login andalso ((is_binary(V) andalso string:find(binary_to_list(V), "/") =/= nomatch) orelse
-								       (is_list(V) andalso string:find(V, "/") =/= nomatch)) of
-		true ->
-			LoginSemBarra = list_to_binary(re:replace(V, "/", "", [{return, list}])),
-			Condition1 = [ <<"(element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(LoginSemBarra), <<" orelse ">> ],
-			Condition2 = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(V), <<")">>, BoolOp ],
-			io:format("gera condicao login sem barra ~p\n", [[Condition1, Condition2]]),
-			[Condition1 | Condition2];
-		false ->
-			Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, filter_condition_value(V), BoolOp ],
-			Condition
+	io:format("ems_schema:get_data_type_field(~p, ~p).\n", [Tab, FieldPos]),
+	FieldType = ems_schema:get_data_type_field(Tab, FieldPos),
+	io:format("filter_condition_parse_value(~p, ~p).\n", [V, FieldType]),
+	case filter_condition_parse_value(V, FieldType) of
+		{ok, FieldValue} -> 
+			case FieldAtom == login andalso ((is_binary(V) andalso string:find(binary_to_list(V), "/") =/= nomatch) orelse
+											   (is_list(V) andalso string:find(V, "/") =/= nomatch)) of
+				true ->
+					LoginSemBarra = list_to_binary(re:replace(V, "/", "", [{return, list}])),
+					FieldValue2 = {ok, filter_condition_parse_value(LoginSemBarra, undefined)},
+					Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, FieldValue2, <<")">>, BoolOp ],
+					Condition;
+				false ->
+					Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, FieldValue, BoolOp ],
+					Condition
+			end;
+		Error -> erlang:error(einvalid_field_filter)
 	end.
-
+	
+	
 filter_condition_parse_field(F) when is_list(F) -> list_to_atom(string:to_lower(F));
 filter_condition_parse_field(F) when is_binary(F) -> list_to_atom(string:to_lower(binary_to_list(F)));
 filter_condition_parse_field(F) when is_atom(F) -> F;
@@ -860,11 +866,47 @@ filter_condition_parse_field(_) -> erlang:error(einvalid_field_filter).
 
 
 
-filter_condition_value(V) when is_binary(V) -> [ <<"<<\"">>, V, <<"\">>">>];
-filter_condition_value(V) when is_list(V) -> [ <<"<<\"">>, list_to_binary(V), <<"\">>">>];
-filter_condition_value(V) when is_integer(V) -> integer_to_binary(V);
-filter_condition_value(V) when is_atom(V) -> atom_to_binary(V, utf8);
-filter_condition_value(V) -> V.
+filter_condition_parse_value(Value, binary_type) ->
+	try
+		io:format("aqui ~p  ~p\n", [Value, non_neg_integer_type]),
+		case is_binary(Value) of
+			true -> {ok, iolist_to_binary([ <<"<<\"">>, Value, <<"\">>">>])};
+			false ->
+				case is_list(Value) of
+					true -> {ok, iolist_to_binary([ <<"<<\"">>, list_to_binary(Value), <<"\">>">>])};
+					false -> 
+						case is_integer(Value) of
+							true -> {ok, iolist_to_binary([ <<"<<\"">>, integer_to_binary(Value), <<"\">>">>])};
+							false -> {error, einvalid_fieldtype}
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> {error, einvalid_fieldtype}
+	end;
+filter_condition_parse_value(Value, non_neg_integer_type) ->
+	try
+		io:format("aqui ~p  ~p\n", [Value, non_neg_integer_type]),
+		case is_integer(Value) of
+			true -> {ok, integer_to_binary(Value)};
+			false ->
+				case is_binary(Value) of
+					true -> {ok, integer_to_binary(binary_to_integer(Value))};
+					false -> 
+						case is_list(Value) of
+							true -> {ok, integer_to_binary(list_to_integer(Value))};
+							false -> {error, einvalid_fieldtype}
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> {error, einvalid_fieldtype}
+	end;
+filter_condition_parse_value(Value, undefined) when is_binary(Value) -> {ok, iolist_to_binary([ <<"<<\"">>, Value, <<"\">>">>])};
+filter_condition_parse_value(Value, undefined) when is_list(Value) -> {ok, iolist_to_binary([ <<"\"">>, list_to_binary(Value), <<"\"">>])};
+filter_condition_parse_value(Value, undefined) when is_integer(Value) -> {ok, integer_to_binary(Value)};
+filter_condition_parse_value(Value, undefined) when is_atom(Value) -> {ok, atom_to_binary(Value, utf8)};
+filter_condition_parse_value(Value, undefined) -> {error, einvalid_fieldtype}.
 
 
 filter_with_sort(Tab, []) -> 

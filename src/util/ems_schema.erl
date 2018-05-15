@@ -12,7 +12,7 @@
 
 -include("include/ems_schema.hrl").
 
--export([to_record/2, to_list/1, to_list/2, to_json/1, new/1, new_/1, prop_list_to_json/1, get_data_type_table/1]).
+-export([to_record/2, to_list/1, to_list/2, to_json/1, new/1, new_/1, prop_list_to_json/1, get_schema_table/1, get_data_type_field/2]).
 
 -export_records([user, user_history, user_permission, user_perfil, 
 				 user_email, user_dados_funcionais, user_endereco, user_telefone,
@@ -203,8 +203,18 @@ new_(counter) -> #counter{_ = '_'};
 new_(_) -> erlang:error(einvalid_type).
 
 
--spec get_data_type_table(atom()) -> tuple() | undefined.
-get_data_type_table(user) -> ?USER_DATA_TYPE;
-get_data_type_table(_) -> undefined.
+-spec get_schema_table(atom()) -> tuple() | undefined.
+get_schema_table(user) -> ?USER_SCHEMA_DESCRIPTOR;
+get_schema_table(user_db) -> ?USER_SCHEMA_DESCRIPTOR;
+get_schema_table(user_fs) -> ?USER_SCHEMA_DESCRIPTOR;
+get_schema_table(user_aluno_ativo_db) -> ?USER_SCHEMA_DESCRIPTOR;
+get_schema_table(user_aluno_inativo_db) -> ?USER_SCHEMA_DESCRIPTOR;
+get_schema_table(_) -> undefined.
 
+-spec get_data_type_field(atom(), non_neg_integer()) -> atom().
+get_data_type_field(Table, FieldPos) ->
+	case get_schema_table(Table) of
+		undefined -> undefined;
+		Schema -> element(FieldPos, Schema)
+	end.
 

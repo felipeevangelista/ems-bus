@@ -53,7 +53,7 @@
 			   ctrl_hash :: non_neg_integer()				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
 		}).
 		
--define(USER_DATA_TYPE, {
+-define(USER_SCHEMA_DESCRIPTOR, {
 			   non_neg_integer_type, 				%%  1 > id   
 			   non_neg_integer_type,				%%  2 - codigo
 			   binary_type,							%%  3 - login	
