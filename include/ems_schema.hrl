@@ -47,9 +47,9 @@
 			   admin :: boolean(),							%% 30 - admin					-> alguns web services podem ser acedidos somente por admins
 			   ctrl_path :: string(),						%% 31 - ctrl_path
 			   ctrl_file :: string(),						%% 32 - ctrl_file
-			   ctrl_insert :: calendar:timestamp(),			%% 33 - ctrl_insert				-> Data que foi inserido no banco mnesia
-			   ctrl_update :: calendar:timestamp(), 		%% 34 - ctrl_update				-> Data que foi atualiado no banco mnesia			
-			   ctrl_modified :: calendar:timestamp(),		%% 35 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_insert :: binary(),						%% 33 - ctrl_insert				-> Data que foi inserido no banco mnesia
+			   ctrl_update :: binary(), 					%% 34 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+			   ctrl_modified :: binary(),					%% 35 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
 			   ctrl_hash :: non_neg_integer()				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
 		}).
 		
@@ -86,9 +86,9 @@
 			   boolean_type,						%% 30 - admin	
 			   string_type,							%% 31 - ctrl_path
 			   string_type,							%% 32 - ctrl_file
-			   timestamp_type,						%% 33 - ctrl_insert
-			   timestamp_type, 						%% 34 - ctrl_update
-			   timestamp_type,						%% 35 - ctrl_modified
+			   binary_type,							%% 33 - ctrl_insert
+			   binary_type, 						%% 34 - ctrl_update
+			   binary_type,							%% 35 - ctrl_modified
 			   non_neg_integer_type					%% 36 - ctrl_hash 	
 			}).		
 		

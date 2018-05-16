@@ -89,7 +89,6 @@
 		 is_letter/1,
 		 is_letter_lower/1,
 		 posix_error_description/1,
-		 parse_ldap_attribute/1,
 		 parse_ldap_attributes/1,
 		 parse_ldap_filter/1,
 		 parse_querystring/1,
@@ -3007,7 +3006,14 @@ parse_ldap_filter_or([], Result) -> {ok, {'or', lists:usort(Result)}};
 parse_ldap_filter_or([{substrings,
                            {'SubstringFilter', Field,
                             [{any, Value}]}}|T], Result) ->
-	case parse_ldap_attribute(Field) of
+	case ldap_attribute_to_db(Field) of
+		{ok, Field2} -> parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result]);
+		_ -> {error, einvalid_filter}
+	end;
+parse_ldap_filter_or([{present, _}|T], Result) ->
+	parse_ldap_filter_or(T, Result);
+parse_ldap_filter_or([{equalityMatch, {'AttributeValueAssertion', Field, Value}}|T], Result) ->
+	case ldap_attribute_to_db(Field) of
 		{ok, Field2} -> parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result]);
 		_ -> {error, einvalid_filter}
 	end;
@@ -3017,7 +3023,16 @@ parse_ldap_filter_and([], Result) -> {ok, {'and', lists:usort(Result)}};
 parse_ldap_filter_and([{substrings,
                            {'SubstringFilter', Field,
                             [{any, Value}]}}|T], Result) ->
-	case parse_ldap_attribute(Field) of
+	case ldap_attribute_to_db(Field) of
+		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
+		_ -> {error, einvalid_filter}
+	end;
+parse_ldap_filter_and([{present, _}|T], Result) ->
+	io:format("aqui 0 present\n"),
+	parse_ldap_filter_and(T, Result);
+parse_ldap_filter_and([{equalityMatch, {'AttributeValueAssertion', Field, Value}}|T], Result) ->
+io:format("aqui ~p = ~p\n", [Field, Value]),
+	case ldap_attribute_to_db(Field) of
 		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
 		_ -> {error, einvalid_filter}
 	end;
@@ -3037,23 +3052,49 @@ parse_ldap_filter({'and', LdapFilter}) ->
 parse_ldap_filter(_) -> {error, einvalid_filter}.
 	
 
--spec parse_ldap_attribute(binary()) -> binary().
-parse_ldap_attribute(Field) -> 
-	parse_ldap_attribute_(list_to_binary(string:to_lower(binary_to_list(Field)))).
-parse_ldap_attribute_(<<"uid">>) -> {ok, <<"id">>};
-parse_ldap_attribute_(<<"employeenumber">>) -> {ok, <<"id">>};
-parse_ldap_attribute_(<<"uidnumber">>) -> {ok, <<"id">>};
-parse_ldap_attribute_(<<"gecos">>) -> {ok, <<"name">>};
-parse_ldap_attribute_(<<"displayname">>) -> {ok, <<"name">>};
-parse_ldap_attribute_(<<"cn">>) -> {ok, <<"login">>};
-parse_ldap_attribute_(<<"sn">>) -> {ok, <<"name">>};
-parse_ldap_attribute_(<<"name">>) -> {ok, <<"name">>};
-parse_ldap_attribute_(<<"login">>) -> {ok, <<"login">>};
-parse_ldap_attribute_(<<"email">>) -> {ok, <<"email">>};
-parse_ldap_attribute_(<<"mail">>) -> {ok, <<"email">>};
-parse_ldap_attribute_(<<"cpf">>) -> {ok, <<"cpf">>};
-parse_ldap_attribute_(<<"codigo">>) -> {ok, <<"codigo">>};
-parse_ldap_attribute_(_) -> {error, einvalid_field}.
+-spec ldap_attribute_to_db(binary()) -> binary().
+ldap_attribute_to_db(Field) -> 
+	ldap_attribute_to_db_(list_to_binary(string:to_lower(binary_to_list(Field)))).
+ldap_attribute_to_db_(<<"uid">>) -> {ok, <<"id">>};
+ldap_attribute_to_db_(<<"employeenumber">>) -> {ok, <<"id">>};
+ldap_attribute_to_db_(<<"uidnumber">>) -> {ok, <<"id">>};
+ldap_attribute_to_db_(<<"gecos">>) -> {ok, <<"name">>};
+ldap_attribute_to_db_(<<"displayname">>) -> {ok, <<"name">>};
+ldap_attribute_to_db_(<<"distinguishedname">>) -> {ok, <<"login">>};
+ldap_attribute_to_db_(<<"cn">>) -> {ok, <<"login">>};
+ldap_attribute_to_db_(<<"sn">>) -> {ok, <<"name">>};
+ldap_attribute_to_db_(<<"name">>) -> {ok, <<"name">>};
+ldap_attribute_to_db_(<<"codigo">>) -> {ok, <<"codigo">>};
+ldap_attribute_to_db_(<<"login">>) -> {ok, <<"login">>};
+ldap_attribute_to_db_(<<"email">>) -> {ok, <<"email">>};
+ldap_attribute_to_db_(<<"mail">>) -> {ok, <<"email">>};
+ldap_attribute_to_db_(<<"cpf">>) -> {ok, <<"cpf">>};
+ldap_attribute_to_db_(<<"bairro">>) -> {ok, <<"bairro">>};
+ldap_attribute_to_db_(<<"cidade">>) -> {ok, <<"cidade">>};
+ldap_attribute_to_db_(<<"endereco">>) -> {ok, <<"endereco">>};
+ldap_attribute_to_db_(<<"complemento_endereco">>) -> {ok, <<"complemento_endereco">>};
+ldap_attribute_to_db_(<<"uf">>) -> {ok, <<"uf">>};
+ldap_attribute_to_db_(<<"cep">>) -> {ok, <<"cep">>};
+ldap_attribute_to_db_(<<"rg">>) -> {ok, <<"rg">>};
+ldap_attribute_to_db_(<<"active">>) -> {ok, <<"active">>};
+ldap_attribute_to_db_(<<"datanascimento">>) -> {ok, <<"data_nascimento">>};
+ldap_attribute_to_db_(<<"sexo">>) -> {ok, <<"sexo">>};
+ldap_attribute_to_db_(<<"telefone">>) -> {ok, <<"telefone">>};
+ldap_attribute_to_db_(<<"celular">>) -> {ok, <<"celular">>};
+ldap_attribute_to_db_(<<"ddd">>) -> {ok, <<"ddd">>};
+ldap_attribute_to_db_(<<"nome_pai">>) -> {ok, <<"nome_pai">>};
+ldap_attribute_to_db_(<<"nome_mae">>) -> {ok, <<"nome_mae">>};
+ldap_attribute_to_db_(<<"nacionalidade">>) -> {ok, <<"nacionalidade">>};
+ldap_attribute_to_db_(<<"type">>) -> {ok, <<"type">>};
+ldap_attribute_to_db_(<<"subtype">>) -> {ok, <<"subtype">>};
+ldap_attribute_to_db_(<<"type_email">>) -> {ok, <<"type_email">>};
+ldap_attribute_to_db_(<<"ctrl_insert">>) -> {ok, <<"ctrl_insert">>};
+ldap_attribute_to_db_(<<"ctrl_update">>) -> {ok, <<"ctrl_update">>};
+ldap_attribute_to_db_(<<"givenname">>) -> {ok, <<"name">>};
+ldap_attribute_to_db_(<<"memberuid">>) -> {ok, <<"id">>};
+ldap_attribute_to_db_(<<"member">>) -> {ok, <<"name">>};
+ldap_attribute_to_db_(<<"samaccountname">>) -> {ok, <<"name">>};
+ldap_attribute_to_db_(_) -> {error, einvalid_field}.
 
 
 
@@ -3068,31 +3109,111 @@ parse_ldap_attributes(List) ->
 
 parse_ldap_attributes_([], Result) -> lists:usort(Result);
 parse_ldap_attributes_([<<"uid">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"id">> | Result]);
+	parse_ldap_attributes_(T, [ <<"uid">> | Result]);
 parse_ldap_attributes_([<<"employeenumber">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"id">> | Result]);
+	parse_ldap_attributes_(T, [ <<"employeeNumber">> | Result]);
 parse_ldap_attributes_([<<"uidnumber">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"id">> | Result]);
+	parse_ldap_attributes_(T, [ <<"uidNumber">> | Result]);
+parse_ldap_attributes_([<<"distinguishedname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"distinguishedName">> | Result]);
 parse_ldap_attributes_([<<"gecos">>|T], Result) -> 
 	parse_ldap_attributes_(T, [ <<"gecos">> | Result]);
-parse_ldap_attributes_([<<"displayname">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"name">> | Result]);
 parse_ldap_attributes_([<<"cn">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"name">> | Result]);
+	parse_ldap_attributes_(T, [ <<"cn">> | Result]);
+parse_ldap_attributes_([<<"givenname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"givenName">> | Result]);
+parse_ldap_attributes_([<<"memberuid">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"memberUid">> | Result]);
+parse_ldap_attributes_([<<"member">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"member">> | Result]);
+parse_ldap_attributes_([<<"samaccountname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"sAMAccountName">> | Result]);
+parse_ldap_attributes_([<<"displayname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"displayName">> | Result]);
 parse_ldap_attributes_([<<"sn">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"name">> | Result]);
-parse_ldap_attributes_([<<"name">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"name">> | Result]);
-parse_ldap_attributes_([<<"login">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"login">> | Result]);
+	parse_ldap_attributes_(T, [ <<"sn">> | Result]);
+parse_ldap_attributes_([<<"creatorsname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"creatorsName">> | Result]);
+parse_ldap_attributes_([<<"namingcontexts">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"namingContexts">> | Result]);
+parse_ldap_attributes_([<<"o">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"o">> | Result]);
+parse_ldap_attributes_([<<"mail">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"mail">> | Result]);
 parse_ldap_attributes_([<<"email">>|T], Result) -> 
 	parse_ldap_attributes_(T, [ <<"email">> | Result]);
-parse_ldap_attributes_([<<"mail">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"email">> | Result]);
-parse_ldap_attributes_([<<"cpf">>|T], Result) -> 
-	parse_ldap_attributes_(T, [ <<"cpf">> | Result]);
 parse_ldap_attributes_([<<"codigo">>|T], Result) -> 
 	parse_ldap_attributes_(T, [ <<"codigo">> | Result]);
+parse_ldap_attributes_([<<"login">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"login">> | Result]);
+parse_ldap_attributes_([<<"name">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"name">> | Result]);
+parse_ldap_attributes_([<<"cpf">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cpf">> | Result]);
+parse_ldap_attributes_([<<"passwd">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"passwd">> | Result]);
+parse_ldap_attributes_([<<"roles">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"roles">> | Result]);
+parse_ldap_attributes_([<<"roleoccupant">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"roles">> | Result]);
+parse_ldap_attributes_([<<"active">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"active">> | Result]);
+parse_ldap_attributes_([<<"endereco">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"endereco">> | Result]);
+parse_ldap_attributes_([<<"complemento_endereco">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"complemento_endereco">> | Result]);
+parse_ldap_attributes_([<<"bairro">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"bairro">> | Result]);
+parse_ldap_attributes_([<<"cidade">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cidade">> | Result]);
+parse_ldap_attributes_([<<"uf">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"uf">> | Result]);
+parse_ldap_attributes_([<<"cep">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cep">> | Result]);
+parse_ldap_attributes_([<<"rg">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"rg">> | Result]);
+parse_ldap_attributes_([<<"datanascimento">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"dataNascimento">> | Result]);
+parse_ldap_attributes_([<<"sexo">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"sexo">> | Result]);
+parse_ldap_attributes_([<<"telefone">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"telefone">> | Result]);
+parse_ldap_attributes_([<<"celular">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"celular">> | Result]);
+parse_ldap_attributes_([<<"ddd">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"ddd">> | Result]);
+parse_ldap_attributes_([<<"nome_pai">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"nome_pai">> | Result]);
+parse_ldap_attributes_([<<"nome_mae">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"nome_mae">> | Result]);
+parse_ldap_attributes_([<<"nacionalidade">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"nacionalidade">> | Result]);
+parse_ldap_attributes_([<<"type">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"type">> | Result]);
+parse_ldap_attributes_([<<"subtype">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"subtype">> | Result]);
+parse_ldap_attributes_([<<"type_email">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"type_email">> | Result]);
+parse_ldap_attributes_([<<"ctrl_insert">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"ctrl_insert">> | Result]);
+parse_ldap_attributes_([<<"ctrl_update">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"ctrl_update">> | Result]);
+parse_ldap_attributes_([<<"supportedcapabilities">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedCapabilities">> | Result]);
+parse_ldap_attributes_([<<"supportedcontrol">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedControl">> | Result]);
+parse_ldap_attributes_([<<"supportedextension">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedExtension">> | Result]);
+parse_ldap_attributes_([<<"supportedfeatures">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedFeatures">> | Result]);
+parse_ldap_attributes_([<<"supportedldapversion">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedLdapVersion">> | Result]);
+parse_ldap_attributes_([<<"supportedSASLmechanisms">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedSASLMechanisms">> | Result]);
 parse_ldap_attributes_([_|T], Result) -> 
 	parse_ldap_attributes_(T, Result).
 
+
+
+					
+					

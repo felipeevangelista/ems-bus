@@ -108,7 +108,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 	end.
 
 
-
 encode_response(MessageID, Msg) ->
 	Response = #'LDAPMessage'{messageID = MessageID,
 							  protocolOp = Msg,
@@ -142,31 +141,13 @@ handle_request({'LDAPMessage', _,
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
 													 typesOnly = _TypesOnly, 
-													 filter =  {equalityMatch, {'AttributeValueAssertion', Attribute = <<"objectClass">>, _Name = <<"organizationalRole">>}},
-													 attributes = _Attributes}},
-				 _}, _State, _Ip, _Port, _TimestampBin) ->
-	io:format("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa\n"),
-	io:format("atribute is ~p\n", [Attribute]),
-	io:format("scope is singleLevel\n"),
-	ResultEntry = make_result_entry(#user{login = <<"evertonagilar">>, name = <<"evertonagilar">>}, <<"admin">>, []),
-	ResultDone = make_result_done(success),
-	{ok, [ResultEntry, ResultDone]};
-
-
-handle_request({'LDAPMessage', _,
-					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-													 scope = singleLevel, % wholeSubtree or baseObject or singleLevel
-													 derefAliases = _DerefAliases,  % derefAlways or neverDerefAliases
-													 sizeLimit = _SizeLimit, 
-													 timeLimit = _TimeLimit, 
-													 typesOnly = _TypesOnly, 
 													 filter =  {equalityMatch, {'AttributeValueAssertion', _Attribute = <<"roleOccupant">>, ObjectName}},
 													 attributes = _Attributes}},
 				 _}, #state{search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
 							search_success_metric_name = SearchSuccessMetricName,
 							auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
 					Ip, Port, TimestampBin) ->
-	io:format("roleOccupant!!!!!!!!!!!!!!!!!!\n"),
+	?DEBUG("ems_ldap_handler search request roleOccupant."),				 
 	case ems_util:parse_ldap_name(ObjectName) of
 		{ok, _, UserLogin, _BaseFilter} ->
 			case ems_user:find_by_login(UserLogin) of
@@ -240,85 +221,36 @@ handle_request({'LDAPMessage', _,
 			{ok, [ResultDone]}
 	end;
 
-
-
-%	io:format("roleOcupant query!!!!!!!!!!!!!!!!!!!!!!!\n"),
-%	io:format("atribute is ~p\n", [Attribute]),
-%	io:format("scope is singleLevel\n"),
-	%ObjectName = make_object_name(UsuLogin),
-%	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
-%										  attributes = [%#'PartialAttribute'{type = <<"uid">>, vals = [ObjectName]},
- 														%#'PartialAttribute'{type = <<"employeeNumber">>, vals = [<<"1">>]},
-														%#'PartialAttribute'{type = <<"uidNumber">>, vals = [<<"1">>]},
-														
-														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"top">>]},
-														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"person">>]},
-														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"organizationalPerson">>]},
-														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"inetOrgPerson">>]},
-														%#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"posixAccount">>]},
-														
-														%#'PartialAttribute'{type = <<"gecos">>, vals = [<<"evertonagilar">>]},
-	%													#'PartialAttribute'{type = <<"cn">>, vals = [<<"Administrator">>, <<"PowerUser">>]}
-														%#'PartialAttribute'{type = <<"givenName">>, vals = [<<"evertonagilar">>]},
-														%#'PartialAttribute'{type = <<"memberUid">>, vals = [<<"evertonagilar">>]},
-														%#'PartialAttribute'{type = <<"sAMAccountName">>, vals = [<<"evertonagilar">>]},  % shortened user name in Active Directory
-														%#'PartialAttribute'{type = <<"displayName">>, vals = [<<"evertonagilar">>]},     % full user name in Active Directory
-														%#'PartialAttribute'{type = <<"member">>, vals = [<<"evertonagilar">>]},     % full user name in Active Directory
-														%#'PartialAttribute'{type = <<"sn">>, vals = [<<"evertonagilar">>]},
-														
-
-														%#'PartialAttribute'{type = <<"o">>, vals = [<<"UnB">>]},
-														
-														
-														%#'PartialAttribute'{type = <<"login">>, vals = [<<"evertonagilar">>]},
-														%#'PartialAttribute'{type = <<"passwd">>, vals = [<<"960101">>]},
-														%#'PartialAttribute'{type = <<"roles">>, vals = [<<"Administrator">>]},
-														%#'PartialAttribute'{type = <<"roleOccupant">>, vals = [<<"Administrator">>, <<"PowerUser">>]},
-														%#'PartialAttribute'{type = <<"organizationalRole">>, vals = [<<"Administrator">>]}
-
-%														]
-%										}
-%	},
-%	ResultDone = make_result_done(success),
-%	{ok, [ResultEntry, ResultDone]};
-	%BindResponse = make_bind_response(success, ObjectName),
-	%{ok, [BindResponse]};
-
-
-
 % sei e redmine
-handle_request(M={'LDAPMessage', _,
+handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-													 scope = Scope, % wholeSubtree or baseObject or singleLevel
+													 scope = _Scope, % wholeSubtree or baseObject or singleLevel
 													 derefAliases = _DerefAliases,  % derefAlways or neverDerefAliases
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
 													 typesOnly = _TypesOnly, 
-													 filter =  {equalityMatch, {'AttributeValueAssertion', Attribute, UsuLoginBin}},
+													 filter =  {equalityMatch, {'AttributeValueAssertion', Attribute, Value}},
 													 attributes = Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
-	io:format("SEI!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
-	io:format("scope is ~p\n", [Scope]),
-	handle_request_search_login(UsuLoginBin, Attribute, State, Ip, Port, TimestampBin, Attributes);
+	?DEBUG("ems_ldap_handler search request equalityMatch."),				 
+	handle_request_search_login(Value, Attribute, State, Ip, Port, TimestampBin, Attributes);
 
 
 % isGlobalCatalogReady
-handle_request(M={'LDAPMessage', _,
+handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = <<>>, 
-													 scope = Scope, 
+													 scope = _Scope, 
 													 derefAliases = _DerefAliases, 
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
 													 typesOnly = _TypesOnly, 
 													 filter = {present, <<"objectClass">>}, attributes = [<<"isGlobalCatalogReady">>]}},
 				 _}, _State, Ip, Port, TimestampBin) ->
-	io:format("isGlobalCatalogReady!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
-	io:format("scope is ~p\n", [Scope]),
+	?DEBUG("ems_ldap_handler search request isGlobalCatalogReady."),
 	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = <<>>,
 										  attributes = [#'PartialAttribute'{type = <<"isGlobalCatalogReady">>, vals = [<<"ErlangMS">>]}]
 										}
 	},
-	ems_logger:info("ems_ldap_handler request isGlobalCatalogReady."),
 	ems_user:add_history(#user{},  
 						 #service{}, 
 						 #request{timestamp = TimestampBin,
@@ -333,9 +265,9 @@ handle_request(M={'LDAPMessage', _,
 
 
 % Search ObjectClass
-handle_request(M={'LDAPMessage', _,
+handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-													 scope = Scope, 
+													 scope = _Scope, 
 													 derefAliases = _DerefAliases, 
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
@@ -343,32 +275,14 @@ handle_request(M={'LDAPMessage', _,
 													 filter = {present, ObjectClass}, 
 													 attributes = Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
-	io:format("Search ObjectClass!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
-	io:format("scope is ~p\n", [Scope]),
+	?DEBUG("ems_ldap_handler search request present objectClass."),
 	handle_request_search_login(ObjectClass, <<>>, State, Ip, Port, TimestampBin, Attributes);
 
 
-% pentaho
-%handle_request(M={'LDAPMessage', _,
-%					{searchRequest, #'SearchRequest'{baseObject = BaseObject, 
-%													 scope = Scope, 
-%													 derefAliases = _DerefAliases, 
-%													 sizeLimit = _SizeLimit, 
-%													 timeLimit = _TimeLimit, 
-%													 typesOnly = _TypesOnly, 
-%													 filter = {present, <<"objectClass">>},
-%													 attributes = Attributes}},
-%				 _}, State, Ip, Port, TimestampBin) ->
-%	io:format("PENTAHO!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
-%	io:format("scope is ~p\n", [Scope]),
-%	handle_request_search_login(BaseObject, <<>>, State, Ip, Port, TimestampBin, Attributes);
-
-
-
 % Filter or
-handle_request(M={'LDAPMessage', _,
+handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-													 scope = Scope, 
+													 scope = _Scope, 
 													 derefAliases = _DerefAliases, 
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
@@ -376,53 +290,24 @@ handle_request(M={'LDAPMessage', _,
 													 filter = FilterOr = {'or', _}, 
 													 attributes = Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
-	io:format("Filter or!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
-	io:format("scope is ~p\n", [Scope]),
+	?DEBUG("ems_ldap_handler search request filter_or."),
 	handle_request_search_filter(FilterOr, State, Ip, Port, TimestampBin, Attributes);
 
-% Filter or
-handle_request(M={'LDAPMessage', _,
+% Filter and
+handle_request({'LDAPMessage', _,
 					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-													 scope = Scope, 
+													 scope = _Scope, 
 													 derefAliases = _DerefAliases, 
 													 sizeLimit = _SizeLimit, 
 													 timeLimit = _TimeLimit, 
 													 typesOnly = _TypesOnly, 
-													 filter = FilterOr = {'and', _}, 
+													 filter = FilterAnd = {'and', _}, 
 													 attributes = Attributes}},
 				 _}, State, Ip, Port, TimestampBin) ->
-	io:format("Filter or!!!!!!!!!!!!!!!!!!!!!!!!!!!msg is ~p\n", [M]),
-	io:format("scope is ~p\n", [Scope]),
-	handle_request_search_filter(FilterOr, State, Ip, Port, TimestampBin, Attributes);
+	?DEBUG("ems_ldap_handler search request filter_and."),
+	handle_request_search_filter(FilterAnd, State, Ip, Port, TimestampBin, Attributes);
 
 
-% Request capabilities
-%handle_request({'LDAPMessage', _,
-%					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-%													 scope = _Scope, 
-%													 derefAliases = _DerefAliases, 
-%													 sizeLimit = _SizeLimit, 
-%													 timeLimit = _TimeLimit, 
-%													 typesOnly = _TypesOnly, 
-%													 filter =  {present, ObjectClass}, attributes = _Attributes}},
-%				 _}, State, Ip, Port, TimestampBin) ->
-%	handle_request_capabilities(ObjectClass, State, Ip, Port, TimestampBin);
-	
-%handle_request({'LDAPMessage', _,
-%					{searchRequest, #'SearchRequest'{baseObject = _BaseObject, 
-%													scope = _Scope, 
-%													derefAliases = _DerefAliases, 
-%													sizeLimit = _SizeLimit, 
-%													timeLimit = _TimeLimit, 
-%													typesOnly = _TypesOnly, 
-%													filter =  {'and',
-%																[{present,<<"objectClass">>},
-%																	{equalityMatch, {'AttributeValueAssertion', Attribute, UsuLoginBin}}
-%													attributes = Attributes}},
-%				_}, State, Ip, Port, TimestampBin) ->
-%	io:format("PENTAHO 22222222222222222222222222222  atribute is ~p\n", [Attribute]),
-%	handle_request_search_login(UsuLoginBin, Attribute, State, Ip, Port, TimestampBin, Attributes);
-	
 handle_request({'LDAPMessage', _, 
 					{unbindRequest, _},
 				 _}, _State, _Ip, _Port, _TimestampBin) ->
@@ -457,32 +342,32 @@ make_bind_response(ResultCode, MatchedDN, DiagnosticMessage) ->
 
 
 make_result_entry_item(#user{id = UsuId, 
-							codigo = CodigoPessoa,
-							login = UsuLogin,	
-							name = UsuName, 
-							cpf = UsuCpf, 
-							email = UsuEmail, 
-							password = UsuPasswd, 
-							type = UsuType, 
-							subtype = UsuSubType,
-							type_email = UsuTypeEmail, 
-							ctrl_insert = UsuCtrlInsert, 
-							ctrl_update = UsuCtrlUpdate,
-							active = Active,
-							endereco = Endereco,
-							complemento_endereco = ComplementoEndereco,
-							bairro = Bairro,
-							cidade = Cidade,
-							uf = UF,
-							rg = RG,
-							data_nascimento = DataNascimento,
-							sexo = Sexo,
-							telefone = Telefone,
-							celular = Celular,
-							ddd = DDD,
-							nome_pai = NomePai,
-							nome_mae = NomeMae,
-							nacionalidade = Nacionalidade
+							 codigo = CodigoPessoa,
+							 login = UsuLogin,	
+							 name = UsuName, 
+							 cpf = UsuCpf, 
+							 email = UsuEmail, 
+							 type = UsuType, 
+							 subtype = UsuSubType,
+							 type_email = UsuTypeEmail, 
+							 ctrl_insert = UsuCtrlInsert, 
+							 ctrl_update = UsuCtrlUpdate,
+							 active = Active,
+							 endereco = Endereco,
+							 complemento_endereco = ComplementoEndereco,
+							 bairro = Bairro,
+							 cidade = Cidade,
+							 uf = UF,
+							 cep = Cep,
+							 rg = RG,
+							 data_nascimento = DataNascimento,
+							 sexo = Sexo,
+							 telefone = Telefone,
+							 celular = Celular,
+							 ddd = DDD,
+							 nome_pai = NomePai,
+							 nome_mae = NomeMae,
+							 nacionalidade = Nacionalidade
 				}, 
 				  AdminLdap, AtrributesToReturn) ->
 	UsuId2 = format_user_field(UsuId),
@@ -492,7 +377,6 @@ make_result_entry_item(#user{id = UsuId,
 	UsuLogin2 = format_user_field(UsuLogin),
 	UsuCpf2 = format_user_field(UsuCpf),
 	UsuEmail2 = format_user_field(UsuEmail),
-	UsuSenha2 = format_user_field(UsuPasswd),
 	UsuType2 = format_user_field(UsuType),
 	UsuSubType2 = format_user_field(UsuSubType),
 	UsuTypeEmail2 = format_user_field(UsuTypeEmail),
@@ -504,6 +388,7 @@ make_result_entry_item(#user{id = UsuId,
 	Bairro2 = format_user_field(Bairro),
 	Cidade2 = format_user_field(Cidade),
 	UF2 = format_user_field(UF),
+	Cep2 = format_user_field(Cep),
 	RG2 = format_user_field(RG),
 	DataNascimento2 = format_user_field(DataNascimento),
 	Sexo2 = format_user_field(Sexo),
@@ -525,45 +410,48 @@ make_result_entry_item(#user{id = UsuId,
 			GivenName = <<>>
 	end,
 
+	% Valida os atributos de retorno
+	AtrributesToReturn2 = ems_util:parse_ldap_attributes(AtrributesToReturn),
+
 	% Perfils são roles no LDAP
 	{ok, ListaPerfil} = ems_user_perfil:find_by_user(UsuId, [id, name]),
 	ListaPerfil2 = lists:usort([ maps:get(<<"name">>, R) || R <- ListaPerfil ]),
 
-	Attributes = [  #'PartialAttribute'{type = <<"uid">>, vals = [CodigoPessoa2]},
-					#'PartialAttribute'{type = <<"employeeNumber">>, vals = [CodigoPessoa2]},
-					#'PartialAttribute'{type = <<"uidNumber">>, vals = [CodigoPessoa2]},
-					#'PartialAttribute'{type = <<"usu_id">>, vals = [UsuId2]},						% ver para remover
-					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"top">>]},
+	Attributes = [  #'PartialAttribute'{type = <<"uid">>, vals = [UsuId2]},
+					#'PartialAttribute'{type = <<"employeeNumber">>, vals = [UsuId2]},
+					#'PartialAttribute'{type = <<"uidNumber">>, vals = [UsuId2]},
 					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"person">>]},
 					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"organizationalPerson">>]},
 					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"inetOrgPerson">>]},
 					#'PartialAttribute'{type = <<"objectClass">>, vals = [<<"posixAccount">>]},
 					#'PartialAttribute'{type = <<"gecos">>, vals = [UsuName2]},
-					#'PartialAttribute'{type = <<"cn">>, vals = [UsuLogin2]},
-					#'PartialAttribute'{type = <<"givenName">>, vals = [GivenName]},
-					#'PartialAttribute'{type = <<"memberUid">>, vals = [GivenName]},
-					#'PartialAttribute'{type = <<"sAMAccountName">>, vals = [GivenName]}, % shortened user name in Active Directory
-					#'PartialAttribute'{type = <<"displayName">>, vals = [UsuName2]},     % full user name in Active Directory
-					#'PartialAttribute'{type = <<"member">>, vals = [GivenName]},     	  % full user name in Active Directory
-					#'PartialAttribute'{type = <<"sn">>, vals = [SN]},					  % surname
+					#'PartialAttribute'{type = <<"cn">>, vals = [UsuLogin2]},						 % full use name
+					#'PartialAttribute'{type = <<"givenName">>, vals = [GivenName]},	 			 % primeiro nome
+					#'PartialAttribute'{type = <<"sn">>, vals = [SN]},					  		     % último nome
+					#'PartialAttribute'{type = <<"memberUid">>, vals = [UsuId2]},
+					#'PartialAttribute'{type = <<"member">>, vals = [UsuName2]},     	  			 % full user name in Active Directory
+					#'PartialAttribute'{type = <<"sAMAccountName">>, vals = [GivenName]}, 			 % shortened user name in Active Directory
+					#'PartialAttribute'{type = <<"displayName">>, vals = [UsuName2]},    		 	 % full user name in Active Directory
+					#'PartialAttribute'{type = <<"distinguishedName">>, vals = [UsuLogin2]},  		 % SEI usa no campo atributo de retorno
 					#'PartialAttribute'{type = <<"creatorsName">>, vals = [AdminLdap]},
 					#'PartialAttribute'{type = <<"namingContexts">>, vals = [<<"dc=unb,dc=br">>]},
 					#'PartialAttribute'{type = <<"o">>, vals = [<<"UnB">>]},
 					#'PartialAttribute'{type = <<"mail">>, vals = [UsuEmail2]},
 					#'PartialAttribute'{type = <<"email">>, vals = [UsuEmail2]},
+					#'PartialAttribute'{type = <<"codigo">>, vals = [CodigoPessoa2]},
 					#'PartialAttribute'{type = <<"login">>, vals = [UsuLogin2]},
 					#'PartialAttribute'{type = <<"name">>, vals = [UsuName2]},
 					#'PartialAttribute'{type = <<"cpf">>, vals = [UsuCpf2]},
-					#'PartialAttribute'{type = <<"passwd">>, vals = [UsuSenha2]},
+					%#'PartialAttribute'{type = <<"passwd">>, vals = [UsuSenha2]},
 					#'PartialAttribute'{type = <<"roles">>, vals = ListaPerfil2},
-					#'PartialAttribute'{type = <<"roleOccupant">>, vals = ListaPerfil2},
-					#'PartialAttribute'{type = <<"distinguishedName">>, vals = [UsuLogin2]},
+					%#'PartialAttribute'{type = <<"roleOccupant">>, vals = ListaPerfil2},
 					#'PartialAttribute'{type = <<"active">>, vals = [Active2]},
 					#'PartialAttribute'{type = <<"endereco">>, vals = [Endereco2]},
 					#'PartialAttribute'{type = <<"complemento_endereco">>, vals = [ComplementoEndereco2]},
 					#'PartialAttribute'{type = <<"bairro">>, vals = [Bairro2]},
 					#'PartialAttribute'{type = <<"cidade">>, vals = [Cidade2]},
 					#'PartialAttribute'{type = <<"uf">>, vals = [UF2]},
+					#'PartialAttribute'{type = <<"cep">>, vals = [Cep2]},
 					#'PartialAttribute'{type = <<"rg">>, vals = [RG2]},
 					#'PartialAttribute'{type = <<"dataNascimento">>, vals = [DataNascimento2]},
 					#'PartialAttribute'{type = <<"sexo">>, vals = [Sexo2]},
@@ -585,23 +473,25 @@ make_result_entry_item(#user{id = UsuId,
 					#'PartialAttribute'{type = <<"supportedLdapVersion">>, vals = [<<"3">>]},
 					#'PartialAttribute'{type = <<"supportedSASLMechanisms">>, vals = [<<"no">>]}
 				],
-	AtrributesToReturn2 = ems_util:parse_ldap_attributes(AtrributesToReturn),
+
+	% Filtra os atributos de retorno. Retornar somente os que o cliente pediu
 	case AtrributesToReturn2 of
 		[] -> Attributes2 = Attributes;
-		_ -> Attributes2 = [ R || R <- Attributes, lists:member(R#'PartialAttribute'.type, AtrributesToReturn) ]
+		_ -> Attributes2 = [ R || R <- Attributes, lists:member(R#'PartialAttribute'.type, AtrributesToReturn2) ]
 	end,
+
 	#'SearchResultEntry'{objectName = ObjectName,
 										  attributes = Attributes2
 										}.
 
 
-make_result_entry_list_([], _, _, ItemList) -> 
-	{searchResEntry, ItemList};
-make_result_entry_list_([H|T], AdminLdap, AtrributesToReturn, ItemList) ->
-	Item = make_result_entry_item(H, AdminLdap, AtrributesToReturn),
-	make_result_entry_list_(T, AdminLdap, AtrributesToReturn, [Item | ItemList]).
+%make_result_entry_list_([], _, _, ItemList) -> 
+%	{searchResEntry, ItemList};
+%make_result_entry_list_([H|T], AdminLdap, AtrributesToReturn, ItemList) ->
+%	Item = make_result_entry_item(H, AdminLdap, AtrributesToReturn),
+%	make_result_entry_list_(T, AdminLdap, AtrributesToReturn, [Item | ItemList]).
 
-make_result_entry_list(L, AdminLdap, AtrributesToReturn) -> make_result_entry_list_(L, AdminLdap, AtrributesToReturn, []).
+%make_result_entry_list(L, AdminLdap, AtrributesToReturn) -> make_result_entry_list_(L, AdminLdap, AtrributesToReturn, []).
 
 make_result_entry(User, AdminLdap, AtrributesToReturn) -> 
 	Item = make_result_entry_item(User, AdminLdap, AtrributesToReturn),
@@ -667,8 +557,7 @@ handle_request_search_login(Name,
 						    Attribute,
 							State = #state{ldap_admin = AdminLdap,
 										   search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
-										   search_success_metric_name = SearchSuccessMetricName,
-										   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
+										   search_success_metric_name = SearchSuccessMetricName}, 
 										   Ip, Port, TimestampBin, AttributesToReturn) ->	
 	case ems_util:parse_ldap_name(Name) of
 		{ok, _, UserLogin, _BaseFilter} ->
@@ -744,9 +633,7 @@ handle_request_search_login(Name,
 	end.
 	
 -spec handle_request_search_filter(list(tuple()), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
-handle_request_search_filter(FilterOr, 
-								State = #state{ldap_admin = AdminLdap}, 
-								Ip, Port, TimestampBin, AttributesToReturn) ->	
+handle_request_search_filter(FilterOr, State, Ip, Port, TimestampBin, AttributesToReturn) ->	
 	case ems_util:parse_ldap_filter(FilterOr) of
 		{ok, Filter} -> do_find_by_filter(Filter, State, Ip, Port, TimestampBin, AttributesToReturn);
 		{error, Reason} -> 
@@ -765,25 +652,6 @@ handle_request_search_filter(FilterOr,
 			BindResponse = make_bind_response(inappropriateMatching, <<>>),
 			{ok, [BindResponse]}
 	end.
-
-
-	
-%handle_request_capabilities(ObjectClass, #state{request_capabilities_metric_name = RequestCapabilitiesMetricName}, _Ip, _Port, _TimestampBin) ->
-%	ems_db:inc_counter(RequestCapabilitiesMetricName),	
-%	ObjectName = make_object_name(ObjectClass),
-%	ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
-%										  attributes = [#'PartialAttribute'{type = <<"supportedCapabilities">>, vals = [<<"yes">>]},
-%														#'PartialAttribute'{type = <<"supportedControl">>, vals = [<<"no">>]},
-%														#'PartialAttribute'{type = <<"supportedExtension">>, vals = [<<"no">>]},
-%														#'PartialAttribute'{type = <<"supportedFeatures">>, vals = [<<"no">>]},
-%														#'PartialAttribute'{type = <<"supportedLdapVersion">>, vals = [<<"3">>]},
-%														#'PartialAttribute'{type = <<"supportedSASLMechanisms">>, vals = [<<"no">>]}
-%														]
-%										}
-%	},
-%	ems_logger:info("ems_ldap_handler request supported capabilities."),
-%	ResultDone = make_result_done(success),
-%	{ok, [ResultEntry, ResultDone]}.
 
 
 do_find_by_filter(Filter, 

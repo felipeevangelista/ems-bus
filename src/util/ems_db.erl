@@ -785,7 +785,7 @@ filter(Tab, FilterList) when is_list(FilterList) ->
 			?DEBUG("ems_db filter generate expression query ~p to table ~p.", [ExprQuery, Tab]),
 			qlc:string_to_handle(ExprQuery)
 		end,
-	ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {filter, Tab, FilterList}, F),
+	ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?DB_PARSED_QUERY_CACHE_TIMEOUT, {filter, Tab, FilterList}, F),
 	mnesia:activity(async_dirty, fun () -> qlc:eval(ParsedQuery) end);
 filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
 	io:format("filter tuple !!!!!!!!!!!!!  ~p\n", [FilterTuple]),
@@ -797,7 +797,7 @@ filter_condition(Tab, FilterList) ->
 	iolist_to_binary(filter_condition(Tab, FilterList, FieldsTable, [])).
 	
 filter_condition(_, [], _, Result) -> 
-	Result;
+	lists:reverse(Result);
 filter_condition(Tab, [{'or', FilterList}|[]], FieldsTable, Result) ->
 	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
 	filter_condition(Tab, [], FieldsTable, [ResultOr | Result]);
@@ -813,9 +813,11 @@ filter_condition(Tab, [{'and', FilterList}|T], FieldsTable, Result) ->
 	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultAnd] | Result]);
 
 filter_condition(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
+	io:format("aqui0\n"),
 	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<>>),
 	filter_condition(Tab, [], FieldsTable, [Condition | Result]);
 filter_condition(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
+	io:format("aqui1\n"),
 	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<", ">>),
 	filter_condition(Tab, T, FieldsTable, [Condition | Result]).
 
@@ -855,7 +857,7 @@ filter_condition_create(Tab, F, Op, V, FieldsTable, BoolOp) ->
 					Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, FieldValue, BoolOp ],
 					Condition
 			end;
-		Error -> erlang:error(einvalid_field_filter)
+		_ -> erlang:error(einvalid_field_filter)
 	end.
 	
 	
@@ -884,9 +886,26 @@ filter_condition_parse_value(Value, binary_type) ->
 	catch 
 		_Exception:_Reason -> {error, einvalid_fieldtype}
 	end;
-filter_condition_parse_value(Value, non_neg_integer_type) ->
+filter_condition_parse_value(Value, string_type) ->
 	try
 		io:format("aqui ~p  ~p\n", [Value, non_neg_integer_type]),
+		case is_list(Value) of
+			true -> {ok, binary_to_list(iolist_to_binary([ <<"\"">>, Value, <<"\"">>]))};
+			false ->
+				case is_binary(Value) of
+					true -> {ok, binary_to_list(iolist_to_binary([ <<"\"">>, Value, <<"\"">>]))};
+					false -> 
+						case is_integer(Value) of
+							true -> {ok, binary_to_list(iolist_to_binary([ <<"\"">>, integer_to_binary(Value), <<"\"">>]))};
+							false -> {error, einvalid_fieldtype}
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> {error, einvalid_fieldtype}
+	end;
+filter_condition_parse_value(Value, non_neg_integer_type) ->
+	try
 		case is_integer(Value) of
 			true -> {ok, integer_to_binary(Value)};
 			false ->
@@ -906,7 +925,7 @@ filter_condition_parse_value(Value, undefined) when is_binary(Value) -> {ok, iol
 filter_condition_parse_value(Value, undefined) when is_list(Value) -> {ok, iolist_to_binary([ <<"\"">>, list_to_binary(Value), <<"\"">>])};
 filter_condition_parse_value(Value, undefined) when is_integer(Value) -> {ok, integer_to_binary(Value)};
 filter_condition_parse_value(Value, undefined) when is_atom(Value) -> {ok, atom_to_binary(Value, utf8)};
-filter_condition_parse_value(Value, undefined) -> {error, einvalid_fieldtype}.
+filter_condition_parse_value(_, undefined) -> {error, einvalid_fieldtype}.
 
 
 filter_with_sort(Tab, []) -> 
@@ -979,7 +998,7 @@ filter_with_limit(Tab, FilterList, Limit, Offset) when is_list(FilterList) ->
 					ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, Where, <<"].">>])),
 					qlc:string_to_handle(ExprQuery)
 				end,
-			ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?LIFE_TIME_PARSED_QUERY, {filter_with_limit, Tab, FilterList}, F),
+			ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?DB_PARSED_QUERY_CACHE_TIMEOUT, {filter_with_limit, Tab, FilterList}, F),
 			mnesia:activity(async_dirty, fun () -> 
 								Records = qlc:eval(ParsedQuery),
 								case Offset > length(Records) of
