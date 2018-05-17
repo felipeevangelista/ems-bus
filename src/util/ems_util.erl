@@ -79,6 +79,7 @@
 		 open_file/1,
 		 file_last_modified/1,
 		 is_number/1,
+		 is_value_field_type/2,
 		 is_cpf_valid/1, 
 		 is_cnpj_valid/1, 
 		 ip_list/0,
@@ -3000,22 +3001,33 @@ parse_ldap_name(Name) ->
 	end.
 
 
-
+parse_ldap_filter_field_and_value(Field, FieldValue) ->
+	case ldap_attribute_map_to_user_field(Field) of
+		{ok, FieldUser} -> 
+			FieldsTable =  mnesia:table_info(user_db, attributes),
+			FieldPos = ems_db:field_position(FieldUser, FieldsTable, 2),
+			FieldType = ems_schema:get_data_type_field(user, FieldPos),
+			case is_value_field_type(FieldValue, FieldType) of
+				true -> {ok, FieldUser};
+				false -> {error, einvalid_fieldtype}
+			end;
+		Error -> Error
+	end.
 
 parse_ldap_filter_or([], Result) -> {ok, {'or', lists:usort(Result)}};
 parse_ldap_filter_or([{substrings,
                            {'SubstringFilter', Field,
                             [{any, Value}]}}|T], Result) ->
-	case ldap_attribute_to_db(Field) of
+	case parse_ldap_filter_field_and_value(Field, Value) of
 		{ok, Field2} -> parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result]);
-		_ -> {error, einvalid_filter}
+		Error -> Error
 	end;
 parse_ldap_filter_or([{present, _}|T], Result) ->
 	parse_ldap_filter_or(T, Result);
 parse_ldap_filter_or([{equalityMatch, {'AttributeValueAssertion', Field, Value}}|T], Result) ->
-	case ldap_attribute_to_db(Field) of
+	case parse_ldap_filter_field_and_value(Field, Value) of
 		{ok, Field2} -> parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result]);
-		_ -> {error, einvalid_filter}
+		Error -> Error
 	end;
 parse_ldap_filter_or(_, _) -> {error, einvalid_filter}.
 
@@ -3023,23 +3035,23 @@ parse_ldap_filter_and([], Result) -> {ok, {'and', lists:usort(Result)}};
 parse_ldap_filter_and([{substrings,
                            {'SubstringFilter', Field,
                             [{any, Value}]}}|T], Result) ->
-	case ldap_attribute_to_db(Field) of
+	case parse_ldap_filter_field_and_value(Field, Value) of
 		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
-		_ -> {error, einvalid_filter}
+		Error -> Error
 	end;
 parse_ldap_filter_and([{present, _}|T], Result) ->
 	io:format("aqui 0 present\n"),
 	parse_ldap_filter_and(T, Result);
 parse_ldap_filter_and([{equalityMatch, {'AttributeValueAssertion', Field, Value}}|T], Result) ->
 io:format("aqui ~p = ~p\n", [Field, Value]),
-	case ldap_attribute_to_db(Field) of
+	case parse_ldap_filter_field_and_value(Field, Value) of
 		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
-		_ -> {error, einvalid_filter}
+		Error -> Error
 	end;
 parse_ldap_filter_and([{'or', LdapFilter}|T], Result) ->
 	case parse_ldap_filter_or(LdapFilter, []) of
 		{ok, Condition} -> parse_ldap_filter_and(T, [Condition | Result]);
-		_ -> {error, einvalid_filter}
+		Error -> Error
 	end;
 parse_ldap_filter_and(_, _) -> {error, einvalid_filter}.
 
@@ -3052,49 +3064,49 @@ parse_ldap_filter({'and', LdapFilter}) ->
 parse_ldap_filter(_) -> {error, einvalid_filter}.
 	
 
--spec ldap_attribute_to_db(binary()) -> binary().
-ldap_attribute_to_db(Field) -> 
-	ldap_attribute_to_db_(list_to_binary(string:to_lower(binary_to_list(Field)))).
-ldap_attribute_to_db_(<<"uid">>) -> {ok, <<"id">>};
-ldap_attribute_to_db_(<<"employeenumber">>) -> {ok, <<"id">>};
-ldap_attribute_to_db_(<<"uidnumber">>) -> {ok, <<"id">>};
-ldap_attribute_to_db_(<<"gecos">>) -> {ok, <<"name">>};
-ldap_attribute_to_db_(<<"displayname">>) -> {ok, <<"name">>};
-ldap_attribute_to_db_(<<"distinguishedname">>) -> {ok, <<"login">>};
-ldap_attribute_to_db_(<<"cn">>) -> {ok, <<"login">>};
-ldap_attribute_to_db_(<<"sn">>) -> {ok, <<"name">>};
-ldap_attribute_to_db_(<<"name">>) -> {ok, <<"name">>};
-ldap_attribute_to_db_(<<"codigo">>) -> {ok, <<"codigo">>};
-ldap_attribute_to_db_(<<"login">>) -> {ok, <<"login">>};
-ldap_attribute_to_db_(<<"email">>) -> {ok, <<"email">>};
-ldap_attribute_to_db_(<<"mail">>) -> {ok, <<"email">>};
-ldap_attribute_to_db_(<<"cpf">>) -> {ok, <<"cpf">>};
-ldap_attribute_to_db_(<<"bairro">>) -> {ok, <<"bairro">>};
-ldap_attribute_to_db_(<<"cidade">>) -> {ok, <<"cidade">>};
-ldap_attribute_to_db_(<<"endereco">>) -> {ok, <<"endereco">>};
-ldap_attribute_to_db_(<<"complemento_endereco">>) -> {ok, <<"complemento_endereco">>};
-ldap_attribute_to_db_(<<"uf">>) -> {ok, <<"uf">>};
-ldap_attribute_to_db_(<<"cep">>) -> {ok, <<"cep">>};
-ldap_attribute_to_db_(<<"rg">>) -> {ok, <<"rg">>};
-ldap_attribute_to_db_(<<"active">>) -> {ok, <<"active">>};
-ldap_attribute_to_db_(<<"datanascimento">>) -> {ok, <<"data_nascimento">>};
-ldap_attribute_to_db_(<<"sexo">>) -> {ok, <<"sexo">>};
-ldap_attribute_to_db_(<<"telefone">>) -> {ok, <<"telefone">>};
-ldap_attribute_to_db_(<<"celular">>) -> {ok, <<"celular">>};
-ldap_attribute_to_db_(<<"ddd">>) -> {ok, <<"ddd">>};
-ldap_attribute_to_db_(<<"nome_pai">>) -> {ok, <<"nome_pai">>};
-ldap_attribute_to_db_(<<"nome_mae">>) -> {ok, <<"nome_mae">>};
-ldap_attribute_to_db_(<<"nacionalidade">>) -> {ok, <<"nacionalidade">>};
-ldap_attribute_to_db_(<<"type">>) -> {ok, <<"type">>};
-ldap_attribute_to_db_(<<"subtype">>) -> {ok, <<"subtype">>};
-ldap_attribute_to_db_(<<"type_email">>) -> {ok, <<"type_email">>};
-ldap_attribute_to_db_(<<"ctrl_insert">>) -> {ok, <<"ctrl_insert">>};
-ldap_attribute_to_db_(<<"ctrl_update">>) -> {ok, <<"ctrl_update">>};
-ldap_attribute_to_db_(<<"givenname">>) -> {ok, <<"name">>};
-ldap_attribute_to_db_(<<"memberuid">>) -> {ok, <<"id">>};
-ldap_attribute_to_db_(<<"member">>) -> {ok, <<"name">>};
-ldap_attribute_to_db_(<<"samaccountname">>) -> {ok, <<"name">>};
-ldap_attribute_to_db_(_) -> {error, einvalid_field}.
+-spec ldap_attribute_map_to_user_field(binary()) -> binary().
+ldap_attribute_map_to_user_field(Field) -> 
+	ldap_attribute_map_to_user_field_(list_to_binary(string:to_lower(binary_to_list(Field)))).
+ldap_attribute_map_to_user_field_(<<"uid">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"employeenumber">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"uidnumber">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"gecos">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"displayname">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"distinguishedname">>) -> {ok, <<"login">>};
+ldap_attribute_map_to_user_field_(<<"cn">>) -> {ok, <<"login">>};
+ldap_attribute_map_to_user_field_(<<"sn">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"name">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"codigo">>) -> {ok, <<"codigo">>};
+ldap_attribute_map_to_user_field_(<<"login">>) -> {ok, <<"login">>};
+ldap_attribute_map_to_user_field_(<<"email">>) -> {ok, <<"email">>};
+ldap_attribute_map_to_user_field_(<<"mail">>) -> {ok, <<"email">>};
+ldap_attribute_map_to_user_field_(<<"cpf">>) -> {ok, <<"cpf">>};
+ldap_attribute_map_to_user_field_(<<"bairro">>) -> {ok, <<"bairro">>};
+ldap_attribute_map_to_user_field_(<<"cidade">>) -> {ok, <<"cidade">>};
+ldap_attribute_map_to_user_field_(<<"endereco">>) -> {ok, <<"endereco">>};
+ldap_attribute_map_to_user_field_(<<"complemento_endereco">>) -> {ok, <<"complemento_endereco">>};
+ldap_attribute_map_to_user_field_(<<"uf">>) -> {ok, <<"uf">>};
+ldap_attribute_map_to_user_field_(<<"cep">>) -> {ok, <<"cep">>};
+ldap_attribute_map_to_user_field_(<<"rg">>) -> {ok, <<"rg">>};
+ldap_attribute_map_to_user_field_(<<"active">>) -> {ok, <<"active">>};
+ldap_attribute_map_to_user_field_(<<"datanascimento">>) -> {ok, <<"data_nascimento">>};
+ldap_attribute_map_to_user_field_(<<"sexo">>) -> {ok, <<"sexo">>};
+ldap_attribute_map_to_user_field_(<<"telefone">>) -> {ok, <<"telefone">>};
+ldap_attribute_map_to_user_field_(<<"celular">>) -> {ok, <<"celular">>};
+ldap_attribute_map_to_user_field_(<<"ddd">>) -> {ok, <<"ddd">>};
+ldap_attribute_map_to_user_field_(<<"nome_pai">>) -> {ok, <<"nome_pai">>};
+ldap_attribute_map_to_user_field_(<<"nome_mae">>) -> {ok, <<"nome_mae">>};
+ldap_attribute_map_to_user_field_(<<"nacionalidade">>) -> {ok, <<"nacionalidade">>};
+ldap_attribute_map_to_user_field_(<<"type">>) -> {ok, <<"type">>};
+ldap_attribute_map_to_user_field_(<<"subtype">>) -> {ok, <<"subtype">>};
+ldap_attribute_map_to_user_field_(<<"type_email">>) -> {ok, <<"type_email">>};
+ldap_attribute_map_to_user_field_(<<"ctrl_insert">>) -> {ok, <<"ctrl_insert">>};
+ldap_attribute_map_to_user_field_(<<"ctrl_update">>) -> {ok, <<"ctrl_update">>};
+ldap_attribute_map_to_user_field_(<<"givenname">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"memberuid">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"member">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"samaccountname">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(_) -> {error, einvalid_field}.
 
 
 
@@ -3216,4 +3228,57 @@ parse_ldap_attributes_([_|T], Result) ->
 
 
 					
+is_value_field_type(Value, binary_type) ->
+	try
+		case is_binary(Value) of
+			true -> true;
+			false ->
+				case is_list(Value) of
+					true -> true;
+					false -> 
+						case is_integer(Value) of
+							true -> true;
+							false -> false
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> false
+	end;
+is_value_field_type(Value, string_type) ->
+	try
+		case is_list(Value) of
+			true -> true;
+			false ->
+				case is_binary(Value) of
+					true -> true;
+					false -> 
+						case is_integer(Value) of
+							true -> true;
+							false -> false
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> false
+	end;
+is_value_field_type(Value, non_neg_integer_type) ->
+	try
+		case is_integer(Value) of
+			true -> true;
+			false ->
+				case is_binary(Value) of
+					true -> true;
+					false -> 
+						case is_list(Value) of
+							true -> true;
+							false -> false
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> false
+	end;
+is_value_field_type(Value, boolean_type) -> ems_util:parse_bool(Value);
+is_value_field_type(_, _) -> false.
 					

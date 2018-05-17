@@ -14,7 +14,7 @@
 		 match/2, 
 		 find/1, find/2, find/3, find/4, find/5, 
 		 find_by_id/2, find_by_id/3, filter/2,
-		 find_first/2, find_first/3, find_first/4,
+		 find_first/2, find_first/3, find_first/4, filter_condition_parse_value/2, field_position/3,
 		 sort/2]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
@@ -774,19 +774,25 @@ filter(Tab, []) ->
 	   end,
 	mnesia:activity(async_dirty, F);
 filter(Tab, FilterList) when is_list(FilterList) -> 
-	io:format("Filter ~p !!!!!!!!!!!!!  ~p\n", [Tab, FilterList]),
-	F = fun() ->
-			%FieldsTable =  mnesia:table_info(Tab, attributes),
-			%ExprWhere0 = [io_lib:format("element(~s, R) ~s ~p", integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList],
-			%ExprWhere = string:join(ExprWhere0, ","),
-			ExprWhere = filter_condition(Tab, FilterList),
-			ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, ExprWhere, <<"].">>])),
-			io:format("ExprQuery is ~p\n", [ExprQuery]),
-			?DEBUG("ems_db filter generate expression query ~p to table ~p.", [ExprQuery, Tab]),
-			qlc:string_to_handle(ExprQuery)
-		end,
-	ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?DB_PARSED_QUERY_CACHE_TIMEOUT, {filter, Tab, FilterList}, F),
-	mnesia:activity(async_dirty, fun () -> qlc:eval(ParsedQuery) end);
+	try
+		io:format("Filter ~p !!!!!!!!!!!!!  ~p\n", [Tab, FilterList]),
+		F = fun() ->
+				%FieldsTable =  mnesia:table_info(Tab, attributes),
+				%ExprWhere0 = [io_lib:format("element(~s, R) ~s ~p", integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList],
+				%ExprWhere = string:join(ExprWhere0, ","),
+				ExprWhere = filter_condition(Tab, FilterList),
+				ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, ExprWhere, <<"].">>])),
+				io:format("ExprQuery is ~p\n", [ExprQuery]),
+				?DEBUG("ems_db filter generate expression query ~p to table ~p.", [ExprQuery, Tab]),
+				qlc:string_to_handle(ExprQuery)
+			end,
+		ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?DB_PARSED_QUERY_CACHE_TIMEOUT, {filter, Tab, FilterList}, F),
+		mnesia:activity(async_dirty, fun () -> qlc:eval(ParsedQuery) end)
+	catch
+		_Exception:Reason -> 
+			ems_logger:warn("ems_db filter invalid query on tab ~p with filter ~p. Reason: ~p.", [Tab, FilterList, Reason]),
+			[]
+	end;
 filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
 	io:format("filter tuple !!!!!!!!!!!!!  ~p\n", [FilterTuple]),
 	filter(Tab, [FilterTuple]).
@@ -857,7 +863,7 @@ filter_condition_create(Tab, F, Op, V, FieldsTable, BoolOp) ->
 					Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, FieldValue, BoolOp ],
 					Condition
 			end;
-		_ -> erlang:error(einvalid_field_filter)
+		{error, Reason} -> erlang:error(Reason)
 	end.
 	
 	
@@ -920,6 +926,12 @@ filter_condition_parse_value(Value, non_neg_integer_type) ->
 		end
 	catch 
 		_Exception:_Reason -> {error, einvalid_fieldtype}
+	end;
+filter_condition_parse_value(Value, boolean_type) ->
+	io:format("aqui ~p  ~p\n", [Value, boolean_type]),
+	case ems_util:parse_bool(Value) of
+		true -> {ok, <<"true">>};
+		false -> {ok, <<"false">>}
 	end;
 filter_condition_parse_value(Value, undefined) when is_binary(Value) -> {ok, iolist_to_binary([ <<"<<\"">>, Value, <<"\">>">>])};
 filter_condition_parse_value(Value, undefined) when is_list(Value) -> {ok, iolist_to_binary([ <<"\"">>, list_to_binary(Value), <<"\"">>])};

@@ -54,7 +54,8 @@
 		}).
 		
 -define(USER_SCHEMA_DESCRIPTOR, {
-			   non_neg_integer_type, 				%%  1 > id   
+			   atom_type,							%%  0 - nome da tabela	
+			   non_neg_integer_type, 				%%  1 - id   
 			   non_neg_integer_type,				%%  2 - codigo
 			   binary_type,							%%  3 - login	
 			   binary_type, 						%%  4 - name		

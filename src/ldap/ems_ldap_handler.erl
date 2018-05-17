@@ -633,11 +633,11 @@ handle_request_search_login(Name,
 	end.
 	
 -spec handle_request_search_filter(list(tuple()), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
-handle_request_search_filter(FilterOr, State, Ip, Port, TimestampBin, AttributesToReturn) ->	
-	case ems_util:parse_ldap_filter(FilterOr) of
+handle_request_search_filter(FilterLdap, State, Ip, Port, TimestampBin, AttributesToReturn) ->	
+	case ems_util:parse_ldap_filter(FilterLdap) of
 		{ok, Filter} -> do_find_by_filter(Filter, State, Ip, Port, TimestampBin, AttributesToReturn);
 		{error, Reason} -> 
-			ems_logger:error("ems_ldap_handler handle_request parse invalid filter or ~p.", [FilterOr]),
+			ems_logger:error("ems_ldap_handler handle_request parse invalid filter or ~p.", [FilterLdap]),
 			ems_user:add_history(#user{},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
