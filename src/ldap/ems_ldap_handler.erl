@@ -64,9 +64,7 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 									ems_logger:debug2("ems_ldap_handler request: ~p\n.", [LdapMessage]),
 									MessageID = LdapMessage#'LDAPMessage'.messageID,
 									TimestampBin = ems_util:timestamp_binary(),
-									io:format("mensagem que chegou: ~p\n", [LdapMessage]),
 									Result = handle_request(LdapMessage, State, IpBin, Port, TimestampBin),
-									io:format("resposta a ser enviada: ~p\n", [Result]),
 									case Result of
 										{ok, unbindRequest} ->
 											?DEBUG("ems_ldap_handler unbindRequest and close socket."),
@@ -673,7 +671,6 @@ do_find_by_filter(Filter,
 			ResultDone = make_result_done(noSuchObject),
 			{ok, [ResultDone]};
 		{ok, [User|_]} -> 
-			io:format("users is ~p\n", [User]),
 			ems_logger:info("ems_ldap_handler search filter_or ~p success.", [Filter]),
 			ResultEntry = make_result_entry(User, AdminLdap, AttributesToReturn),
 			ResultDone = make_result_done(success),

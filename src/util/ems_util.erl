@@ -3041,10 +3041,8 @@ parse_ldap_filter_and([{substrings,
 		Error -> Error
 	end;
 parse_ldap_filter_and([{present, _}|T], Result) ->
-	io:format("aqui 0 present\n"),
 	parse_ldap_filter_and(T, Result);
 parse_ldap_filter_and([{equalityMatch, {'AttributeValueAssertion', Field, Value}}|T], Result) ->
-io:format("aqui ~p = ~p\n", [Field, Value]),
 	case parse_ldap_filter_field_and_value(Field, Value) of
 		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
 		Error -> Error

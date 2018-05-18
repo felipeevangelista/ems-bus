@@ -9,6 +9,7 @@ ENV TERM xterm-256color
 
 WORKDIR $HOME
 
+
 # Source list
 RUN echo deb http://ftp.br.debian.org/debian stretch main contrib non-free             >> /etc/apt/sources.list
 RUN echo deb http://security.debian.org/ stretch/updates main contrib non-free         >> /etc/apt/sources.list
@@ -16,12 +17,14 @@ RUN echo deb http://ftp.br.debian.org/debian/ stretch-updates main contrib non-f
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# Atualiza o apt
+# update
 RUN apt-get update
+
+
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
 
 
-# Define o locale para pt_BR.UTF-8
+# Sets the locale to pt_BR.UTF-8
 RUN apt-get install locales locales-all -q -y && locale-gen pt_BR.UTF-8  
 ENV LANG pt_BR.UTF-8  
 ENV LANGUAGE pt_BR:pt:en 
@@ -36,14 +39,20 @@ RUN echo America/Sao_Paulo > /etc/timezone && \
 ENV TZ America/Sao_Paulo
 
 
-# Alguns softwares uteis para administracao
+# Some useful software for administration
 RUN apt-get install -q -y --no-install-recommends curl wget zip unzip
-    
 
-# Easy development
+
+# The following paths point to /var/opt/erlangms, which is the current directory of the bus
 RUN apt-get install -q -y tmux git vim nano -y && \
 	ln -s /root/.bashrc ~/.bashrc && \
 	ln -s /root/.profile ~/.profile && \
+	ln -s /root/.erlangms ~/.erlangms && \
+	ln -s /root/.odbc.ini ~/.odbc.ini
+    
+
+# Easy administration with vim e tmux
+RUN apt-get install -q -y tmux git vim nano -y && \
     mkdir -p ~/.vim/autoload ~/.vim/bundle && \
     curl -LSso ~/.vim/autoload/pathogen.vim \
         https://tpo.pe/pathogen.vim && \
@@ -58,8 +67,7 @@ RUN apt-get install -q -y tmux git vim nano -y && \
 
 
 
-
-# Algumas bibliotecas importantes para o barramento
+# Some important libraries for the bus
 RUN apt-get install -q -y unixodbc \
 						  tdsodbc \
 						  freetds-common \
@@ -74,6 +82,7 @@ RUN apt-get install -q -y unixodbc \
 						  ldap-utils
 
 
+# ErlangMs installation
 RUN cd $HOME && \
 	echo "Build ErlangMS from https://github.com/erlangms/ems-bus on $(pwd)" && \
 	git clone https://github.com/erlangms/ems-bus && \
@@ -82,12 +91,14 @@ RUN cd $HOME && \
 	./build.sh --profile=local
 
 
+# Clean
 RUN apt-get clean && apt-get --purge -y autoremove
 
 
 # Expose the ports we're interested in
 EXPOSE 2300 2301 2389 4369
 
+# Volumes
 VOLUME ~/.erlangms
 VOLUME ~/.odbc.ini
 

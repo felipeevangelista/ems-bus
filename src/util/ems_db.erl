@@ -653,7 +653,6 @@ sort_fields_table([Map|_]) -> [ binary_to_atom(R, utf8) || R <- maps:keys(Map)].
 
 sort(Records, SortList) -> 
 	FieldsTable = sort_fields_table(Records),
-	io:format("fields table is ~p\n", [FieldsTable]),
 	List = ems_util:list_map_to_list_tuple(Records),
 	%io:format("list is ~p\n", [List]),
 	List2 = sort_(List, FieldsTable, SortList),
@@ -775,26 +774,23 @@ filter(Tab, []) ->
 	mnesia:activity(async_dirty, F);
 filter(Tab, FilterList) when is_list(FilterList) -> 
 	try
-		io:format("Filter ~p !!!!!!!!!!!!!  ~p\n", [Tab, FilterList]),
 		F = fun() ->
 				%FieldsTable =  mnesia:table_info(Tab, attributes),
 				%ExprWhere0 = [io_lib:format("element(~s, R) ~s ~p", integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList],
 				%ExprWhere = string:join(ExprWhere0, ","),
 				ExprWhere = filter_condition(Tab, FilterList),
 				ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, ExprWhere, <<"].">>])),
-				io:format("ExprQuery is ~p\n", [ExprQuery]),
-				?DEBUG("ems_db filter generate expression query ~p to table ~p.", [ExprQuery, Tab]),
+				?DEBUG("ems_db filter generate expression query ~p to access table ~p.", [ExprQuery, Tab]),
 				qlc:string_to_handle(ExprQuery)
 			end,
 		ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?DB_PARSED_QUERY_CACHE_TIMEOUT, {filter, Tab, FilterList}, F),
 		mnesia:activity(async_dirty, fun () -> qlc:eval(ParsedQuery) end)
 	catch
 		_Exception:Reason -> 
-			ems_logger:warn("ems_db filter invalid query on tab ~p with filter ~p. Reason: ~p.", [Tab, FilterList, Reason]),
+			ems_logger:warn("ems_db filter invalid query on table ~p with filter ~p. Reason: ~p.", [Tab, FilterList, Reason]),
 			[]
 	end;
 filter(Tab, FilterTuple) when is_tuple(FilterTuple) ->
-	io:format("filter tuple !!!!!!!!!!!!!  ~p\n", [FilterTuple]),
 	filter(Tab, [FilterTuple]).
 
 
@@ -819,11 +815,9 @@ filter_condition(Tab, [{'and', FilterList}|T], FieldsTable, Result) ->
 	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultAnd] | Result]);
 
 filter_condition(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
-	io:format("aqui0\n"),
 	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<>>),
 	filter_condition(Tab, [], FieldsTable, [Condition | Result]);
 filter_condition(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
-	io:format("aqui1\n"),
 	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<", ">>),
 	filter_condition(Tab, T, FieldsTable, [Condition | Result]).
 
@@ -847,9 +841,7 @@ filter_condition_create(Tab, F, Op, V, FieldsTable, BoolOp) ->
 	FieldAtom = filter_condition_parse_field(F),
 	FieldPos = field_position(FieldAtom, FieldsTable, 2),
 	FieldPosBinary = integer_to_binary(FieldPos),
-	io:format("ems_schema:get_data_type_field(~p, ~p).\n", [Tab, FieldPos]),
 	FieldType = ems_schema:get_data_type_field(Tab, FieldPos),
-	io:format("filter_condition_parse_value(~p, ~p).\n", [V, FieldType]),
 	case filter_condition_parse_value(V, FieldType) of
 		{ok, FieldValue} -> 
 			case FieldAtom == login andalso ((is_binary(V) andalso string:find(binary_to_list(V), "/") =/= nomatch) orelse
@@ -876,7 +868,6 @@ filter_condition_parse_field(_) -> erlang:error(einvalid_field_filter).
 
 filter_condition_parse_value(Value, binary_type) ->
 	try
-		io:format("aqui ~p  ~p\n", [Value, non_neg_integer_type]),
 		case is_binary(Value) of
 			true -> {ok, iolist_to_binary([ <<"<<\"">>, Value, <<"\">>">>])};
 			false ->
@@ -894,7 +885,6 @@ filter_condition_parse_value(Value, binary_type) ->
 	end;
 filter_condition_parse_value(Value, string_type) ->
 	try
-		io:format("aqui ~p  ~p\n", [Value, non_neg_integer_type]),
 		case is_list(Value) of
 			true -> {ok, binary_to_list(iolist_to_binary([ <<"\"">>, Value, <<"\"">>]))};
 			false ->
@@ -928,7 +918,6 @@ filter_condition_parse_value(Value, non_neg_integer_type) ->
 		_Exception:_Reason -> {error, einvalid_fieldtype}
 	end;
 filter_condition_parse_value(Value, boolean_type) ->
-	io:format("aqui ~p  ~p\n", [Value, boolean_type]),
 	case ems_util:parse_bool(Value) of
 		true -> {ok, <<"true">>};
 		false -> {ok, <<"false">>}
