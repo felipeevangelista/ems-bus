@@ -580,7 +580,7 @@ handle_request_search_login(Name,
 							ResultDone = make_result_done(noSuchObject),
 							{ok, [ResultDone]};
 						_ -> 
-							case ems_util:parse_ldap_attribute(Attribute) of
+							case ems_util:ldap_attribute_map_to_user_field(Attribute) of
 								{ok, Field} -> 
 									do_find_by_filter([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn);
 								{error, einvalid_field} ->
@@ -655,8 +655,8 @@ handle_request_search_filter(FilterLdap, State, Ip, Port, TimestampBin, Attribut
 
 
 do_find_by_filter(Filter, 
-					 #state{ldap_admin = AdminLdap}, 
-					 Ip, Port, TimestampBin, AttributesToReturn) ->
+				  #state{ldap_admin = AdminLdap}, 
+				  Ip, Port, TimestampBin, AttributesToReturn) ->
 	case ems_user:find_by_filter([], Filter) of
 		{error, Reason, ReasonDetail} ->
 			ems_logger:error("ems_ldap_handler search filter_or ~p does not exist.", [Filter]),

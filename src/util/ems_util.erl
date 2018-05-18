@@ -90,6 +90,7 @@
 		 is_letter/1,
 		 is_letter_lower/1,
 		 posix_error_description/1,
+		 ldap_attribute_map_to_user_field/1,
 		 parse_ldap_attributes/1,
 		 parse_ldap_filter/1,
 		 parse_querystring/1,
