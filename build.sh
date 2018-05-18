@@ -143,8 +143,7 @@ function prerequisites_docker(){
   echo "Config /etc/odbcinst.ini FreeTDS SQL-server driver..."
   JTDS_ENTRY_CONF=$(sed -rn '/\[FreeTDS\]/, /(^$|^#)/p' /etc/odbcinst.ini 2> /dev/null)
   if [ -z "$JTDS_ENTRY_CONF" ]; then
-	#LIB_TDODBC_PATH=$(locate libtdsodbc.so | sed -n '1p')
-	LIB_TDODBC_PATH="/usr/lib/x86_64-linux-gnu/libodbc.so.1"
+	LIB_TDODBC_PATH="/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so"
 	if [ ! -z "$LIB_TDODBC_PATH" ]; then
 		echo " " >> /etc/odbcinst.ini 
 		echo "# Driver for SQL-server" >> /etc/odbcinst.ini 
