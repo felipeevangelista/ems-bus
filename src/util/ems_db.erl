@@ -805,14 +805,14 @@ filter_condition(Tab, [{'or', FilterList}|[]], FieldsTable, Result) ->
 	filter_condition(Tab, [], FieldsTable, [ResultOr | Result]);
 filter_condition(Tab, [{'or', FilterList}|T], FieldsTable, Result) ->
 	ResultOr = filter_condition_or(Tab, FilterList, FieldsTable, Result),
-	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultOr] | Result]);
+	filter_condition(Tab, T, FieldsTable, [ResultOr ++ <<", ">> | Result]);
 
 filter_condition(Tab, [{'and', FilterList}|[]], FieldsTable, Result) ->
 	ResultAnd = filter_condition(Tab, FilterList, FieldsTable, Result),
 	filter_condition(Tab, [], FieldsTable, [ResultAnd | Result]);
 filter_condition(Tab, [{'and', FilterList}|T], FieldsTable, Result) ->
 	ResultAnd = filter_condition(Tab, FilterList, FieldsTable, Result),
-	filter_condition(Tab, T, FieldsTable, [[<<", ">> | ResultAnd] | Result]);
+	filter_condition(Tab, T, FieldsTable, [ResultAnd ++ <<", ">> | Result]);
 
 filter_condition(Tab, [{F, Op, V}|[]], FieldsTable, Result) ->
 	Condition = filter_condition_create(Tab, F, Op, V, FieldsTable, <<>>),
