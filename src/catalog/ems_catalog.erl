@@ -430,7 +430,10 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		Id = maps:get(<<"id">>, Map, Rowid), % catálogos internos vão usar rowid como chave primária
 		Lang = ems_util:parse_lang(maps:get(<<"lang">>, Map, <<>>)),
 		Ds = maps:get(<<"datasource">>, Map, undefined),
-		Datasource = parse_datasource(Ds, Rowid, Conf),
+		case Enable of
+			true ->	Datasource = parse_datasource(Ds, Rowid, Conf);
+			false -> Datasource = undefined
+		end,
 		case Type of
 			<<"GET">> -> ResultCache = ems_util:parse_result_cache(maps:get(<<"result_cache">>, Map, ResultCacheDefault));
 			_ -> ResultCache = 0
