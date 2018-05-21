@@ -453,12 +453,11 @@ new_from_map(Map, Conf) ->
 	try
 		PasswdCrypto = maps:get(<<"passwd_crypto">>, Map, <<>>),
 		Password = maps:get(<<"password">>, Map, <<>>),
-		LoginBin = maps:get(<<"login">>, Map),
-		Login = ?UTF8_STRING(LoginBin),
+		Login = list_to_binary(string:to_lower(binary_to_list(?UTF8_STRING(maps:get(<<"login">>, Map))))),
 		{ok, #user{	id = maps:get(<<"id">>, Map),
-					codigo = maps:get(<<"codigo">>, Map),
-					login = list_to_binary(string:to_lower(binary_to_list(?UTF8_STRING(Login)))),
-					name = ?UTF8_STRING(maps:get(<<"name">>, Map)),
+					codigo = maps:get(<<"codigo">>, Map, undefined),
+					login = Login,
+					name = ?UTF8_STRING(maps:get(<<"name">>, Map, Login)),
 					cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
 					password = case PasswdCrypto of
 									<<"SHA1">> -> ?UTF8_STRING(Password);
@@ -489,7 +488,7 @@ new_from_map(Map, Conf) ->
 					subtype = maps:get(<<"subtype">>, Map, 0),
 					active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
 					remap_user_id = maps:get(<<"remap_user_id">>, Map, undefined),
-					admin = maps:get(<<"admin">>, Map, lists:member(LoginBin, Conf#config.cat_restricted_services_admin)),
+					admin = maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_admin)),
 					ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 					ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
 					ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),
