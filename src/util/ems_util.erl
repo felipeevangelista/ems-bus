@@ -3287,5 +3287,7 @@ is_value_field_type(_, _) -> false.
 get_host_list() ->
 	case net_adm:host_file() of 
 		{error, enoent} -> list_to_binary(net_adm:localhost()); 
-		Hosts -> list_to_binary(lists:flatten(lists:join(",", Hosts)))
+		Hosts -> 
+			Hosts2 = [atom_to_list(R) || R <- Hosts],
+			list_to_binary(lists:flatten(lists:join(",", Hosts2)))
 	end.
