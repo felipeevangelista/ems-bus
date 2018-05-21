@@ -132,7 +132,7 @@ print_config_settings(_) -> ok.
 load_config() ->
 	case get_config_data() of
 		{ok, ConfigData, Filename} ->
-			ems_logger:format_alert("\nems_config loading configuration file ~p...\n", [Filename]),
+			ems_logger:format_info("ems_config loading configuration file ~p...", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Json} -> 
 					try
@@ -160,7 +160,7 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 	CatFilename2 = ems_util:parse_file_name_path(CatFilename, [], undefined),
 	case file:read_file_info(CatFilename2, [{time, universal}]) of
 		{ok, _} -> 
-			ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilename2]),
+			ems_logger:format_info("ems_config loading catalog ~p from ~p.", [CatNameStr, CatFilename2]),
 			parse_cat_path_search(T, [{CatName, CatFilename2}|Result]);
 		_ ->
 			CatFilenameDir = filename:dirname(CatFilename2),
@@ -170,10 +170,10 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 					CatTempDir = filename:join([?TEMP_PATH, "unzip_catalogs", CatNameStr]),
 					zip:unzip(CatFilenameZip, [{cwd, CatTempDir}]),
 					CatFilename3 = filename:join([CatTempDir, filename:basename(CatFilenameDir), filename:basename(CatFilename2)]),
-					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilenameZip]),
+					ems_logger:format_info("ems_config loading catalog ~p from ~p.", [CatNameStr, CatFilenameZip]),
 					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
 				_ ->
-					ems_logger:format_error("ems_config cannot read catalog ~p.\n", [CatFilename2]),
+					ems_logger:format_error("ems_config cannot load catalog ~p.", [CatFilename2]),
 					parse_cat_path_search(T, Result)
 			end
 	end.

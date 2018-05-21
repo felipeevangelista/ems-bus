@@ -12,7 +12,7 @@
 -record(counter, {key :: atom(), 
      			  value :: non_neg_integer()}).
 
--record(user, {id :: non_neg_integer(), 					%%  1 > id       				-> TB_Usuario.UsuId
+-record(user, {id :: non_neg_integer(), 					%%  1 - id       				-> TB_Usuario.UsuId
 			   codigo :: non_neg_integer(),					%%  2 - codigo   				-> Tb_Pessoa.PesCodigoPessoa
 			   login :: binary(),							%%  3 - login	
 			   name :: binary(), 							%%  4 - name		
@@ -94,7 +94,7 @@
 			}).		
 		
 %
-% Muitos atributos são armazenados no histórico para histórico pois na tabelas origem tais atributos podem mudar
+% Muitos atributos são armazenados no histórico pois as tabelas origem podem mudar
 %
 -record(user_history, {
 			   id :: non_neg_integer(), 						%% identificador do history
@@ -124,15 +124,12 @@
 			   owner :: binary(),  								%% Quem é o proprietário pelo serviço. Ex.: auth
 			   service_async :: boolean(),						%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
 			   request_rid,       								%% Request ID (Identificador da requisição gerada automaticamente)
-			   %request_latency :: non_neg_integer(),			%% Latência (tempo que levou para processar a requisição)
 			   request_type :: binary(),						%% Verbo HTTP (GET, POST, PUT, DELETE e OPTIONS)
 			   request_uri :: binary(),							%% URI da requisição do serviço
 			   request_url :: binary(),							%% URL da requisição do serviço
 			   request_url_masked :: boolean(),					%% Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
 			   request_http_version :: binary(),				%% Versão do cabeçalho HTTP
-			   %request_payload :: binary(),					%% Payload da requisição (se menor que 4K)
 			   request_querystring :: binary(),					%% Querystring da requisição
-			   %request_params_url :: binary(),					%% Map com os parâmetros da URL
 			   request_content_type_in :: binary(),				%% Tipo de conteúdo de entrada (Ex.: application/json)
 			   request_content_type_out :: binary(),			%% Tipo de conteúdo de saída. (Ex.: application/json)
 			   request_content_length :: non_neg_integer(), 	%% Largura da requisição
@@ -142,7 +139,6 @@
 			   request_t1,										%% Utilizado para cálculo da latência (Tempo inicial em milisegundos)
 			   request_authorization :: binary(),				%% Dados da autenticação da requisição
 			   request_port :: non_neg_integer(),				
-			   %request_response_data,
 			   request_bash,
 			   request_host :: binary(),						%% Ip do barramento
 			   request_filename :: string(),					%% Qual arquivo foi lido do disco
@@ -154,7 +150,6 @@
 			   request_code :: non_neg_integer(),	 			%% Código de retorno HTTP (Ex.: 202 OK, 404 Não Encontrado)
 			   request_protocol :: atom(),						%% Protocol (http, ldap)
    			   request_timestamp :: binary()					%% Timestamp de quando que a requisição ocorreu
-
 		}).
 		
 -record(user_dados_funcionais, {
@@ -217,59 +212,117 @@
 			   ctrl_hash									%% Hash gerado para poder comparar dois registros
 		}).
 
--record(user_permission, {id :: non_neg_integer(),				%% identificador do perfil (required) (Na UnB é o campo TB_Perfil_Transacao.PTrid)
-						  user_id :: non_neg_integer(),			%% identificador do usuário (required) (Na UnB é o campo Tb_Usuario.UsuId)
-						  client_id :: non_neg_integer(),		%% identificador do cliente (required) (Na UnB é o campo Tb_Sistemas.PerSisId)
-						  perfil_id :: non_neg_integer(),		%% identificador do perfil  (required) (Na UnB é o campo Tb_Perfil.PerId)
-						  hash :: non_neg_integer(),
-						  hash2 :: non_neg_integer(),
-						  name :: binary(),
-						  url :: binary(),
-						  grant_get :: boolean(),
-						  grant_post :: boolean(),
-						  grant_put :: boolean(),
-						  grant_delete :: boolean(),
-						  position :: non_neg_integer(),
-						  ctrl_path :: string(),
-						  ctrl_file :: string(),
-						  ctrl_insert,							%% Data que foi inserido no banco mnesia
-						  ctrl_update, 							%% Data que foi atualiado no banco mnesia			
-						  ctrl_modified,						%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-						  ctrl_hash								%% Hash gerado para poder comparar dois registros
+-record(user_permission, {id :: non_neg_integer(),				%%  1 - id
+						  user_id :: non_neg_integer(),			%%  2 - user_id
+						  client_id :: non_neg_integer(),		%%  3 - client_id
+						  perfil_id :: non_neg_integer(),		%%  4 - perfil_id
+						  hash :: non_neg_integer(),			%%  5 - hash
+						  hash2 :: non_neg_integer(),			%%  6 - hash2
+						  name :: binary(),						%%  7 - name
+						  url :: binary(),						%%  8 - url
+						  grant_get :: boolean(),				%%  9 - grant_get
+						  grant_post :: boolean(),				%% 10 - grant_post
+						  grant_put :: boolean(),				%% 11 - grant_put
+						  grant_delete :: boolean(),			%% 12 - grant_delete
+						  position :: non_neg_integer(),		%% 13 - position
+						  ctrl_path :: string(),				%% 14 - ctrl_path
+						  ctrl_file :: string(),				%% 15 - ctrl_file
+						  ctrl_insert :: binary(),				%% 16 - ctrl_insert				-> Data que foi inserido no banco mnesia
+						  ctrl_update :: binary(), 				%% 17 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+						  ctrl_modified :: binary(),			%% 18 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+						  ctrl_hash :: non_neg_integer()		%% 19 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
           }).
 
 
--record(user_perfil, {id :: non_neg_integer(), 				%% identificador do perfil (required) (Na UnB é o campo Tb_Perfil.PerId)				
-					  user_id :: non_neg_integer(),			%% identificador interno do usuário (required)
-					  client_id :: non_neg_integer(),		%% identificador interno do client (required)
-					  name :: binary(), 					%% nome do perfil (required)
-					  ctrl_path :: string(),
-				      ctrl_file :: string(),
-				      ctrl_insert,							%% Data que foi inserido no banco mnesia
-				      ctrl_update, 							%% Data que foi atualiado no banco mnesia			
-				      ctrl_modified,						%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-				      ctrl_hash								%% Hash gerado para poder comparar dois registros
+-define(USER_PERMISSION_SCHEMA_DESCRIPTOR, {
+			   atom_type,							%%  0 - nome da tabela	
+			   non_neg_integer_type, 				%%  1 - id   
+			   non_neg_integer_type,				%%  2 - user_id
+			   non_neg_integer_type,				%%  3 - client_id
+			   non_neg_integer_type,				%%  4 - perfil_id
+			   non_neg_integer_type,				%%  5 - bash
+			   non_neg_integer_type,				%%  6 - bash2
+			   binary_type,							%%  7 - name
+			   binary_type,							%%  8 - url
+			   boolean_type,						%%  9 - grant_get
+			   boolean_type,						%% 10 - grant_post
+			   boolean_type,						%% 11 - grant_put
+			   boolean_type,						%% 12 - grant_delete
+			   non_neg_integer_type,				%% 13 - position
+			   string_type,							%% 14 - ctrl_path
+			   string_type,							%% 15 - ctrl_file
+			   binary_type,							%% 16 - ctrl_insert
+			   binary_type, 						%% 17 - ctrl_update
+			   binary_type,							%% 18 - ctrl_modified
+			   non_neg_integer_type					%% 19 - ctrl_hash 	
+		}).
+
+
+-record(user_perfil, {id :: non_neg_integer(), 				%%  1 - id				
+					  user_id :: non_neg_integer(),			%%  2 - user_id			
+					  client_id :: non_neg_integer(),		%%  3 - client_id		
+					  name :: binary(), 					%%  4 - name
+					  ctrl_path :: string(),				%%  5 - ctrl_path
+					  ctrl_file :: string(),				%%  6 - ctrl_file
+					  ctrl_insert :: binary(),				%%  7 - ctrl_insert				-> Data que foi inserido no banco mnesia
+					  ctrl_update :: binary(), 				%%  8 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+					  ctrl_modified :: binary(),			%%  9 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+					  ctrl_hash :: non_neg_integer()		%% 10 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
 		}).
           
-
--record(client, {id :: non_neg_integer(), 					
-				 name :: binary(), 
-			     description :: binary(),
-			     secret :: binary(),
-				 redirect_uri :: binary(),
-				 active :: boolean(),
-				 scope :: binary(),
-				 version :: binary(),
-				 group :: binary(), 						%% Quem é o grupo do client
-				 glyphicon :: binary(),						%% classe do glyphicon
-				 ctrl_path :: string(),
-				 ctrl_file :: string(),
-				 ctrl_insert,								%% Data que foi inserido no banco mnesia
-				 ctrl_update, 								%% Data que foi atualiado no banco mnesia			
-				 ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-				 ctrl_hash									%% Hash gerado para poder comparar dois registros
+-define(USER_PERFIL_SCHEMA_DESCRIPTOR, {
+			   atom_type,							%%  0 - nome da tabela	
+			   non_neg_integer_type, 				%%  1 - id   
+			   non_neg_integer_type,				%%  2 - user_id
+			   non_neg_integer_type,				%%  3 - client_id
+			   binary_type,							%%  4 - name
+			   string_type,							%%  5 - ctrl_path
+			   string_type,							%%  6 - ctrl_file
+			   binary_type,							%%  7 - ctrl_insert
+			   binary_type, 						%%  8 - ctrl_update
+			   binary_type,							%%  9 - ctrl_modified
+			   non_neg_integer_type					%% 10 - ctrl_hash 	
 		}).
 
+
+-record(client, {id :: non_neg_integer(), 					%%  1 - id       				
+				 name :: binary(), 							%%  2 - name
+			     description :: binary(),					%%  3 - description
+			     secret :: binary(),						%%  4 - secret
+				 redirect_uri :: binary(),					%%  5 - redirect_uri
+				 active :: boolean(),						%%  6 - active
+				 scope :: binary(),							%%  7 - scope	
+				 version :: binary(),						%%  8 - version
+				 group :: binary(), 						%%  9 - group
+				 glyphicon :: binary(),						%% 10 - glyphicon
+			     ctrl_path :: string(),						%% 11 - ctrl_path
+			     ctrl_file :: string(),						%% 12 - ctrl_file
+			     ctrl_insert :: binary(),					%% 13 - ctrl_insert				-> Data que foi inserido no banco mnesia
+			     ctrl_update :: binary(), 					%% 14 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+			     ctrl_modified :: binary(),					%% 15 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			     ctrl_hash :: non_neg_integer()				%% 16 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+		}).
+
+
+-define(CLIENT_SCHEMA_DESCRIPTOR, {
+			   atom_type,							%%  0 - nome da tabela	
+			   non_neg_integer_type, 				%%  1 - id   
+			   binary_type,							%%  2 - name
+			   binary_type,							%%  3 - description
+			   binary_type,							%%  4 - secret
+			   binary_type,							%%  5 - redirect_uri
+			   boolean_type,						%%  6 - active
+			   binary_type,							%%  7 - scope
+			   binary_type,							%%  8 - version
+			   binary_type,							%%  9 - group
+			   binary_type,							%% 10 - glyphicon
+			   string_type,							%% 11 - ctrl_path
+			   string_type,							%% 12 - ctrl_file
+			   binary_type,							%% 13 - ctrl_insert
+			   binary_type, 						%% 14 - ctrl_update
+			   binary_type,							%% 15 - ctrl_modified
+			   non_neg_integer_type					%% 16 - ctrl_hash 	
+		}).
 
 -record(ctrl_params, {name :: string(),
 					  value

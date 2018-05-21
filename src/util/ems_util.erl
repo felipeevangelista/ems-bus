@@ -39,6 +39,7 @@
 		 save_from_file_req/1,
 		 node_is_live/1,
  		 node_binary/0,
+ 		 get_host_list/0,
 		 get_node_name/0,
 		 get_params_from_url/1,
 		 get_rowid_and_params_from_url/2,
@@ -3281,3 +3282,10 @@ is_value_field_type(Value, non_neg_integer_type) ->
 is_value_field_type(Value, boolean_type) -> ems_util:parse_bool(Value);
 is_value_field_type(_, _) -> false.
 					
+
+-spec get_host_list() -> binary().
+get_host_list() ->
+	case net_adm:host_file() of 
+		{error, enoent} -> list_to_binary(net_adm:localhost()); 
+		Hosts -> list_to_binary(lists:flatten(lists:join(",", Hosts)))
+	end.

@@ -15,7 +15,7 @@
 	{
 		"name" : "/authorize",
 		"comment": "Oauth 2.0",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_oauth2_authorize:execute",
 		"url": "/authorize",
@@ -76,7 +76,7 @@
 	{
 		"name" : "/authorize",
 		"comment": "Oauth 2.0",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_oauth2_authorize:execute",
 		"url": "/authorize",
@@ -147,7 +147,7 @@
 	{
 		"name" : "/code_request",
 		"comment": "Oauth 2.0",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_oauth2_authorize:code_request",
 		"url": "/code_request",
@@ -197,7 +197,7 @@
 	{
 		"name" : "/callback",
 		"comment": "Simulção de recurso",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_oauth2_client:callback",
 		"url": "/callback",
@@ -216,7 +216,7 @@
 	{
 		"name" : "/resource",
 		"comment": "Get resourge",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_oauth2_recurso:execute",
 		"url": "/resource",
@@ -236,7 +236,7 @@
 	{
 		"name" : "/recurso",
 		"comment": "Obter o recurso",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_oauth2_recurso:execute",
 		"url": "/recurso",

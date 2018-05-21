@@ -223,8 +223,15 @@ checkpoint() ->
 
 
 % write direct messages to console
-format_info(Message) ->	io:format(Message).
-format_info(Message, Params) ->	io:format("~s", [io_lib:format(Message, Params)]).
+format_info(Message) when is_list(Message) ->	
+	format_info(list_to_binary(Message));
+format_info(Message) ->	
+	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\n">>])).
+
+format_info(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\n">>])).
+
 
 format_warn(Message) ->	io:format("\033[0;33m~s\033[0m", [Message]).
 format_warn(Message, Params) ->	io:format("\033[0;33m~s\033[0m", [io_lib:format(Message, Params)]).
@@ -235,8 +242,14 @@ format_error(Message, Params) -> io:format("\033[0;31m~s\033[0m", [io_lib:format
 format_debug(Message) -> io:format("\033[0;34m~s\033[0m", [Message]).
 format_debug(Message, Params) -> io:format("\033[1;34m~s\033[0m", [io_lib:format(Message, Params)]).
 
-format_alert(Message) ->	io:format("\033[0;46m~s\033[0m", [Message]).
-format_alert(Message, Params) ->	io:format("\033[0;46m~s\033[0m", [io_lib:format(Message, Params)]).
+format_alert(Message) when is_list(Message) ->	
+	format_alert(list_to_binary(Message));
+format_alert(Message) ->
+	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\033[0m\n">>])).
+
+format_alert(Message, Params) ->
+	Message2 = io_lib:format(Message, Params),
+	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\033[0m\n">>])).
 
 
 
@@ -246,7 +259,6 @@ format_alert(Message, Params) ->	io:format("\033[0;46m~s\033[0m", [io_lib:format
 %%====================================================================
  
 init(#service{properties = Props}) ->
-	info("Loading ESB ~s instance on Erlang/OTP ~s.", [?SERVER_NAME, erlang:system_info(otp_release)]),
 	Checkpoint = maps:get(<<"log_file_checkpoint">>, Props, ?LOG_FILE_CHECKPOINT),
 	LogFileMaxSize = maps:get(<<"log_file_max_size">>, Props, ?LOG_FILE_MAX_SIZE),
 	Conf = ems_config:getConfig(),

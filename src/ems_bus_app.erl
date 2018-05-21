@@ -15,31 +15,27 @@
 
 
 start(_StartType, StartArgs) ->
+	io:format("\n"),
+	T1 = ems_util:get_milliseconds(),
+	ems_logger:format_alert("Loading ESB ~s instance on Erlang/OTP ~s...", [?SERVER_NAME, erlang:system_info(otp_release)]),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->
-			T1 = ems_util:get_milliseconds(),
 			Conf = ems_config:getConfig(),
 			ems_dispatcher:start(),
 			Ret = ems_bus_sup:start_link(StartArgs),
-			erlang:send_after(6000, spawn(fun() -> 
-					ems_logger:info("Hosts in the cluster: ~p.", [ case net_adm:host_file() of 
-																		{error, enoent} -> net_adm:localhost(); 
-																		Hosts -> Hosts 
-																   end]),
-					AuthorizationMode = case Conf#config.authorization of
-											basic -> <<"basic, oauth2">>;
-											oauth2 -> <<"oauth2">>;
-											public -> <<"public">>
-										end,
-					case Conf#config.oauth2_with_check_constraint of
-						true -> ems_logger:info("Default authorization mode: ~p <<with check constraint>>.", [AuthorizationMode]);
-						false -> ems_logger:info("Default authorization mode: ~p.", [AuthorizationMode])
-					end,
-					ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
-					ems_logger:info("Tcp servers startup delayed to wait loading others essential services..."),
-					ems_logger:set_level(info)
-			end), set_level),
+			ems_logger:info("Hosts in the cluster: ~p.", [ems_util:get_host_list()]),
+			AuthorizationMode = case Conf#config.authorization of
+									basic -> <<"basic, oauth2">>;
+									oauth2 -> <<"oauth2">>;
+									public -> <<"public">>
+								end,
+			case Conf#config.oauth2_with_check_constraint of
+				true -> ems_logger:info("Default authorization mode: ~p <<with check constraint>>.", [AuthorizationMode]);
+				false -> ems_logger:info("Default authorization mode: ~p.", [AuthorizationMode])
+			end,
+			ems_logger:set_level(info),
+			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;
 		{error, Reason} ->
 			io:format("Error processing configuration file. Reason: ~p.", [Reason]),

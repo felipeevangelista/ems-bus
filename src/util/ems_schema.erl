@@ -164,6 +164,7 @@ prop_list_to_json(PropList) ->
 	iolist_to_binary([<<"{"/utf8>>, Result, <<"}"/utf8>>]).
 	
 
+-spec new(atom()) -> #service{}.
 new(service) -> #service{};
 new(catalog) -> #service{};
 new(service_owner) -> #service_owner{};
@@ -184,6 +185,8 @@ new(stat_counter_hist) -> #stat_counter_hist{};
 new(counter) -> #counter{};
 new(_) -> erlang:error(einvalid_type).
 
+
+-spec new_(atom()) -> #service{}.
 new_(service) -> #service{_ = '_'};
 new_(catalog) -> #service{_ = '_'};
 new_(service_owner) -> #service_owner{_ = '_'};
@@ -209,7 +212,17 @@ get_schema_table(user_db) -> ?USER_SCHEMA_DESCRIPTOR;
 get_schema_table(user_fs) -> ?USER_SCHEMA_DESCRIPTOR;
 get_schema_table(user_aluno_ativo_db) -> ?USER_SCHEMA_DESCRIPTOR;
 get_schema_table(user_aluno_inativo_db) -> ?USER_SCHEMA_DESCRIPTOR;
+get_schema_table(client) -> ?CLIENT_SCHEMA_DESCRIPTOR;
+get_schema_table(client_db) -> ?CLIENT_SCHEMA_DESCRIPTOR;
+get_schema_table(client_fs) -> ?CLIENT_SCHEMA_DESCRIPTOR;
+get_schema_table(user_perfil) -> ?USER_PERFIL_SCHEMA_DESCRIPTOR;
+get_schema_table(user_perfil_db) -> ?USER_PERFIL_SCHEMA_DESCRIPTOR;
+get_schema_table(user_perfil_fs) -> ?USER_PERFIL_SCHEMA_DESCRIPTOR;
+get_schema_table(user_permission) -> ?USER_PERMISSION_SCHEMA_DESCRIPTOR;
+get_schema_table(user_permission_db) -> ?USER_PERMISSION_SCHEMA_DESCRIPTOR;
+get_schema_table(user_permission_fs) -> ?USER_PERMISSION_SCHEMA_DESCRIPTOR;
 get_schema_table(_) -> undefined.
+
 
 -spec get_data_type_field(atom(), non_neg_integer()) -> atom().
 get_data_type_field(Table, FieldPos) ->

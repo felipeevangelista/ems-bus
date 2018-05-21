@@ -2,7 +2,7 @@
 	{
 		"name": "/auth/user/:id",
 		"comment": "Get user by id",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/:id",
@@ -31,7 +31,7 @@
 	{	
 		"name": "/auth/user",
 		"comment": "List all users",
-		"owner": "auth_user",
+		"owner": "auth",
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/user",
 		"type": "GET",
@@ -83,7 +83,7 @@
 	{
 		"name": "/auth/user/lru/:id",
 		"comment": "Get user by id",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/lru/:id",
@@ -112,7 +112,7 @@
 	{	
 		"name": "/auth/user/lru",
 		"comment": "List all users",
-		"owner": "auth_user",
+		"owner": "auth",
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/user/lru",
 		"type": "GET",
@@ -164,7 +164,7 @@
 	{
 		"name": "/auth/user/fs/:id",
 		"comment": "Get user by id",
-		"owner": "auth_user",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/fs/:id",
@@ -193,7 +193,7 @@
 	{	
 		"name": "/auth/user/fs",
 		"comment": "List all users",
-		"owner": "auth_user",
+		"owner": "auth",
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/user/fs",
 		"type": "GET",
@@ -295,7 +295,7 @@
 	{	
 		"name": "/auth/user/history",
 		"comment": "List user history",
-		"owner": "auth_user",
+		"owner": "auth",
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/user/history",
 		"type": "GET",
