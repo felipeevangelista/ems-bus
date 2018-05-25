@@ -13,6 +13,11 @@
 
 -export([data_pump/13]).
 
+check_gc(InsertOrUpdateCount) ->
+	case  InsertOrUpdateCount rem 10000 of
+		0 -> erlang:garbage_collect(self());
+		_ -> ok
+	end.
 
 -spec data_pump(list(tuple()), tuple(), #config{}, binary(), binary(), 
 									insert | update, non_neg_integer(), non_neg_integer(), 
@@ -20,6 +25,7 @@
 									fs | db, list()) -> ok.
 data_pump([], _, _, _, _, _, InsertCount, UpdateCount, ErrorCount, DisabledCount, SkipCount, _, _) -> {ok, InsertCount, UpdateCount, ErrorCount, DisabledCount, SkipCount};
 data_pump([H|T], CtrlDate, Conf, Name, Middleware, insert, InsertCount, UpdateCount, ErrorCount, DisabledCount, SkipCount, SourceType, Fields) ->
+	check_gc(InsertCount),
 	case do_insert_record(H, CtrlDate, Conf, Name, Middleware, SourceType, Fields) of
 		{ok, insert} -> data_pump(T, CtrlDate, Conf, Name, Middleware, insert, InsertCount+1, UpdateCount, ErrorCount, DisabledCount, SkipCount, SourceType, Fields);
 		{ok, skip} -> data_pump(T, CtrlDate, Conf, Name, Middleware, insert, InsertCount, UpdateCount, ErrorCount, DisabledCount, SkipCount+1, SourceType, Fields);
@@ -27,8 +33,10 @@ data_pump([H|T], CtrlDate, Conf, Name, Middleware, insert, InsertCount, UpdateCo
 		_Error -> data_pump(T, CtrlDate, Conf, Name, Middleware, insert, InsertCount, UpdateCount, ErrorCount+1, DisabledCount, SkipCount, SourceType, Fields)
 	end;
 data_pump([H|T], CtrlDate, Conf, Name, Middleware, update, InsertCount, UpdateCount, ErrorCount, DisabledCount, SkipCount, SourceType, Fields) ->
+	check_gc(InsertCount),
 	case do_update_record(H, CtrlDate, Conf, Name, Middleware, SourceType, Fields) of
-		{ok, insert} -> data_pump(T, CtrlDate, Conf, Name, Middleware, update, InsertCount+1, UpdateCount, ErrorCount, DisabledCount, SkipCount, SourceType, Fields);
+		{ok, insert} -> 
+			data_pump(T, CtrlDate, Conf, Name, Middleware, update, InsertCount+1, UpdateCount, ErrorCount, DisabledCount, SkipCount, SourceType, Fields);
 		{ok, update} -> data_pump(T, CtrlDate, Conf, Name, Middleware, update, InsertCount, UpdateCount+1, ErrorCount, DisabledCount, SkipCount, SourceType, Fields);
 		{ok, skip} -> data_pump(T, CtrlDate, Conf, Name, Middleware, update, InsertCount, UpdateCount, ErrorCount, DisabledCount, SkipCount+1, SourceType, Fields);
 		{error, edisabled} -> data_pump(T, CtrlDate, Conf, Name, Middleware, update, InsertCount, UpdateCount, ErrorCount, DisabledCount+1, SkipCount, SourceType, Fields);

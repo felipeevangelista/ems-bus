@@ -47,6 +47,7 @@ start_link(Ref, Socket, Transport, Service) ->
 
 init(Ref, Socket, Transport, [State]) ->
 	ranch:accept_ack(Ref),
+	ets:new(ems_ldap_handle_ctl, [set, named_table, public]),
 	loop(Socket, Transport, State).
 
 loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,

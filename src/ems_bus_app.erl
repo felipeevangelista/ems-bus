@@ -15,6 +15,7 @@
 
 
 start(_StartType, StartArgs) ->
+	erlang:system_flag(min_heap_size, 22000),
 	io:format("\n"),
 	T1 = ems_util:get_milliseconds(),
 	ems_logger:format_alert("Loading ESB ~s instance on Erlang/OTP ~s...", [?SERVER_NAME, erlang:system_info(otp_release)]),

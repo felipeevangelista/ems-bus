@@ -125,6 +125,7 @@ handle_call(notify_return_pool, _From, State = #state{datasource = InternalDatas
 	case LastError of
 		undefined ->
 			?DEBUG("ems_odbc_pool_worker notify_return_pool datasource ~p.", [Id]),
+			erlang:garbage_collect(self()),
 			CheckValidConnectionRef = erlang:send_after(CheckValidConnectionTimeout, self(), {check_valid_connection, QueryCount}),
 			CloseIdleConnectionRef = erlang:send_after(CloseIdleConnectionTimeout, self(), close_idle_connection),
 			{reply, ok, State#state{datasource = InternalDatasource#service_datasource{pid_module = undefined,

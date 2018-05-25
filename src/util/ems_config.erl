@@ -138,6 +138,7 @@ load_config() ->
 					try
 						Result = parse_config(Json, Filename),
 						print_config_settings(Result),
+						erlang:garbage_collect(self()),
 						Result
 					catch 
 						_Exception:Reason ->

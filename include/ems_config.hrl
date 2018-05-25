@@ -124,7 +124,7 @@
 -define(CSV2SQLITE_PATH, filename:join([?PRIV_PATH, "scripts", "csv2sqlite.py"])). 
 
 % Quanto tempo uma parsed query mnesia fica em cache para reutilização (módulo ems_db)
--define(DB_PARSED_QUERY_CACHE_TIMEOUT, 60000 * 15). % 15 minutos
+-define(DB_PARSED_QUERY_CACHE_TIMEOUT, 60000). 
 
 % Limits of API query
 -define(MAX_LIMIT_API_QUERY, 99999999).
@@ -140,7 +140,7 @@
 
 
 % Timeout to check odbc connection
--define(CHECK_VALID_CONNECTION_TIMEOUT, 15000). % 15 segundos
+-define(CHECK_VALID_CONNECTION_TIMEOUT, 22000). % 22 segundos
 -define(MAX_CLOSE_IDLE_CONNECTION_TIMEOUT, 3600000). % 1h
 -define(CLOSE_IDLE_CONNECTION_TIMEOUT, 300000). % 5 minutos
 
