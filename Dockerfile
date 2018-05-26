@@ -1,4 +1,4 @@
-FROM erlang:20.3.6
+FROM erlang:21
 
 MAINTAINER evertonagilar <evertonagilar@gmail.com>
 
@@ -40,7 +40,7 @@ ENV TZ America/Sao_Paulo
 
 
 # Some useful software for administration
-RUN apt-get install -q -y --no-install-recommends curl wget zip unzip
+RUN apt-get install -q -y --no-install-recommends curl wget zip unzip nettools
 
 
 # The following paths point to /var/opt/erlangms, which is the current directory of the bus
@@ -92,7 +92,7 @@ RUN cd $HOME && \
 
 
 # Clean
-RUN apt-get clean && apt-get --purge -y autoremove
+RUN apt-get clean && apt-get --purge -y autoremove && apt-get -y autoclean
 
 
 # Expose the ports we're interested in
@@ -103,6 +103,6 @@ VOLUME ~/.erlangms
 VOLUME ~/.odbc.ini
 
 
-CMD ["/var/opt/erlangms/ems-bus/start.sh"]
+CMD ["tmux new-session -d '/var/opt/erlangms/ems-bus/start.sh' \; attach"]
 
 
