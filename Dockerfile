@@ -87,11 +87,11 @@ RUN cd $HOME && \
 	git clone https://github.com/erlangms/ems-bus && \
 	cd ems-bus && \
 	git checkout v1.0.25.ldap && \
-	./build.sh
+	./build.sh --profile=local
 
 
 # Clean
-RUN apt-get clean && apt-get --purge -y autoremove && apt-get -y autoclean
+RUN apt-get clean && apt-get --purge -y autoremove
 
 
 # Expose the ports we're interested in
