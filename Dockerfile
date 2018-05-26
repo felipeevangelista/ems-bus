@@ -40,7 +40,7 @@ ENV TZ America/Sao_Paulo
 
 
 # Some useful software for administration
-RUN apt-get install -q -y --no-install-recommends curl wget zip unzip nettools
+RUN apt-get install -q -y --no-install-recommends curl wget zip unzip net-tools
 
 
 # The following paths point to /var/opt/erlangms, which is the current directory of the bus
