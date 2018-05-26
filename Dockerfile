@@ -84,11 +84,10 @@ RUN apt-get install -q -y unixodbc \
 
 # ErlangMs installation
 RUN cd $HOME && \
-	echo "Build ErlangMS from https://github.com/erlangms/ems-bus on $(pwd)" && \
 	git clone https://github.com/erlangms/ems-bus && \
 	cd ems-bus && \
 	git checkout v1.0.25.ldap && \
-	./build.sh --profile=local
+	./build.sh
 
 
 # Clean
