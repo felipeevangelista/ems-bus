@@ -4,12 +4,8 @@
 #
 
 VERSION_SCRIPT="3.0.0"
-
-# Erlang Runtime version required > 20
 ERLANG_VERSION=20
-
 OBSERVER="false"
-
 PROFILE="local"
 
 if [ ! "$ERLANGMS_IN_DOCKER" = "true" ]; then
@@ -104,26 +100,18 @@ if [ "$PROFILE" = "local" ]; then
 else
 	epmd -kill > /dev/null 2>&1
 	
-	#ID_IMAGE=$(sudo docker ps -f name=erlangms | awk '{print $1}' | sed '1d')
-	#if [ ! -z "$ID_IMAGE" ]; then
-	#	echo "Stop current image $IMAGE..."
-	#	sudo docker stop $ID_IMAGE > /dev/null 2>&1
-	#fi
+	ID_IMAGE=$(sudo docker ps -f name=erlangms | awk '{print $1}' | sed '1d')
+	if [ ! -z "$ID_IMAGE" ]; then
+		echo "Stop current image $IMAGE..."
+		sudo docker stop $ID_IMAGE > /dev/null 2>&1
+	fi
 
-	#LS_IMAGES=$(sudo docker images $IMAGE)
-	#if [ ! -z "$LS_IMAGE" ]; then
-	#	echo "Remove previous images $LS_IMAGES..."
-	#	sudo docker rmi $LS_IMAGES > /dev/null 2>&1
-	#fi
-
-	#sudo docker rm erlangms > /dev/null 2>&1
-	
 	sudo docker run -p 2300:2300 \
 					-p 2301:2301 \
 					-p 2389:2389 \
 					-p 4369:4369 \
 					-v ~/.erlangms:/var/opt/erlangms/.erlangms \
 					-v ~/.odbc.ini:/var/opt/erlangms/.odbc.ini \
-					-it erlangms /bin/bash
+					-it erlangms
 fi
 
