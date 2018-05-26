@@ -1,4 +1,4 @@
-FROM erlang:21
+FROM erlang:20.3.6
 
 MAINTAINER evertonagilar <evertonagilar@gmail.com>
 
