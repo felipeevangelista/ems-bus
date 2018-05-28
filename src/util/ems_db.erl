@@ -993,20 +993,11 @@ filter_with_limit(Tab, FilterList, Limit, Offset) when is_list(FilterList) ->
 	case TabSize == 0 orelse Offset > TabSize orelse Limit < 1 orelse Offset < 1 of
 		true -> [];
 		false ->
-			F = fun() ->
-					FieldsTable =  mnesia:table_info(Tab, attributes),
-					Where = string:join([io_lib:format("element(~s, R) ~s ~p", [integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList], ","),
-					ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, Where, <<"].">>])),
-					qlc:string_to_handle(ExprQuery)
-				end,
-			ParsedQuery = ems_cache:get(ems_db_parsed_query_cache, ?DB_PARSED_QUERY_CACHE_TIMEOUT, {filter_with_limit, Tab, FilterList}, F),
-			mnesia:activity(async_dirty, fun () -> 
-								Records = qlc:eval(ParsedQuery),
-								case Offset > length(Records) of
-									true -> [];
-									false -> lists:sublist(Records, Offset, Limit)
-								end
-							 end)
+			Records = filter(Tab, FilterList),
+			case Offset > length(Records) of
+				true -> [];
+				false -> lists:sublist(Records, Offset, Limit)
+			end
 	end;
 filter_with_limit(Tab, FilterTuple, Limit, Offset) when is_tuple(FilterTuple) -> 	
 	filter_with_limit(Tab, [FilterTuple], Limit, Offset).
