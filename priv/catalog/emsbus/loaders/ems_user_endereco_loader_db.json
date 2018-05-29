@@ -11,7 +11,7 @@
 	"check_remove_records" : true,
 	"check_remove_records_checkpoint" : 75000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 16000,
+	"start_timeout" : 26000,
 	"middleware" : "ems_user_endereco_loader_middleware",
 	"group" : ["ems_user_loader_db", "ems_user_perfil_loader_db", 
 			   "ems_user_permission_loader_db", "ems_user_email_loader_db", 

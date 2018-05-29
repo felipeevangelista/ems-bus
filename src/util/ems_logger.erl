@@ -607,6 +607,7 @@ do_log_request(Request = #request{rid = RID,
 								  code = Code,
 								  reason = Reason,
 								  reason_detail = ReasonDetail,
+								  reason_exception = ReasonException,
 								  latency = Latency,
 								  result_cache = ResultCache,
 								  result_cache_rid = ResultCacheRid,
@@ -811,8 +812,12 @@ do_log_request(Request = #request{rid = RID,
 					   <<"\n\tStatus: ">>, integer_to_binary(Code), 
 					   <<" <<">>, case is_atom(Reason) of
 										true -> 
-										   case ReasonDetail =/= undefined of
-												true -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8)];
+										   case ReasonDetail =/= undefined andalso is_atom(ReasonDetail) of
+												true ->
+												   case ReasonException =/= undefined andalso is_atom(ReasonException) of
+														true -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8), <<", ">>, atom_to_binary(ReasonException, utf8)];
+														false -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8)]
+												   end;
 												false -> atom_to_binary(Reason, utf8)
 										   end;
 										false -> <<"error">>

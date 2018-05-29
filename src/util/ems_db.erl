@@ -186,10 +186,6 @@ create_database(Nodes) ->
 										 {disc_copies, Nodes},
 										 {attributes, record_info(fields, catalog_schema)}]),
 
-    mnesia:create_table(produto, [{type, set},
-	 							  {disc_copies, Nodes},
-								  {attributes, record_info(fields, produto)}]),
-
     mnesia:create_table(service_owner, [{type, set},
 	 							  {disc_copies, Nodes},
 								  {attributes, record_info(fields, service_owner)}]),
@@ -319,7 +315,6 @@ create_database(Nodes) ->
 							client_fs,
 							ctrl_sqlite_table,
 							catalog_schema,
-							produto,
 							service_owner,
 							catalog_get_fs,
 							catalog_post_fs,
@@ -775,9 +770,6 @@ filter(Tab, []) ->
 filter(Tab, FilterList) when is_list(FilterList) -> 
 	try
 		F = fun() ->
-				%FieldsTable =  mnesia:table_info(Tab, attributes),
-				%ExprWhere0 = [io_lib:format("element(~s, R) ~s ~p", integer_to_list(field_position(F, FieldsTable, 2)), Op,  field_value(V)]) || {F, Op, V} <- FilterList],
-				%ExprWhere = string:join(ExprWhere0, ","),
 				ExprWhere = filter_condition(Tab, FilterList),
 				ExprQuery = binary_to_list(iolist_to_binary([<<"[R || R <- mnesia:table(">>, atom_to_binary(Tab, utf8), <<"), ">>, ExprWhere, <<"].">>])),
 				?DEBUG("ems_db filter generate expression query ~p to access table ~p.", [ExprQuery, Tab]),

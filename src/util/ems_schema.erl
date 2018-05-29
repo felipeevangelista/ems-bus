@@ -16,7 +16,7 @@
 
 -export_records([user, user_history, user_permission, user_perfil, 
 				 user_email, user_dados_funcionais, user_endereco, user_telefone,
-				 catalog_schema, schema_type, produto, service, service_owner, 
+				 catalog_schema, schema_type, service, service_owner, 
 				 client, service_datasource, stat_counter_hist, counter]).
 
 
@@ -179,7 +179,6 @@ new(user_endereco) -> #user_endereco{};
 new(user_telefone) -> #user_telefone{};
 new(user_dados_funcionais) -> #user_dados_funcionais{};
 new(schema_type) -> #schema_type{};
-new(produto) -> #produto{};
 new(client) -> #client{};
 new(stat_counter_hist) -> #stat_counter_hist{};
 new(counter) -> #counter{};
@@ -221,6 +220,19 @@ get_schema_table(user_perfil_fs) -> ?USER_PERFIL_SCHEMA_DESCRIPTOR;
 get_schema_table(user_permission) -> ?USER_PERMISSION_SCHEMA_DESCRIPTOR;
 get_schema_table(user_permission_db) -> ?USER_PERMISSION_SCHEMA_DESCRIPTOR;
 get_schema_table(user_permission_fs) -> ?USER_PERMISSION_SCHEMA_DESCRIPTOR;
+get_schema_table(user_dados_funcionais) -> ?USER_DADOS_FUNCIONAIS_SCHEMA_DESCRIPTOR;
+get_schema_table(user_dados_funcionais_fs) -> ?USER_DADOS_FUNCIONAIS_SCHEMA_DESCRIPTOR;
+get_schema_table(user_dados_funcionais_db) -> ?USER_DADOS_FUNCIONAIS_SCHEMA_DESCRIPTOR;
+get_schema_table(user_email) -> ?USER_EMAIL_SCHEMA_DESCRIPTOR;
+get_schema_table(user_email_fs) -> ?USER_EMAIL_SCHEMA_DESCRIPTOR;
+get_schema_table(user_email_db) -> ?USER_EMAIL_SCHEMA_DESCRIPTOR;
+get_schema_table(user_endereco) -> ?USER_ENDERECO_SCHEMA_DESCRIPTOR;
+get_schema_table(user_endereco_fs) -> ?USER_ENDERECO_SCHEMA_DESCRIPTOR;
+get_schema_table(user_endereco_db) -> ?USER_ENDERECO_SCHEMA_DESCRIPTOR;
+get_schema_table(user_telefone) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
+get_schema_table(user_telefone_fs) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
+get_schema_table(user_telefone_db) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
+get_schema_table(user_history) -> ?USER_HISTORY_DESCRIPTOR;
 get_schema_table(_) -> undefined.
 
 

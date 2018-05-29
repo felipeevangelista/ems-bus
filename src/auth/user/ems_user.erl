@@ -455,7 +455,7 @@ new_from_map(Map, Conf) ->
 		Password = maps:get(<<"password">>, Map, <<>>),
 		Login = list_to_binary(string:to_lower(binary_to_list(?UTF8_STRING(maps:get(<<"login">>, Map))))),
 		{ok, #user{	id = maps:get(<<"id">>, Map),
-					codigo = maps:get(<<"codigo">>, Map, undefined),
+					codigo = maps:get(<<"codigo">>, Map, 0),
 					login = Login,
 					name = ?UTF8_STRING(maps:get(<<"name">>, Map, Login)),
 					cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),

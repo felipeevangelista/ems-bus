@@ -4,6 +4,10 @@
 
 -include("../include/ems_schema.hrl").
 
+-record(produto, {id :: non_neg_integer(), 
+				  name :: string(), 
+				  price :: non_neg_integer()}).
+
 onvalidate(Operation, Produto = #produto{price = Price}) ->
 	case unique(Operation, Produto) of
 		true ->
