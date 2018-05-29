@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # author Everton de Vargas Agilar <<evertonagilar@gmail.com>>
 #
@@ -25,17 +25,10 @@ die () {
 
 # Checks if the version of erlang installed is compatible
 check_erlang_version(){
-	printf "Checking Erlang Runtime version... "
-
-	# Erlang Runtime version installled
 	ERLANG_VERSION_OS=`erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().'  -noshell 2> /dev/null | sed 's/[^0-9]//g'`
-
 	if [ -n "$ERLANG_VERSION_OS" ]; then
-		if [ $ERLANG_VERSION_OS -ge $ERLANG_VERSION ]; then
-			printf "OK\n"
-		else
-			printf "ERROR\n"
-			die "Build canceled because the Erlang Runtime installed is incompatible with this software. Expected version: $ERLANG_VERSION"
+		if [ ! $ERLANG_VERSION_OS -ge $ERLANG_VERSION ]; then
+			die "Opps, the Erlang Runtime installed is incompatible with this software. Expected version: $ERLANG_VERSION"
 		fi 
 	else
 		die "Oops, you should install Erlang Runtime $ERLANG_VERSION first !!!"
@@ -62,7 +55,7 @@ fi
 # Read command line parameters
 for P in $*; do
 	if [[ "$P" =~ ^--.+$ ]]; then
-		if [[ "$P" =~ ^--profile=(local|docker)$ ]]; then
+		if [[ "$P" =~ ^--profile=\(local|docker\)$ ]]; then
 			PROFILE="$(echo $P | cut -d= -f2)"
 		elif [ "$P" = "--help" ]; then
 			help
@@ -80,7 +73,7 @@ if [ "$PROFILE" = "local" ]; then
 	cd $current_dir
 	deps=$(ls -d deps/*/ebin)
 
-	if [ "$OBSERVER" == "true" ]; then
+	if [ "$OBSERVER" = "true" ]; then
 		echo "Start with observer daemon..."
 		erl -pa $current_dir/ebin $deps \
 			-sname emsbus -setcookie erlangms \
