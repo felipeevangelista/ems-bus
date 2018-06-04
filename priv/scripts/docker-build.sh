@@ -607,8 +607,6 @@ check_push_registry(){
 }
 
 push_registry(){
-	if $(host "$REGISTRY_IP" 2> /dev/null 1> /dev/null); then
-		if nc -z $REGISTRY_IP $REGISTRY_PORT ; then
 			PUSH_TAG="$REGISTRY_SERVER/$APP_NAME"
 			sudo docker tag $APP_NAME $PUSH_TAG
 			echo
@@ -633,12 +631,6 @@ push_registry(){
 			#	echo deploy...
 			#fi
 			
-		else
-			printf "\tError: Registry server daemon $REGISTRY_SERVER is out, you will not be able to push image.\n"
-		fi
-	else
-		printf "\tError: Registry server $REGISTRY_SERVER is out, you will not be able to push image.\n"
-	fi
 }
 
 # IMPORTANTE

@@ -233,6 +233,7 @@ get_schema_table(user_telefone) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
 get_schema_table(user_telefone_fs) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
 get_schema_table(user_telefone_db) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
 get_schema_table(user_history) -> ?USER_HISTORY_DESCRIPTOR;
+get_schema_table(stat_counter_hist) -> ?STAT_COUNTER_HIST_DESCRIPTOR;
 get_schema_table(_) -> undefined.
 
 
@@ -240,6 +241,6 @@ get_schema_table(_) -> undefined.
 get_data_type_field(Table, FieldPos) ->
 	case get_schema_table(Table) of
 		undefined -> undefined;
-		Schema -> element(FieldPos, Schema)
+		Schema -> element(FieldPos+1, Schema)
 	end.
 

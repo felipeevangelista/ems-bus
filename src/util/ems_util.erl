@@ -1211,10 +1211,11 @@ ip_list(TcpListenPrefixInterfaceNames)->
 
 -spec parse_bool(binary() | string() | boolean() | integer()) -> boolean().
 parse_bool(<<"true">>) -> true;
+parse_bool(<<"1">>) -> true;
 parse_bool("true") -> true;
+parse_bool("1") -> true;
 parse_bool(true) -> true;
 parse_bool(1) -> true;
-parse_bool(<<"1">>) -> true;
 parse_bool(_) -> false.
 
 

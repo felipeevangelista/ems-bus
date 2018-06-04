@@ -476,13 +476,21 @@ new_from_map(Map, Conf) ->
 					cep = ?UTF8_STRING(maps:get(<<"cep">>, Map, <<>>)),
 					rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
 					data_nascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
-					sexo = maps:get(<<"sexo">>, Map, <<>>),
+					sexo = case maps:get(<<"sexo">>, Map, undefined) of
+								undefined -> undefined;
+								SexoValue when is_binary(SexoValue) -> binary_to_integer(SexoValue);
+								SexoValue -> SexoValue
+							end,
 					telefone = ?UTF8_STRING(maps:get(<<"telefone">>, Map, <<>>)),
 					celular = ?UTF8_STRING(maps:get(<<"celular">>, Map, <<>>)),
 					ddd = ?UTF8_STRING(maps:get(<<"ddd">>, Map, <<>>)),
 					nome_pai = ?UTF8_STRING(maps:get(<<"nome_pai">>, Map, <<>>)),
 					nome_mae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
-					nacionalidade = maps:get(<<"nacionalidade">>, Map, undefined),
+					nacionalidade = case maps:get(<<"nacionalidade">>, Map, undefined) of
+										undefined -> undefined;
+										NacionalidadeValue when is_binary(NacionalidadeValue) -> binary_to_integer(NacionalidadeValue);
+										NacionalidadeValue -> NacionalidadeValue
+									end,
 					email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
 					type = maps:get(<<"type">>, Map, 1),
 					subtype = maps:get(<<"subtype">>, Map, 0),

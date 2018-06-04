@@ -667,16 +667,30 @@
 				}).
 
 
--record(stat_counter_hist, {  id :: non_neg_integer(),
-							  stat_name :: atom(),
-							  stat_value :: non_neg_integer,
-							  stat_date :: binary(),
-							  stat_time :: binary(),
-							  stat_service_name :: binary(),
-							  stat_service_url :: binary(),
-							  stat_service_type :: binary(),
-							  stat_label :: binary()
+-record(stat_counter_hist, {  id :: non_neg_integer(),				%% 1 - id
+							  stat_name :: atom(),					%% 2 - stat_name
+							  stat_value :: non_neg_integer,		%% 3 - stat_value
+							  stat_date :: binary(),				%% 4 - stat_date
+							  stat_time :: binary(),				%% 5 - stat_time
+							  stat_service_name :: binary(),		%% 6 - stat_service_name
+							  stat_service_url :: binary(),			%% 7 - stat_service_url
+							  stat_service_type :: binary(),		%% 8 - stat_service_type
+							  stat_label :: binary()				%% 9 - stat_label
 							}).
+
+
+-define(STAT_COUNTER_HIST_DESCRIPTOR, {
+			   atom_type,									%%  0 - nome da tabela	
+			   non_neg_integer_type,						%%  1 - id
+			   atom_type, 									%%  2 - stat_name   
+			   non_neg_integer_type,						%%  3 - stat_value
+			   binary_type,									%%  4 - stat_date
+			   binary_type,									%%  5 - stat_time
+			   binary_type,									%%  6 - stat_service_name
+			   binary_type,									%%  7 - stat_service_url
+			   binary_type,									%%  8 - stat_service_type
+			   binary_type									%%  9 - stat_label
+		}).
 
 
 -record(auth_oauth2_access_token, { id :: binary(),
