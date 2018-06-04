@@ -496,7 +496,7 @@ new_from_map(Map, Conf) ->
 					subtype = maps:get(<<"subtype">>, Map, 0),
 					active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
 					remap_user_id = maps:get(<<"remap_user_id">>, Map, undefined),
-					admin = maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_admin)),
+					admin = ems_util:value_to_boolean(maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_admin))),
 					ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 					ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
 					ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),
@@ -616,6 +616,11 @@ add_history(#user{id = UserId,
 					   filename = RequestFilename,
 					   referer = RequestReferer,
 					   access_token = RequestAccessToken}) ->
+	RequestTimestamp2 =	case is_binary(RequestTimestamp) of
+							true -> RequestTimestamp;
+							false -> ems_util:timestamp_binary(RequestTimestamp)
+						end,
+	[RequestDate, RequestTime] = string:split(RequestTimestamp2, " "),
 	UserHistory = #user_history{
 					   %% dados do usuário
 					   user_id = UserId,
@@ -649,10 +654,8 @@ add_history(#user{id = UserId,
 					   
 					   %% dados da requisição
 					   request_rid = RequestRid,
-					   request_timestamp = case is_binary(RequestTimestamp) of
-												true -> RequestTimestamp;
-												false -> ems_util:timestamp_binary(RequestTimestamp)
-										   end,
+					   request_date = RequestDate,
+					   request_time = RequestTime,
 					   %request_latency = RequestLatency,
 					   request_code  = RequestCode,
 					   request_reason = RequestReason,
@@ -682,7 +685,6 @@ add_history(#user{id = UserId,
 					   request_filename = RequestFilename,
 					   request_referer = RequestReferer,
 					   request_access_token = RequestAccessToken
-					   
 				},
 	ems_db:insert(UserHistory),
 	ok.

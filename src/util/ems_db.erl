@@ -649,12 +649,7 @@ sort_fields_table([Map|_]) -> [ binary_to_atom(R, utf8) || R <- maps:keys(Map)].
 sort(Records, SortList) -> 
 	FieldsTable = sort_fields_table(Records),
 	List = ems_util:list_map_to_list_tuple(Records),
-	%io:format("list is ~p\n", [List]),
 	List2 = sort_(List, FieldsTable, SortList),
-	%List2 = lists:sort(fun(A, B) -> 
-%			io:format("a is ~p  \n", [A]),
-%			io:format("b is ~p  \n", [B]),
-%			A < B end, List),
 	ems_util:list_tuple_to_list_map(List2).
 
 sort_(List, _, []) -> List;
@@ -792,6 +787,30 @@ filter(Tab, FilterList = [{F1, "==", V1}]) ->
 			ems_logger:warn("ems_db filter invalid query on table ~p with filter ~p. Reason: ~p.", [Tab, FilterList, Reason]),
 			[]
 	end;
+filter(Tab, FilterList = [{F1, "==", V1}, {F2, "==", V2}]) ->
+	Fields =  mnesia:table_info(Tab, attributes),
+	FieldPositionF1 = field_position(F1, Fields, 1),
+	FieldTypeF1 = ems_schema:get_data_type_field(Tab, FieldPositionF1),
+	case filter_condition_parse_value(V1, FieldTypeF1) of
+		{ok, FieldValueF1} -> 
+			FieldPositionF2 = field_position(F2, Fields, 1),
+			FieldTypeF2 = ems_schema:get_data_type_field(Tab, FieldPositionF2),
+			case filter_condition_parse_value(V2, FieldTypeF2) of
+				{ok, FieldValueF2} -> 
+					FieldPositionTableF1 = FieldPositionF1 + 1, 
+					FieldPositionTableF2 = FieldPositionF2 + 1, 
+					Fun = fun() -> 
+								qlc:e(qlc:q([R || R <- mnesia:table(Tab), element(FieldPositionTableF1, R) == FieldValueF1, element(FieldPositionTableF2, R) == FieldValueF2])) 
+						  end,
+					mnesia:activity(async_dirty, Fun);
+				{error, Reason} -> 
+					ems_logger:warn("ems_db filter invalid query on table ~p with filter ~p. Reason: ~p.", [Tab, FilterList, Reason]),
+					[]
+			end;
+		{error, Reason} -> 
+			ems_logger:warn("ems_db filter invalid query on table ~p with filter ~p. Reason: ~p.", [Tab, FilterList, Reason]),
+			[]
+	end;
 filter(Tab, FilterList) when is_list(FilterList) -> 
 	try
 		F = fun() ->
@@ -856,22 +875,12 @@ filter_condition_or(Tab, [{F, Op, V}|T], FieldsTable, Result) ->
 
 filter_condition_create(Tab, F, Op, V, FieldsTable, BoolOp) ->
 	FieldAtom = filter_condition_parse_field(F),
-	FieldPos = field_position(FieldAtom, FieldsTable, 1),
-	FieldPosBinary = integer_to_binary(FieldPos),
-	FieldType = ems_schema:get_data_type_field(Tab, FieldPos),
+	FieldPosition = field_position(FieldAtom, FieldsTable, 1),
+	FieldType = ems_schema:get_data_type_field(Tab, FieldPosition),
 	case filter_condition_parse_value_with_scape(V, FieldType) of
 		{ok, FieldValue} -> 
-			case FieldAtom == login andalso ((is_binary(V) andalso string:find(binary_to_list(V), "/") =/= nomatch) orelse
-											   (is_list(V) andalso string:find(V, "/") =/= nomatch)) of
-				true ->
-					LoginSemBarra = list_to_binary(re:replace(V, "/", "", [{return, list}])),
-					FieldValue2 = {ok, filter_condition_parse_value_with_scape(LoginSemBarra, undefined)},
-					Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, FieldValue2, <<")">>, BoolOp ],
-					Condition;
-				false ->
-					Condition = [ <<"element(">>, FieldPosBinary, <<", R) ">>, Op, <<" ">>, FieldValue, BoolOp ],
-					Condition
-			end;
+			FieldPositionTable = integer_to_binary(FieldPosition + 1),
+			[ <<"element(">>, FieldPositionTable, <<", R) ">>, Op, <<" ">>, FieldValue, BoolOp ];
 		{error, Reason} -> erlang:error(Reason)
 	end.
 	
@@ -998,13 +1007,13 @@ filter_condition_parse_value_with_scape(Value, string_type) ->
 filter_condition_parse_value_with_scape(Value, non_neg_integer_type) ->
 	try
 		case is_integer(Value) of
-			true -> {ok, integer_to_binary(Value)};
+			true -> {ok, integer_to_list(Value)};
 			false ->
 				case is_binary(Value) of
-					true -> {ok, integer_to_binary(binary_to_integer(Value))};
+					true -> {ok, integer_to_list(binary_to_integer(Value))};
 					false -> 
 						case is_list(Value) of
-							true -> {ok, integer_to_binary(list_to_integer(Value))};
+							true -> {ok, integer_to_list(list_to_integer(Value))};
 							false -> {error, einvalid_fieldtype}
 						end
 				end
@@ -1020,10 +1029,10 @@ filter_condition_parse_value_with_scape(Value, boolean_type) ->
 filter_condition_parse_value_with_scape(Value, atom_type) ->
 	try
 		case is_binary(Value) of
-			true -> {ok, binary_to_atom(Value, utf8)};
+			true -> {ok, binary_to_list(Value)};
 			false -> 
 				case is_list(Value) of
-					true -> {ok, list_to_atom(Value)};
+					true -> {ok, Value};
 					false -> {error, einvalid_fieldtype}
 				end
 		end

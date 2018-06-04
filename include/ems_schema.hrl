@@ -139,7 +139,7 @@
 			   request_t1 :: non_neg_integer(),					%% 40 - request_t1
 			   request_authorization :: binary(),				%% 41 - request_authorization
 			   request_port :: non_neg_integer(),				%% 42 - request_port
-			   request_bash :: non_neg_integer(),					%% 43 - request_bash
+			   request_bash :: non_neg_integer(),				%% 43 - request_bash
 			   request_host :: binary(),						%% 44 - request_host
 			   request_filename :: string(),					%% 45 - request_filename
 			   request_referer :: binary(),						%% 46 - request_referer
@@ -149,7 +149,8 @@
 			   request_reason :: atom(),						%% 50 - request_reason
 			   request_code :: non_neg_integer(),	 			%% 51 - request_code
 			   request_protocol :: atom(),						%% 52 - request_protocol
-   			   request_timestamp :: binary()					%% 53 - request_timestamp
+   			   request_date :: binary(),						%% 53 - request_date
+   			   request_time :: binary()							%% 54 - request_time
 		}).
 
 
@@ -205,9 +206,10 @@
 			   atom_type,										%% 48 - request_operation
 			   atom_type,										%% 49 - request_reason_detail
 			   atom_type,										%% 50 - request_reason
-			   non_neg_integer,									%% 51 - request_code
+			   non_neg_integer_type,							%% 51 - request_code
 			   atom_type,										%% 52 - request_protocol
-			   binary_type										%% 53 - request_timestamp
+			   binary_type,										%% 53 - request_date
+			   binary_type										%% 54 - request_time
 			}).		
 
 		
