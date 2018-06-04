@@ -47,7 +47,6 @@ start_link(Ref, Socket, Transport, Service) ->
 
 init(Ref, Socket, Transport, [State]) ->
 	ranch:accept_ack(Ref),
-	ets:new(ems_ldap_handle_ctl, [set, named_table, public]),
 	loop(Socket, Transport, State).
 
 loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
@@ -843,19 +842,11 @@ format_user_field(Value) when is_binary(Value) -> Value.
 
 -spec allow_requet_search(binary(), non_neg_integer(), binary()) -> boolean().
 allow_requet_search(Ip, Port, Name) -> 
-	io:format("aqui1  ~p  ~p\n", [Ip, Port]),
 	BindReqHash = erlang:phash2([Ip, Port]),
-	io:format("aqui1  bash ~p  \n", [BindReqHash]),
 	case get(BindReqHash) of
-		undefined -> 
-			io:format("aqui2\n"),
-			false;
-		{true, _} -> 
-			io:format("aqui3\n"),
-			true;
-		{false, BindRequestName} -> 
-			io:format("aqui4 ~p  == ~p \n", [BindRequestName, Name]),
-			BindRequestName =:= Name
+		undefined -> false;
+		{true, _} -> true;
+		{false, BindRequestName} -> BindRequestName =:= Name
 	end.
 
 %-spec bind_request_name(binary(), non_neg_integer()) -> binary().

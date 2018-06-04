@@ -10,7 +10,7 @@
 	"lang" : "erlang",
 	"update_checkpoint" : 216000,
 	"check_remove_records" : true,
-	"check_remove_records_checkpoint" : 120000,
+	"check_remove_records_checkpoint" : 260000,
 	"datasource" : "ds_ems_user_loader",
 	"start_timeout" : 18000,
 	"middleware" : "ems_user_telefone_loader_middleware",
