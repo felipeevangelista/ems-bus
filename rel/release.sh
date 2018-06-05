@@ -67,21 +67,16 @@ die () {
 }
 
 config_release_path(){
-	if [ "$PUSH" = "true" ]; then
-		# Sets the RELEASE_PATH variable with the path of the releases folder
-		# If the folder does not exist, then you must first download
-		if cd $WORKING_DIR/../../releases 2> /dev/null; then
-			RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
-		else
-			echo "First, you need to download the release folder..."
-			cd ../../
-			git clone https://github.com/erlangms/releases
-			cd $WORKING_DIR
-			RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
-		fi
+	# Sets the RELEASE_PATH variable with the path of the releases folder
+	# If the folder does not exist, then you must first download
+	if cd $WORKING_DIR/../../releases 2> /dev/null; then
+		RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
 	else
-		RELEASE_PATH="/tmp/erlangms_releases_$$"
-		mkdir -p $RELEASE_PATH
+		echo "First, you need to download the release folder..."
+		cd ../../
+		git clone https://github.com/erlangms/releases
+		cd $WORKING_DIR
+		RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
 	fi
 	echo "Setting release path to $RELEASE_PATH."
 }
