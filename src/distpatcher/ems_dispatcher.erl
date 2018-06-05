@@ -103,9 +103,9 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 			case ems_auth_user:authenticate(Service, Request) of
 				{ok, Client, User, AccessToken, Scope} -> 
 					Request2 = Request#request{client = Client,
-											    user = User,
-											    scope = Scope,
-											    access_token = AccessToken},
+											   user = User,
+											   scope = Scope,
+											   access_token = AccessToken},
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request2#request{code = 200, 
@@ -156,31 +156,60 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 						_ ->
 							dispatch_service_work(Request2, Service, ShowDebugResponseHeaders)
 					end;
-				{error, Reason} = Error -> 
+				{error, Reason, ReasonDetail} -> 
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request#request{code = 200, 
-															   content_type_out = ?CONTENT_TYPE_JSON,
-															   response_data = ems_catalog:get_metadata_json(Service),
-															   latency = ems_util:get_milliseconds() - T1}
+															  content_type_out = ?CONTENT_TYPE_JSON,
+															  response_data = ems_catalog:get_metadata_json(Service),
+															  latency = ems_util:get_milliseconds() - T1}
 								};
 						"HEAD" -> 
 								{ok, request, Request#request{code = 200, 
-															   latency = ems_util:get_milliseconds() - T1}
+															  latency = ems_util:get_milliseconds() - T1}
 								};
 						 _ -> 
+							% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
+							case ems_util:get_user_request_by_login(Request) of
+								{ok, UserFound} -> User = UserFound;
+								_ -> User = undefined
+							end,
 							ems_db:inc_counter(ServiceAuthDeniedMetricName),								
-							{error, request, Request#request{code = 400, 
-															  content_type_out = ?CONTENT_TYPE_JSON,
-															  reason = Reason, 
-															  response_data = ems_schema:to_json(Error), 
-															  latency = ems_util:get_milliseconds() - T1}
-							}
+							Request2 = Request#request{code = 400, 
+													   content_type_out = ?CONTENT_TYPE_JSON,
+													   reason = Reason, 
+													   reason_detail = ReasonDetail,
+													   response_data = ems_schema:to_json({error, Reason}), 
+													   user = User,
+													  latency = ems_util:get_milliseconds() - T1},
+							ems_user:add_history(case User of 
+													undefined -> #user{};
+													_ -> User
+												 end,
+												 #client{}, Service, Request2),
+							{error, request, Request2}
 					end
 			end;
 		false -> 
+			% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
+			case ems_util:get_user_request_by_login(Request) of
+				{ok, UserFound} -> User = UserFound;
+				_ -> User = undefined
+			end,
 			ems_db:inc_counter(ServiceHostDeniedMetricName),								
-			{error, host_denied}
+			Request2 = Request#request{code = 400, 
+									   content_type_out = ?CONTENT_TYPE_JSON,
+									   reason = access_denied, 
+									   reason_detail = host_denied,
+									   response_data = ?HOST_DENIED_JSON, 
+									   user = User,
+									   latency = ems_util:get_milliseconds() - T1},
+			ems_user:add_history(case User of 
+									undefined -> #user{};
+									_ -> User
+								 end,
+								 #client{}, Service, Request2),
+			{error, request, Request2}
 	end.
 	
 

@@ -7,9 +7,9 @@
 	"url": "/emsbus/ems_user_dados_funcionais_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 180000,
+	"update_checkpoint" : 30000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 7000,
+	"start_timeout" : 8000,
 	"middleware" : "ems_user_dados_funcionais_loader_middleware",
 	"group" : ["ems_user_loader_db", "ems_user_perfil_loader_db", 
 			   "ems_user_permission_loader_db", "ems_user_email_loader_db", 
@@ -24,10 +24,10 @@
 				"select distinct 
 					   u.UsuId as id, 
 					   Isnull(ca.categocargo, 4) as Type, 
-					   0 as SubType, 
+					   0 as SubType,
 					   case 
 						 when c.dtdesliga < Getdate() then 0 
-						 else 1 
+						 else u.UsuSituacao 
 					   end as Active, 
 					   df.MatSipes as Matricula 
 				from   bdacesso.dbo.tb_usuario u  
@@ -47,7 +47,7 @@
 					   0 as SubType, 
 					   case 
 						 when c.dtdesliga < Getdate() then 0 
-						 else 1 
+						 else u.UsuSituacao 
 					   end as Active, 
 					   df.MatSipes as Matricula 
 				from   bdacesso.dbo.tb_usuario u  

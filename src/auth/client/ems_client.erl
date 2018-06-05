@@ -39,15 +39,15 @@ all() ->
 
 
 	
--spec find_by_id_and_secret(non_neg_integer(), binary()) -> {ok, #client{}} | {error, enoent}.
+-spec find_by_id_and_secret(non_neg_integer(), binary()) -> {ok, #client{}} | {error, enoent, einvalid_secret | undefined}.
 find_by_id_and_secret(Id, Secret) ->
 	case find_by_id(Id) of
 		{ok, Client = #client{secret = CliSecret}} -> 
 			case CliSecret =:= Secret orelse CliSecret =:= ems_util:criptografia_sha1(Secret)  of
 				true -> {ok, Client};
-				false -> {error, enoent}
+				false -> {error, enoent, einvalid_client_secret}
 			end;
-		_ -> {error, enoent}
+		_ -> {error, enoent, undefined}
 	end.
 
 
@@ -92,6 +92,8 @@ new_from_map(Map, _Conf) ->
 				scope = ?UTF8_STRING(maps:get(<<"scope">>, Map, <<>>)),
 				version = ?UTF8_STRING(maps:get(<<"version">>, Map, <<"1.0.0">>)),
 				active = ems_util:parse_bool(maps:get(<<"active">>, Map, true)),
+				group = ?UTF8_STRING(maps:get(<<"group">>, Map, <<>>)),
+				glyphicon = ?UTF8_STRING(maps:get(<<"glyphicon">>, Map, <<>>)),
 				ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 				ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
 				ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),

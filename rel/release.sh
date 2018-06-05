@@ -67,21 +67,16 @@ die () {
 }
 
 config_release_path(){
-	if [ "$PUSH" = "true" ]; then
-		# Sets the RELEASE_PATH variable with the path of the releases folder
-		# If the folder does not exist, then you must first download
-		if cd $WORKING_DIR/../../releases 2> /dev/null; then
-			RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
-		else
-			echo "First, you need to download the release folder..."
-			cd ../../
-			git clone https://github.com/erlangms/releases
-			cd $WORKING_DIR
-			RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
-		fi
+	# Sets the RELEASE_PATH variable with the path of the releases folder
+	# If the folder does not exist, then you must first download
+	if cd $WORKING_DIR/../../releases 2> /dev/null; then
+		RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
 	else
-		RELEASE_PATH="/tmp/erlangms_releases_$$"
-		mkdir -p $RELEASE_PATH
+		echo "First, you need to download the release folder..."
+		cd ../../
+		git clone https://github.com/erlangms/releases
+		cd $WORKING_DIR
+		RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
 	fi
 	echo "Setting release path to $RELEASE_PATH."
 }
@@ -177,7 +172,7 @@ push_release(){
 make_release(){
 	cd $WORKING_DIR
 
-	# Get the build version of the bus that is in the file src/ems_bus.app.src
+	# Get ErlangMS version in the file src/ems_bus.app.src
 	VERSION_RELEASE=$(cat ../src/ems_bus.app.src | sed -rn  's/^.*\{vsn.*([0-9]{1,2}\.[0-9]{1,2}.[0-9]{1,2}).*$/\1/p')
 	[ -z "$VERSION_RELEASE" ] && die "Could not get version to be generated in rebar.config"
 	echo "Please wait, generating the release $VERSION_RELEASE of the ems-bus, this may take a while!"

@@ -46,8 +46,9 @@
 					   cast(p.PesNacionalidade as int) as nacionalidade,
 					   lower(rtrim(p.PesEmail)) as email,
   					   1 as Type,  
-					   0 as SubType,	
-					   1 as Active 
+					   0 as SubType, 
+	   				   1 as Active, 
+					   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword    
 				from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 					 on u.UsuPesIdPessoa = p.PesCodigoPessoa 
 				",
@@ -78,7 +79,8 @@
 				   lower(rtrim(p.PesEmail)) as email,
 				   1 as Type,  
 				   0 as SubType,	
-				   1 as Active 
+				   1 as Active, 
+				   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword   
 			from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 				 on u.UsuPesIdPessoa = p.PesCodigoPessoa  
 			where u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
@@ -89,6 +91,6 @@
 				"passwd_crypto", "endereco", "complemento_endereco", 
 				"bairro", "cidade", "uf", "cep", "rg", "data_nascimento", 
 				"sexo", "telefone", "celular", "ddd", "nome_pai", "nome_mae", "nacionalidade", 
-				"email", "type", "subtype", "active"]
+				"email", "type", "subtype", "active", "dt_expire_password"]
 				
 }

@@ -11,8 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([parse_querystring/1,
-		 version/0,
+-export([version/0,
 		 server_name/0,
 		 sleep/1,
 		 json_encode/1,
@@ -40,6 +39,7 @@
 		 save_from_file_req/1,
 		 node_is_live/1,
  		 node_binary/0,
+ 		 get_host_list/0,
 		 get_node_name/0,
 		 get_params_from_url/1,
 		 get_rowid_and_params_from_url/2,
@@ -53,8 +53,8 @@
          get_querystring/2,
          get_client_request_by_id_and_secret/1,
          get_client_request_by_id/1,
-         get_client_request_by_querystring/1,
          get_user_request_by_login_and_password/1,
+         get_user_request_by_login/1,
          date_add_minute/2,
          date_dec_minute/2,
          date_add_second/2,
@@ -71,6 +71,7 @@
 		 timestamp_binary/1,
 		 uptime_str/0,
 		 boolean_to_binary/1,
+		 value_to_boolean/1,
  		 replacenth/3,
 		 replace/3,
 		 replace_all/2,
@@ -79,6 +80,7 @@
 		 open_file/1,
 		 file_last_modified/1,
 		 is_number/1,
+		 is_value_field_type/2,
 		 is_cpf_valid/1, 
 		 is_cnpj_valid/1, 
 		 ip_list/0,
@@ -89,6 +91,10 @@
 		 is_letter/1,
 		 is_letter_lower/1,
 		 posix_error_description/1,
+		 ldap_attribute_map_to_user_field/1,
+		 parse_ldap_attributes/1,
+		 parse_ldap_filter/1,
+		 parse_querystring/1,
 		 parse_if_modified_since/1,
 		 parse_basic_authorization_header/1,
 		 parse_result_cache/1,
@@ -113,6 +119,7 @@
 		 parse_range/3,
 		 parse_range/4,
 		 parse_email/1,
+		 parse_ldap_name/1,
 		 match_ip_address/2,
  		 allow_ip_address/2,
 		 mask_ipaddress_to_tuple/1,
@@ -867,6 +874,15 @@ boolean_to_binary(<<"1"/utf8>>) -> <<"true"/utf8>>;
 boolean_to_binary(_) -> <<"false"/utf8>>.
 
 
+value_to_boolean(true) -> true;
+value_to_boolean(1) -> true;
+value_to_boolean(<<"true"/utf8>>) -> true;
+value_to_boolean(<<"1"/utf8>>) -> true;
+value_to_boolean("1") -> true;
+value_to_boolean("true") -> true;
+value_to_boolean(_) -> false.
+
+
 %%melhorar este método para conversão para utf8
 utf8_string_win(<<>>) -> <<""/utf8>>;
 utf8_string_win("") -> <<""/utf8>>;
@@ -1195,10 +1211,11 @@ ip_list(TcpListenPrefixInterfaceNames)->
 
 -spec parse_bool(binary() | string() | boolean() | integer()) -> boolean().
 parse_bool(<<"true">>) -> true;
+parse_bool(<<"1">>) -> true;
 parse_bool("true") -> true;
+parse_bool("1") -> true;
 parse_bool(true) -> true;
 parse_bool(1) -> true;
-parse_bool(<<"1">>) -> true;
 parse_bool(_) -> false.
 
 
@@ -1726,7 +1743,11 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			payload = <<>>, 
 			payload_map = #{},
 			response_data = <<>>,
-			node_exec = ems_util:node_binary()
+			node_exec = ems_util:node_binary(),
+			code = 200,
+			reason = ok,
+			reason_detail = undefined,
+			operation = webservice
 		},	
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,
@@ -2078,36 +2099,45 @@ match_ip_address({O1, O2, O3, O4}, {X1, X2, X3, X4}) ->
    (O4 == '_' orelse O4 == X4).
 	
 	
--spec parse_basic_authorization_header(Header :: binary()) -> {ok, string(), string()} | {error, access_denied}.
+-spec parse_basic_authorization_header(Header :: binary()) -> {ok, string(), string()} | 
+															  {error, access_denied, einvalid_basic_authorization_header | 
+																					 ebasic_authorization_header_required | 
+																					 eparse_basic_authorization_header_exception}.
 parse_basic_authorization_header(<<Basic:5/binary, _:1/binary, Secret/binary>>) ->
 	try
 		case Basic =:= <<"Basic">> of
 			true ->
 				Secret2 = base64:decode_to_string(binary_to_list(Secret)),
-				case string:tokens(Secret2, ":") of
-					[Login|[Password|_]] -> {ok, Login, Password};
-					_ -> {error, access_denied}
+				case string:split(Secret2, ":") of
+					[Login, Password] -> {ok, Login, Password};
+					[_Login] -> {error, access_denied, epassword_empty};
+					[[]] -> {error, ebasic_authorization_empty};
+					_ -> {error, access_denied, einvalid_basic_authorization_header}
 				end;
-			false -> {error, access_denied}
+			false -> {error, access_denied, ebasic_authorization_header_required}
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_basic_authorization_header_exception}
 	end;
-parse_basic_authorization_header(_) -> {error, access_denied}.
+parse_basic_authorization_header(_) -> {error, access_denied, eparse_basic_authorization_header_exception}.
 	
--spec parse_bearer_authorization_header(Header :: binary()) -> {ok, binary()} | {error, access_denied}.
+	
+-spec parse_bearer_authorization_header(Header :: binary()) -> {ok, binary()} | 
+															   {error, access_denied, ebearer_authorization_header_required | 
+																					  einvalid_bearer_authorization_header | 
+																					  eparse_bearer_authorization_header_exception}.
 parse_bearer_authorization_header(Header) ->
 	try
 		case Header of 
 			<<Bearer:6/binary, _:1/binary, Secret/binary>> ->
 				case Bearer =:= <<"Bearer">> of
 					true ->	{ok, Secret};
-					false -> {error, access_denied}
+					false -> {error, access_denied, ebearer_authorization_header_required}
 				end;
-			_ -> {error, access_denied}
+			_ -> {error, access_denied, einvalid_bearer_authorization_header}
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_bearer_authorization_header_exception}
 	end.
 		
 
@@ -2782,7 +2812,7 @@ is_email_institucional(SufixoEmailInstitucional, Email) ->
 		false -> false
 	end.
 
--spec get_client_request_by_id_and_secret(#request{}) -> #client{} | undefined.
+-spec get_client_request_by_id_and_secret(#request{}) -> {ok, #client{}} | {error, enoent, atom()}.
 get_client_request_by_id_and_secret(Request = #request{authorization = Authorization}) ->
     try
 		case get_querystring(<<"client_id">>, <<>>, Request) of
@@ -2794,8 +2824,8 @@ get_client_request_by_id_and_secret(Request = #request{authorization = Authoriza
 			true ->
 				ClientSecret = ems_util:get_querystring(<<"client_secret">>, <<>>, Request),
 				case ems_client:find_by_id_and_secret(ClientId, ClientSecret) of
-					{ok, Client} -> Client;
-					_ -> undefined
+					{ok, Client} -> {ok, Client};
+					Error -> Error
 				end;
 			false ->
 				% O ClientId também pode ser passado via header Authorization
@@ -2805,21 +2835,25 @@ get_client_request_by_id_and_secret(Request = #request{authorization = Authoriza
 							{ok, ClientLogin, ClientSecret} ->
 								ClientId2 = list_to_integer(ClientLogin),
 								ClientSecret2 = list_to_binary(ClientSecret),
-								case ems_client:find_by_id_and_secret(ClientId2, ClientSecret2) of
-									{ok, Client} -> Client;
-									_ -> undefined
+								case ClientId2 > 0 of
+									true ->
+										case ems_client:find_by_id_and_secret(ClientId2, ClientSecret2) of
+											{ok, Client} -> {ok, Client};
+											Error -> Error
+										end;
+									false -> {error, access_denied, einvalid_client_id}
 								end;
-							_ -> undefined
+							Error -> Error
 						end;
-					false -> undefined
+					false -> {error, access_denied, eauthorization_header_required}
 				end
 		end
 	catch
-		_:_ -> undefined
+		_:_ -> {error, access_denied, eparse_get_client_request_by_id_and_secret_exception}
 	end.
 
 
--spec get_client_request_by_id(#request{}) -> #client{} | undefined.
+-spec get_client_request_by_id(#request{}) -> {ok, #client{}} | {error, enoent, atom()}.
 get_client_request_by_id(Request = #request{authorization = Authorization}) ->
     try
 		case get_querystring(<<"client_id">>, <<>>, Request) of
@@ -2830,8 +2864,8 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 		case ClientId > 0 of
 			true ->
 				case ems_client:find_by_id(ClientId) of
-					{ok, Client} -> Client;
-					_ -> undefined
+					{ok, Client} -> {ok, Client};
+					_ -> {error, access_denied, enoent}
 				end;
 			false ->
 				% O ClientId também pode ser passado via header Authorization
@@ -2840,52 +2874,41 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 						case parse_basic_authorization_header(Authorization) of
 							{ok, ClientLogin, _} ->
 								ClientId2 = list_to_integer(ClientLogin),
-								case ems_client:find_by_id(ClientId2) of
-									{ok, Client} -> Client;
-									_ -> undefined
+								case ClientId2 > 0 of 	
+									true ->
+										case ems_client:find_by_id(ClientId2) of
+											{ok, Client} -> {ok, Client};
+											_ -> {error, access_denied, enoent}
+										end;
+									false -> {error, access_denied, einvalid_client_id}
 								end;
-							_ -> undefined
+							Error -> Error
 						end;
-					false -> undefined
+					false -> {error, access_denied, eauthorization_header_required}
 				end
 		end
 	catch
-		_:_ -> undefined
+		_:_ -> {error, access_denied, eparse_get_client_request_by_id_exception}
 	end.
 
 
--spec get_client_request_by_querystring(#request{}) -> #client{} | undefined.
-get_client_request_by_querystring(Request) ->
-    try
-		case get_querystring(<<"client_id">>, <<>>, Request) of
-			<<>> -> ClientId = 0;
-			undefined -> ClientId = 0;
-			ClientIdValue -> ClientId = binary_to_integer(ClientIdValue)
-		end,
-		case ClientId > 0 of
-			true ->
-				ClientSecret = ems_util:get_querystring(<<"client_secret">>, <<>>, Request),
-				case ems_client:find_by_id_and_secret(ClientId, ClientSecret) of
-					{ok, Client} -> Client;
-					_ -> undefined
-				end;
-			false -> undefined
-		end
-	catch
-		_:_ -> undefined
-	end.
-
-
--spec get_user_request_by_login_and_password(#request{}) -> #user{} | undefined.
-get_user_request_by_login_and_password(Request = #request{authorization = Authorization}) ->
+-spec get_user_request_by_login_and_password(#request{}) -> {ok, #user{}} | {error, 
+																			 access_denied, 
+																			 enoent, einvalid_password | einative_user | einvalid_authorization_header | eparse_authorization_header_exception}.
+get_user_request_by_login_and_password(Request = #request{authorization = Authorization, 
+														  service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}}) ->
     try
 		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
 		case Username =/= <<>> of
 			true ->
 				Password = ems_util:get_querystring(<<"password">>, <<>>, Request),
 				case ems_user:find_by_login_and_password(Username, Password) of
-					{ok, User} -> User;
-					_ -> undefined
+					{ok, User = #user{active = Active}} -> 
+						case Active orelse AuthAllowUserInativeCredentials of
+							true -> {ok, User};
+							false -> {error, access_denied, einative_user}
+						end;
+					Error -> Error
 				end;
 			false ->
 				% O user também pode ser passado via header Authorization
@@ -2894,16 +2917,50 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 						case parse_basic_authorization_header(Authorization) of
 							{ok, Login, Password} ->
 								case ems_user:find_by_login_and_password(Login, Password) of
-									{ok, User} -> User;
-									_ -> undefined
+									{ok, User = #user{active = Active}} -> 
+										case Active orelse AuthAllowUserInativeCredentials of
+											true -> {ok, User};
+											false -> {error, access_denied, einative_user}
+										end;
+									Error -> Error
 								end;
-							_ -> undefined
+							Error -> Error
 						end;
-					false -> undefined
+					false -> {error, access_denied, eauthorization_header_required}
 				end
 		end
 	catch
-		_:_ -> undefined
+		_:_ -> {error, access_denied, eparse_get_user_request_by_login_and_password_exception}
+	end.
+
+
+-spec get_user_request_by_login(#request{}) -> {ok, #user{}} | {error, enoent | access_denied, atom()}.
+get_user_request_by_login(Request = #request{authorization = Authorization}) ->
+    try
+		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
+		case Username =/= <<>> of
+			true ->
+				case ems_user:find_by_login(Username) of
+					{ok, User} -> {ok, User};
+					Error -> Error
+				end;
+			false ->
+				% O user também pode ser passado via header Authorization
+				case Authorization =/= undefined of
+					true ->
+						case parse_basic_authorization_header(Authorization) of
+							{ok, Login, _Password} ->
+								case ems_user:find_by_login(Login) of
+									{ok, User} -> {ok, User};
+									Error -> Error
+								end;
+							Error -> Error
+						end;
+					false -> {error, access_denied, eauthorization_header_required}
+				end
+		end
+	catch
+		_:_ -> {error, access_denied, eparse_get_user_request_by_login_exception}
 	end.
 
 seconds_since_epoch(Diff) ->
@@ -2926,3 +2983,312 @@ list_tuple_to_list_map([H|T], Result) ->
 	list_tuple_to_list_map(T, [maps:from_list(H) | Result]).
 
 
+-spec parse_ldap_name(binary()) -> {ok, cn | uid, binary(), binary()} | {error, einvalid_name}.
+parse_ldap_name(undefined) -> {error, einvalid_name};	
+parse_ldap_name(<<>>) -> {error, einvalid_name};	
+parse_ldap_name(Name) -> 	
+	case binary:split(Name, <<",">>) of
+		[UserFilterValue, BaseFilterValue] ->
+			case UserFilterValue of
+				<<"cn=", Value/binary>> -> {ok, cn, Value, BaseFilterValue};
+				<<"uid=", Value/binary>> -> {ok, uid, Value, BaseFilterValue};
+				_ -> {error, einvalid_name}
+			end;
+		[UserFilterValue] ->
+			case UserFilterValue of
+				<<"cn=", Value/binary>> -> {ok, cn, Value, <<>>};
+				<<"uid=", Value/binary>> -> {ok, uid, Value, <<>>};
+				Value -> {ok, other, Value, <<>>}
+			end;
+		_ -> {error, einvalid_name}
+	end.
+
+
+parse_ldap_filter_field_and_value(Field, FieldValue) ->
+	case ldap_attribute_map_to_user_field(Field) of
+		{ok, FieldUser} -> 
+			FieldsTable =  mnesia:table_info(user_db, attributes),
+			FieldPos = ems_db:field_position(FieldUser, FieldsTable, 2),
+			FieldType = ems_schema:get_data_type_field(user, FieldPos),
+			case is_value_field_type(FieldValue, FieldType) of
+				true -> {ok, FieldUser};
+				false -> {error, einvalid_fieldtype}
+			end;
+		Error -> Error
+	end.
+
+parse_ldap_filter_or([], Result) -> {ok, {'or', lists:usort(Result)}};
+parse_ldap_filter_or([{substrings,
+                           {'SubstringFilter', Field,
+                            [{any, Value}]}}|T], Result) ->
+	case parse_ldap_filter_field_and_value(Field, Value) of
+		{ok, Field2} -> parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result]);
+		Error -> Error
+	end;
+parse_ldap_filter_or([{present, _}|T], Result) ->
+	parse_ldap_filter_or(T, Result);
+parse_ldap_filter_or([{equalityMatch, {'AttributeValueAssertion', Field, Value}}|T], Result) ->
+	case parse_ldap_filter_field_and_value(Field, Value) of
+		{ok, Field2} -> parse_ldap_filter_or(T, [{Field2, <<"==">>, Value} | Result]);
+		Error -> Error
+	end;
+parse_ldap_filter_or(_, _) -> {error, einvalid_filter}.
+
+parse_ldap_filter_and([], Result) -> {ok, {'and', lists:usort(Result)}};
+parse_ldap_filter_and([{substrings,
+                           {'SubstringFilter', Field,
+                            [{any, Value}]}}|T], Result) ->
+	case parse_ldap_filter_field_and_value(Field, Value) of
+		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
+		Error -> Error
+	end;
+parse_ldap_filter_and([{present, _}|T], Result) ->
+	parse_ldap_filter_and(T, Result);
+parse_ldap_filter_and([{equalityMatch, {'AttributeValueAssertion', Field, Value}}|T], Result) ->
+	case parse_ldap_filter_field_and_value(Field, Value) of
+		{ok, Field2} -> parse_ldap_filter_and(T, [{Field2, <<"==">>, Value} | Result]);
+		Error -> Error
+	end;
+parse_ldap_filter_and([{'or', LdapFilter}|T], Result) ->
+	case parse_ldap_filter_or(LdapFilter, []) of
+		{ok, Condition} -> parse_ldap_filter_and(T, [Condition | Result]);
+		Error -> Error
+	end;
+parse_ldap_filter_and(_, _) -> {error, einvalid_filter}.
+
+
+-spec parse_ldap_filter(tuple()) -> {ok, list(tuple())} | {error, einvalid_filter}.
+parse_ldap_filter({'or', LdapFilter}) ->
+	parse_ldap_filter_or(LdapFilter, []);
+parse_ldap_filter({'and', LdapFilter}) ->
+	parse_ldap_filter_and(LdapFilter, []);
+parse_ldap_filter(_) -> {error, einvalid_filter}.
+	
+
+-spec ldap_attribute_map_to_user_field(binary()) -> binary().
+ldap_attribute_map_to_user_field(Field) -> 
+	ldap_attribute_map_to_user_field_(list_to_binary(string:to_lower(binary_to_list(Field)))).
+ldap_attribute_map_to_user_field_(<<"uid">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"employeenumber">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"uidnumber">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"gecos">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"displayname">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"distinguishedname">>) -> {ok, <<"login">>};
+ldap_attribute_map_to_user_field_(<<"cn">>) -> {ok, <<"login">>};
+ldap_attribute_map_to_user_field_(<<"sn">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"name">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"codigo">>) -> {ok, <<"codigo">>};
+ldap_attribute_map_to_user_field_(<<"login">>) -> {ok, <<"login">>};
+ldap_attribute_map_to_user_field_(<<"email">>) -> {ok, <<"email">>};
+ldap_attribute_map_to_user_field_(<<"mail">>) -> {ok, <<"email">>};
+ldap_attribute_map_to_user_field_(<<"cpf">>) -> {ok, <<"cpf">>};
+ldap_attribute_map_to_user_field_(<<"bairro">>) -> {ok, <<"bairro">>};
+ldap_attribute_map_to_user_field_(<<"cidade">>) -> {ok, <<"cidade">>};
+ldap_attribute_map_to_user_field_(<<"endereco">>) -> {ok, <<"endereco">>};
+ldap_attribute_map_to_user_field_(<<"complemento_endereco">>) -> {ok, <<"complemento_endereco">>};
+ldap_attribute_map_to_user_field_(<<"uf">>) -> {ok, <<"uf">>};
+ldap_attribute_map_to_user_field_(<<"cep">>) -> {ok, <<"cep">>};
+ldap_attribute_map_to_user_field_(<<"rg">>) -> {ok, <<"rg">>};
+ldap_attribute_map_to_user_field_(<<"active">>) -> {ok, <<"active">>};
+ldap_attribute_map_to_user_field_(<<"datanascimento">>) -> {ok, <<"data_nascimento">>};
+ldap_attribute_map_to_user_field_(<<"sexo">>) -> {ok, <<"sexo">>};
+ldap_attribute_map_to_user_field_(<<"telefone">>) -> {ok, <<"telefone">>};
+ldap_attribute_map_to_user_field_(<<"celular">>) -> {ok, <<"celular">>};
+ldap_attribute_map_to_user_field_(<<"ddd">>) -> {ok, <<"ddd">>};
+ldap_attribute_map_to_user_field_(<<"nome_pai">>) -> {ok, <<"nome_pai">>};
+ldap_attribute_map_to_user_field_(<<"nome_mae">>) -> {ok, <<"nome_mae">>};
+ldap_attribute_map_to_user_field_(<<"nacionalidade">>) -> {ok, <<"nacionalidade">>};
+ldap_attribute_map_to_user_field_(<<"type">>) -> {ok, <<"type">>};
+ldap_attribute_map_to_user_field_(<<"subtype">>) -> {ok, <<"subtype">>};
+ldap_attribute_map_to_user_field_(<<"type_email">>) -> {ok, <<"type_email">>};
+ldap_attribute_map_to_user_field_(<<"ctrl_insert">>) -> {ok, <<"ctrl_insert">>};
+ldap_attribute_map_to_user_field_(<<"ctrl_update">>) -> {ok, <<"ctrl_update">>};
+ldap_attribute_map_to_user_field_(<<"givenname">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"memberuid">>) -> {ok, <<"id">>};
+ldap_attribute_map_to_user_field_(<<"member">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(<<"samaccountname">>) -> {ok, <<"name">>};
+ldap_attribute_map_to_user_field_(_) -> {error, einvalid_field}.
+
+
+
+         
+-spec parse_ldap_attributes(list(binary())) -> list(binary()).             
+parse_ldap_attributes([]) -> [];
+parse_ldap_attributes([<<"objectclass">>]) -> [];
+parse_ldap_attributes([<<"objectClass">>]) -> [];
+parse_ldap_attributes(List) -> 
+	List2 = [ list_to_binary(string:to_lower(binary_to_list(R))) || R <- List ],
+	parse_ldap_attributes_(List2, []).
+
+parse_ldap_attributes_([], Result) -> lists:usort(Result);
+parse_ldap_attributes_([<<"uid">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"uid">> | Result]);
+parse_ldap_attributes_([<<"employeenumber">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"employeeNumber">> | Result]);
+parse_ldap_attributes_([<<"uidnumber">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"uidNumber">> | Result]);
+parse_ldap_attributes_([<<"distinguishedname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"distinguishedName">> | Result]);
+parse_ldap_attributes_([<<"gecos">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"gecos">> | Result]);
+parse_ldap_attributes_([<<"cn">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cn">> | Result]);
+parse_ldap_attributes_([<<"givenname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"givenName">> | Result]);
+parse_ldap_attributes_([<<"memberuid">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"memberUid">> | Result]);
+parse_ldap_attributes_([<<"member">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"member">> | Result]);
+parse_ldap_attributes_([<<"samaccountname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"sAMAccountName">> | Result]);
+parse_ldap_attributes_([<<"displayname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"displayName">> | Result]);
+parse_ldap_attributes_([<<"sn">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"sn">> | Result]);
+parse_ldap_attributes_([<<"creatorsname">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"creatorsName">> | Result]);
+parse_ldap_attributes_([<<"namingcontexts">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"namingContexts">> | Result]);
+parse_ldap_attributes_([<<"o">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"o">> | Result]);
+parse_ldap_attributes_([<<"mail">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"mail">> | Result]);
+parse_ldap_attributes_([<<"email">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"email">> | Result]);
+parse_ldap_attributes_([<<"codigo">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"codigo">> | Result]);
+parse_ldap_attributes_([<<"login">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"login">> | Result]);
+parse_ldap_attributes_([<<"name">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"name">> | Result]);
+parse_ldap_attributes_([<<"cpf">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cpf">> | Result]);
+parse_ldap_attributes_([<<"passwd">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"passwd">> | Result]);
+parse_ldap_attributes_([<<"roles">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"roles">> | Result]);
+parse_ldap_attributes_([<<"roleoccupant">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"roles">> | Result]);
+parse_ldap_attributes_([<<"active">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"active">> | Result]);
+parse_ldap_attributes_([<<"endereco">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"endereco">> | Result]);
+parse_ldap_attributes_([<<"complemento_endereco">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"complemento_endereco">> | Result]);
+parse_ldap_attributes_([<<"bairro">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"bairro">> | Result]);
+parse_ldap_attributes_([<<"cidade">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cidade">> | Result]);
+parse_ldap_attributes_([<<"uf">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"uf">> | Result]);
+parse_ldap_attributes_([<<"cep">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"cep">> | Result]);
+parse_ldap_attributes_([<<"rg">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"rg">> | Result]);
+parse_ldap_attributes_([<<"datanascimento">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"dataNascimento">> | Result]);
+parse_ldap_attributes_([<<"sexo">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"sexo">> | Result]);
+parse_ldap_attributes_([<<"telefone">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"telefone">> | Result]);
+parse_ldap_attributes_([<<"celular">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"celular">> | Result]);
+parse_ldap_attributes_([<<"ddd">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"ddd">> | Result]);
+parse_ldap_attributes_([<<"nome_pai">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"nome_pai">> | Result]);
+parse_ldap_attributes_([<<"nome_mae">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"nome_mae">> | Result]);
+parse_ldap_attributes_([<<"nacionalidade">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"nacionalidade">> | Result]);
+parse_ldap_attributes_([<<"type">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"type">> | Result]);
+parse_ldap_attributes_([<<"subtype">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"subtype">> | Result]);
+parse_ldap_attributes_([<<"type_email">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"type_email">> | Result]);
+parse_ldap_attributes_([<<"ctrl_insert">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"ctrl_insert">> | Result]);
+parse_ldap_attributes_([<<"ctrl_update">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"ctrl_update">> | Result]);
+parse_ldap_attributes_([<<"supportedcapabilities">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedCapabilities">> | Result]);
+parse_ldap_attributes_([<<"supportedcontrol">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedControl">> | Result]);
+parse_ldap_attributes_([<<"supportedextension">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedExtension">> | Result]);
+parse_ldap_attributes_([<<"supportedfeatures">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedFeatures">> | Result]);
+parse_ldap_attributes_([<<"supportedldapversion">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedLdapVersion">> | Result]);
+parse_ldap_attributes_([<<"supportedSASLmechanisms">>|T], Result) -> 
+	parse_ldap_attributes_(T, [ <<"supportedSASLMechanisms">> | Result]);
+parse_ldap_attributes_([_|T], Result) -> 
+	parse_ldap_attributes_(T, Result).
+
+
+
+					
+is_value_field_type(Value, binary_type) ->
+	try
+		case is_binary(Value) of
+			true -> true;
+			false ->
+				case is_list(Value) of
+					true -> true;
+					false -> 
+						case is_integer(Value) of
+							true -> true;
+							false -> false
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> false
+	end;
+is_value_field_type(Value, string_type) ->
+	try
+		case is_list(Value) of
+			true -> true;
+			false ->
+				case is_binary(Value) of
+					true -> true;
+					false -> 
+						case is_integer(Value) of
+							true -> true;
+							false -> false
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> false
+	end;
+is_value_field_type(Value, non_neg_integer_type) ->
+	try
+		case is_integer(Value) of
+			true -> true;
+			false ->
+				case is_binary(Value) of
+					true -> true;
+					false -> 
+						case is_list(Value) of
+							true -> true;
+							false -> false
+						end
+				end
+		end
+	catch 
+		_Exception:_Reason -> false
+	end;
+is_value_field_type(Value, boolean_type) -> ems_util:parse_bool(Value);
+is_value_field_type(_, _) -> false.
+					
+
+-spec get_host_list() -> binary().
+get_host_list() ->
+	case net_adm:host_file() of 
+		{error, enoent} -> list_to_binary(net_adm:localhost()); 
+		Hosts -> 
+			Hosts2 = [atom_to_list(R) || R <- Hosts],
+			list_to_binary(lists:flatten(lists:join(",", Hosts2)))
+	end.

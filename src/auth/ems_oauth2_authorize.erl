@@ -7,7 +7,6 @@
 -include("include/ems_schema.hrl").
 
 
-
 execute(Request = #request{type = Type, 
 						   protocol_bin = Protocol, 
 						   port = Port, 
@@ -24,37 +23,50 @@ execute(Request = #request{type = Type,
 		Result = case GrantType of
 				<<"password">> -> 
 					ems_db:inc_counter(ems_oauth2_grant_type_password),
-					Client = ems_util:get_client_request_by_id_and_secret(Request),
-					password_grant(Request, Client);
+					case ems_util:get_client_request_by_id_and_secret(Request) of
+						{ok, Client0} -> password_grant(Request, Client0);
+						_ -> password_grant(Request, undefined) % cliente é opcional no grant_type password
+					end;
 				<<"client_credentials">> ->
-					Client = ems_util:get_client_request_by_id_and_secret(Request),
-					case OAuth2AllowClientCredentials of
-						true ->
-							ems_db:inc_counter(ems_oauth2_grant_type_client_credentials),
-							client_credentials_grant(Request, Client);
-						false ->
-							ems_db:inc_counter(ems_oauth2_client_credentials_denied),
-							{error, access_denied}	
+					case ems_util:get_client_request_by_id_and_secret(Request) of
+						{ok, Client0} ->
+							case OAuth2AllowClientCredentials of
+								true ->
+									ems_db:inc_counter(ems_oauth2_grant_type_client_credentials),
+									client_credentials_grant(Request, Client0);
+								false ->
+									ems_db:inc_counter(ems_oauth2_client_credentials_denied),
+									{error, access_denied, eoauth2_client_credentials_denied}	
+							end;
+						Error -> Error
 					end;
 				<<"token">> -> 
 					ems_db:inc_counter(ems_oauth2_grant_type_token),
-					Client = ems_util:get_client_request_by_id(Request),
-					authorization_request(Request, Client);
+					case ems_util:get_client_request_by_id(Request) of
+						{ok, Client0} -> authorization_request(Request, Client0);
+						Error -> Error
+					end;
 				<<"code">> ->	
 					ems_db:inc_counter(ems_oauth2_grant_type_code),
-					Client = ems_util:get_client_request_by_id(Request),
-					authorization_request(Request, Client);	
+					case ems_util:get_client_request_by_id(Request) of
+						{ok, Client0} -> authorization_request(Request, Client0);	
+						Error -> Error
+					end;
 				<<"authorization_code">> ->	
 					ems_db:inc_counter(ems_oauth2_grant_type_authorization_code),
-					Client = ems_util:get_client_request_by_id_and_secret(Request),
-					access_token_request(Request, Client);
+					case ems_util:get_client_request_by_id_and_secret(Request) of
+						{ok, Client0} -> 
+							access_token_request(Request, Client0);
+						Error -> Error
+					end;
 				<<"refresh_token">> ->	
 					ems_db:inc_counter(ems_oauth2_grant_type_refresh_token),
-					Client = ems_util:get_client_request_by_id(Request),
-					refresh_token_request(Request, Client);	
+					case ems_util:get_client_request_by_id(Request) of
+						{ok, Client0} -> refresh_token_request(Request, Client0);	
+						Error -> Error
+					end;
 				 _ -> 
-					Client = undefined,
-					{error, access_denied}
+					{error, access_denied, einvalid_grant_type}
 		end, 
 		case Result of
 			{ok, [ {<<"access_token">>,AccessToken},
@@ -64,15 +76,14 @@ execute(Request = #request{type = Type,
 				   {<<"refresh_token">>, RefreshToken},
 				   {<<"refresh_token_expires_in">>, RefreshTokenExpireIn},
 				   {<<"token_type">>, TokenType}
-				 ]
+				 ], 
+				 Client
 			 } ->
 					% When it is authorization_code, we will record metrics for singlesignon
 					case User =/= undefined of
 						true -> 
 							UserAgentBin = ems_util:user_agent_atom_to_binary(UserAgent),
-							SingleSignonUserMetricName = binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_user_">>, integer_to_binary(User#user.id)]), utf8),
 							SingleSignonUserAgentMetricName = binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_user_agent_">>, UserAgentBin, <<"_">>, UserAgentVersion]), utf8),
-							ems_db:inc_counter(SingleSignonUserMetricName),
 							ems_db:inc_counter(SingleSignonUserAgentMetricName);
 						false -> ok
 					end,
@@ -101,54 +112,69 @@ execute(Request = #request{type = Type,
 																							 end, <<","/utf8>>,
 														   <<"\"token_type\":\""/utf8>>, TokenType, <<"\""/utf8>>,
 													   <<"}"/utf8>>]),
-					{ok, Request#request{code = 200, 
-										 response_data = ResponseData2,
-										 oauth2_grant_type = GrantType,
-										 oauth2_access_token = AccessToken,
-										 oauth2_refresh_token = RefreshToken,
-										 client = Client,
-										 user = User,
-										 content_type_out = ?CONTENT_TYPE_JSON}
-					};		
-			{redirect, #client{id = ClientId, redirect_uri = RedirectUri}} ->
+					Request2 = Request#request{code = 200, 
+											    reason = ok,
+											    operation = oauth2_authenticate,
+											    response_data = ResponseData2,
+											    oauth2_grant_type = GrantType,
+											    oauth2_access_token = AccessToken,
+											    oauth2_refresh_token = RefreshToken,
+											    client = Client,
+											    user = User,
+											    content_type_out = ?CONTENT_TYPE_JSON},
+					{ok, Request2};		
+			{redirect, Client = #client{id = ClientId, redirect_uri = RedirectUri}} ->
 					ClientIdBin = integer_to_binary(ClientId),
 					ems_db:inc_counter(binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_client_">>, ClientIdBin]), utf8)),
 					LocationPath = iolist_to_binary([Protocol, <<"://"/utf8>>, Host, <<":"/utf8>>, integer_to_binary(Port), 
 													 <<"/dados/login/index.html?response_type=code&client_id=">>, ClientIdBin, 
 													 <<"&redirect_uri=">>, RedirectUri]),
-					{ok, Request#request{code = 302, 
-										 oauth2_grant_type = GrantType,
-										 client = Client,
-										 response_header = #{
-																<<"location">> => LocationPath
-															}
-										}
-					};
-			_ ->
-					{error, Request#request{code = 401, 
-											reason = access_denied,
-											oauth2_grant_type = GrantType,
-											response_data = ?ACCESS_DENIED_JSON}
-					}
+					Request2 = Request#request{code = 302, 
+											   reason = ok,
+											   operation = oauth2_client_redirect,
+											   oauth2_grant_type = GrantType,
+											   client = Client,
+											   response_header = #{
+																		<<"location">> => LocationPath
+																	}
+												},
+					{ok, Request2};
+			{error, Reason, ReasonDetail} ->
+					% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
+					case ems_util:get_user_request_by_login(Request) of
+						{ok, UserFound} -> User = UserFound;
+						_ -> User = undefined
+					end,
+					Request2 = Request#request{code = 401, 
+											   reason = Reason,
+											   reason_detail = ReasonDetail,
+											   operation = oauth2_authenticate,
+											   oauth2_grant_type = GrantType,
+											   response_data = ?ACCESS_DENIED_JSON,
+											   user = User},
+					{error, Request2}
 		end
 	catch
-		_:_ ->
-					{error, Request#request{code = 401, 
-											reason = access_denied,
-											response_data = ?ACCESS_DENIED_JSON}
-					}
+		_:ReasonException ->
+			Request3 = Request#request{code = 401, 
+									   reason = access_denied,
+									   reason_detail = eparse_oauth2_authorize_execute,
+									   reason_exception = ReasonException,
+									   operation = oauth2_authenticate,
+									   user = undefined,
+									   client = undefined,
+									   response_data = ?ACCESS_DENIED_JSON},
+			{error, Request3}
 	end.
 
 %% Requisita o código de autorização - seções 4.1.1 e 4.1.2 do RFC 6749.
 %% URL de teste: GET http://127.0.0.1:2301/authorize?response_type=code2&client_id=s6BhdRkqt3&state=xyz%20&redirect_uri=http%3A%2F%2Flocalhost%3A2301%2Fportal%2Findex.html&username=johndoe&password=A3ddj3w
 code_request(Request) ->
     try
-		Client = ems_util:get_client_request_by_id(Request),
-		case Client =/= undefined of
-			true ->
-				User = ems_util:get_user_request_by_login_and_password(Request),
-				case User =/= undefined of
-					true ->
+		case ems_util:get_client_request_by_id(Request) of
+			{ok, Client} ->
+				case ems_util:get_user_request_by_login_and_password(Request) of
+					{ok, User} ->
 						RedirectUri = ems_util:to_lower_and_remove_backslash(ems_util:get_querystring(<<"redirect_uri">>, <<>>, Request)),
 						Scope = ems_util:get_querystring(<<"scope">>, <<>>, Request),
 						Authz = oauth2:authorize_code_request(User, Client, RedirectUri, Scope, []),
@@ -156,34 +182,62 @@ code_request(Request) ->
 							{ok, Response} ->
 								Code = element(2, lists:nth(1, Response)),
 								LocationPath = iolist_to_binary([RedirectUri, <<"?code=">>, Code]),
-								{ok, Request#request{code = 200, 
-													 response_data = <<"{}">>,
-													 response_header = #{<<"location">> => LocationPath}}
-								};
-							_ ->
-								{error, Request#request{code = 401, 
-														reason = access_denied,
-														response_data = ?ACCESS_DENIED_JSON}
-								}
+								Request2 = Request#request{code = 200, 
+														   reason = ok,
+														   operation = oauth2_authenticate,
+														   user = User,
+														   client = Client,
+														   response_data = <<"{}">>,
+														   response_header = #{<<"location">> => LocationPath}},
+								%ems_user:add_history(User, Client, Request2#request.service, Request2),
+								{ok, Request2};
+							{error, Reason, ReasonDetail} ->
+								Request2 = Request#request{code = 401, 
+														   reason = Reason,
+														   reason_detail = ReasonDetail,
+														   operation = oauth2_authenticate,
+														   user = User,
+														   client = Client,
+														   response_data = ?ACCESS_DENIED_JSON},
+								%ems_user:add_history(User, Client, Request2#request.service, Request2),
+								{error, Request2}
 						end;
-					_ ->
-						{error, Request#request{code = 401, 
-												reason = access_denied,
-												response_data = ?ACCESS_DENIED_JSON}
-						}
+					{error, Reason, ReasonDetail} ->
+						% Para finalidades de debug, tenta buscar o user pelo login para armazenar no log
+						case ems_util:get_user_request_by_login(Request) of
+							{ok, UserFound} -> User = UserFound;
+							_ -> User = undefined
+						end,
+						Request2 = Request#request{code = 401, 
+												   reason = Reason,
+												   reason_detail = ReasonDetail,
+												   operation = oauth2_authenticate,
+												   user = User,
+												   client = Client,
+												   response_data = ?ACCESS_DENIED_JSON},
+						{error, Request2}
 				end;
-			false ->
-				{error, Request#request{code = 401, 
-										reason = access_denied,
-										response_data = ?ACCESS_DENIED_JSON}
-				}
+			{error, Reason, ReasonDetail} ->
+				Request2 = Request#request{code = 401, 
+											reason = Reason,
+											reason_detail = ReasonDetail,
+											operation = oauth2_authenticate,
+											user = undefined,
+											client = undefined,
+											response_data = ?ACCESS_DENIED_JSON},
+				{error, Request2}
 		end
 	catch
-		_:_ ->
-			{error, Request#request{code = 401, 
-									reason = access_denied,
-									response_data = ?ACCESS_DENIED_JSON}
-			}
+		_:ReasonException ->
+			Request3 = Request#request{code = 401, 
+										reason = access_denied,
+										reason_detail = eparse_code_request_exception,
+										reason_exception = ReasonException,
+										operation = oauth2_authenticate,
+										user = undefined,
+										client = undefined,
+										response_data = ?ACCESS_DENIED_JSON},
+			{error, Request3}
 	end.
 
 	
@@ -194,135 +248,139 @@ code_request(Request) ->
 
 %% Cliente Credencial Grant- seção 4.4.1 do RFC 6749. 
 %% URL de teste: POST http://127.0.0.1:2301/authorize?grant_type=client_credentials&client_id=s6BhdRkqt3&secret=qwer
--spec client_credentials_grant(#request{}, #client{}) -> {ok, list()} | {error, access_denied}.
-client_credentials_grant(_, undefined) -> {error, access_denied};
+-spec client_credentials_grant(#request{}, #client{}) -> {ok, list(), #client{}} | {error, access_denied, atom()}.
 client_credentials_grant(Request, Client) ->
 	try
 		Scope = ems_util:get_querystring(<<"scope">>, <<>>, Request),	
 		Authz = oauth2:authorize_client_credentials(Client, Scope, []),
-		issue_token(Authz)
+		issue_token(Authz, Client)
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_client_credentials_grant_exception}
 	end.
 
 
 %% Resource Owner Password Credentials Grant - seção 4.3.1 do RFC 6749.
 %% URL de teste: POST http://127.0.0.1:2301/authorize?grant_type=password&username=johndoe&password=A3ddj3w
--spec password_grant(#request{}, #client{}) -> {ok, list()} | {error, access_denied}.
+-spec password_grant(#request{}, #client{}) -> {ok, list(), #client{}} | {error, access_denied, atom()}.
 password_grant(Request, Client) -> 
 	try
-		User = ems_util:get_user_request_by_login_and_password(Request),
-		case User =/= undefined of
-			true ->
+		case ems_util:get_user_request_by_login_and_password(Request) of
+			{ok, User} ->
 				Scope = ems_util:get_querystring(<<"scope">>, <<>>, Request),	
 				case Client == undefined of
 					true -> Authz = oauth2:authorize_password(User, Scope, []);
 					false -> Authz = oauth2:authorize_password(User, Client, Scope, [])
 				end,
-				issue_token(Authz);
-			false -> {error, access_denied}
+				issue_token(Authz, Client);
+			Error -> Error
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_password_grant_exception}
 	end.
 
 	
 %% Verifica a URI do Cliente e redireciona para a página de autorização - Implicit Grant e Authorization Code Grant
 %% URL de teste: GET http://127.0.0.1:2301/authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz%20&redirect_uri=http%3A%2F%2Flocalhost%3A2301%2Fportal%2Findex.html
--spec authorization_request(#request{}, #client{}) -> {ok, list()} | {error, access_denied}.
-authorization_request(_, undefined) -> {error, access_denied};
+-spec authorization_request(#request{}, #client{}) -> {ok, list()} | {error, access_denied, atom()}.
 authorization_request(Request, Client) ->
     try
 		RedirectUri = ems_util:to_lower_and_remove_backslash(ems_util:get_querystring(<<"redirect_uri">>, <<>>, Request)),
 		case ems_oauth2_backend:verify_redirection_uri(Client, RedirectUri, []) of
 			{ok, _} -> {redirect, Client};
-			_ -> {error, access_denied}
+			_ -> {error, access_denied, einvalid_redirection_uri}
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_authorization_request_exception}
 	end.
 
 
 %% Requisita o código de autorização - seções 4.1.1 e 4.1.2 do RFC 6749.
 %% URL de teste: GET http://127.0.0.1:2301/authorize?response_type=code2&client_id=s6BhdRkqt3&state=xyz%20&redirect_uri=http%3A%2F%2Flocalhost%3A2301%2Fportal%2Findex.html&username=johndoe&password=A3ddj3w
--spec refresh_token_request(#request{}, #client{}) -> {ok, list()} | {error, access_denied}.
-refresh_token_request(_, undefined) -> {error, access_denied};
+-spec refresh_token_request(#request{}, #client{}) -> {ok, list()} | {error, access_denied, atom()}.
 refresh_token_request(Request, Client) ->
 	try
 		case ems_util:get_querystring(<<"refresh_token">>, <<>>, Request) of
-			<<>> -> {error, access_denied};
+			<<>> -> {error, access_denied, erefresh_token_empty};
 			RefleshToken ->
 				Scope = ems_util:get_querystring(<<"scope">>, <<>>, Request),
 				Authz = ems_oauth2_backend:authorize_refresh_token(Client, RefleshToken, Scope),
-				issue_token(Authz)
+				issue_token(Authz, Client)
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_refresh_token_request_exception}
 	end.
 
 
 %% Requisita o token de acesso com o código de autorização - seções  4.1.3. e  4.1.4 do RFC 6749.
 %% URL de teste: POST http://127.0.0.1:2301/authorize?grant_type=authorization_code&client_id=s6BhdRkqt3&state=xyz%20&redirect_uri=http%3A%2F%2Flocalhost%3A2301%2Fportal%2Findex.html&username=johndoe&password=A3ddj3w&secret=qwer&code=dxUlCWj2JYxnGp59nthGfXFFtn3hJTqx
--spec access_token_request(#request{}, #client{}) -> {ok, list()} | {error, access_denied}.
-access_token_request(_, undefined) -> {error, access_denied};
+-spec access_token_request(#request{}, #client{}) -> {ok, list()} | {error, access_denied, atom()}.
 access_token_request(Request, Client) ->
 	try
 		case ems_util:get_querystring(<<"code">>, <<>>, Request) of
-			<<>> -> {error, access_denied};
+			<<>> -> {error, access_denied, ecode_empty};
 			Code -> 
 				RedirectUri = ems_util:to_lower_and_remove_backslash(ems_util:get_querystring(<<"redirect_uri">>, <<>>, Request)),
 				Authz = oauth2:authorize_code_grant(Client, Code, RedirectUri, []),
-				issue_token_and_refresh(Authz)
+				issue_token_and_refresh(Authz, Client)
 		end
 	catch
-		_:_ -> {error, access_denied}
+		_:_ -> {error, access_denied, eparse_access_token_request}
 	end.
 	
 
-issue_token({ok, {_, Auth}}) ->
-	{ok, {_, {response, AccessToken, 
-						undefined,
-						ExpiresIn,
-						User,
-						Scope, 
-						RefreshToken, 
-						RefreshTokenExpiresIn,
-						TokenType
-             }
-		}} = oauth2:issue_token(Auth, []),
-	{ok, [{<<"access_token">>, AccessToken},
-            {<<"expires_in">>, ExpiresIn},
-            {<<"resource_owner">>, User},
-            {<<"scope">>, Scope},
-            {<<"refresh_token">>, RefreshToken},
-            {<<"refresh_token_expires_in">>, RefreshTokenExpiresIn},
-            {<<"token_type">>, TokenType}]};
-issue_token(_) -> {error, access_denied}.
+issue_token({ok, {_, Auth}}, Client) ->
+	case oauth2:issue_token(Auth, []) of
+		{ok, {_, {response, AccessToken, 
+							undefined,
+							ExpiresIn,
+							User,
+							Scope, 
+							RefreshToken, 
+							RefreshTokenExpiresIn,
+							TokenType
+				 }
+			}} ->
+				{ok, [{<<"access_token">>, AccessToken},
+						{<<"expires_in">>, ExpiresIn},
+						{<<"resource_owner">>, User},
+						{<<"scope">>, Scope},
+						{<<"refresh_token">>, RefreshToken},
+						{<<"refresh_token_expires_in">>, RefreshTokenExpiresIn},
+						{<<"token_type">>, TokenType}], Client};
+		_ -> {error, access_denied, einvalid_issue_token}
+	end;
+issue_token(_, _) -> {error, access_denied, einvalid_authorization}.
     
 
-issue_token_and_refresh({ok, {_, Auth}}) ->
-	{ok, {_, {response, AccessToken, 
-						undefined,
-						ExpiresIn,
-						User,
-						Scope, 
-						RefreshToken, 
-						RefreshTokenExpiresIn,
-						TokenType
-             }
-		}} = oauth2:issue_token_and_refresh(Auth, []),
-	{ok, [{<<"access_token">>, AccessToken},
-            {<<"expires_in">>, ExpiresIn},
-            {<<"resource_owner">>, User},
-            {<<"scope">>, Scope},
-            {<<"refresh_token">>, RefreshToken},
-            {<<"refresh_token_expires_in">>, RefreshTokenExpiresIn},
-            {<<"token_type">>, TokenType}]};
-issue_token_and_refresh(_) -> 
-	{error, access_denied}.
+issue_token_and_refresh({ok, {_, Auth}}, Client) ->
+	case oauth2:issue_token_and_refresh(Auth, []) of
+		{ok, {_, {response, AccessToken, 
+							undefined,
+							ExpiresIn,
+							User,
+							Scope, 
+							RefreshToken, 
+							RefreshTokenExpiresIn,
+							TokenType
+				 }
+			}} ->
+				{ok, [{<<"access_token">>, AccessToken},
+						{<<"expires_in">>, ExpiresIn},
+						{<<"resource_owner">>, User},
+						{<<"scope">>, Scope},
+						{<<"refresh_token">>, RefreshToken},
+						{<<"refresh_token_expires_in">>, RefreshTokenExpiresIn},
+						{<<"token_type">>, TokenType}], Client};
+		_ -> {error, access_denied, einvalid_issue_token_and_refresh}
+	end;
+issue_token_and_refresh(_, _) -> 
+	{error, access_denied, einvalid_authorization}.
+
 
 issue_code({ok, {_, Auth}}) ->
-	{ok, {_, Response}} = oauth2:issue_code(Auth, []),
-	{ok, oauth2_response:to_proplist(Response)};
-issue_code(_) -> {error, access_denied}.
+	case oauth2:issue_code(Auth, []) of
+		{ok, {_, Response}} ->	{ok, oauth2_response:to_proplist(Response)};
+		_ -> {error, access_denied, einvalid_issue_code}
+	end;
+issue_code(_) -> {error, access_denied, eparse_issue_code_exception}.
 

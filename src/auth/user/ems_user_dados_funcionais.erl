@@ -25,7 +25,7 @@ new_from_map(Map, _Conf) ->
 					id = maps:get(<<"id">>, Map),
 					type = maps:get(<<"type">>, Map, 0),
 					subtype = maps:get(<<"subtype">>, Map, 0),
-					active = maps:get(<<"active">>, Map, true),
+					active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
 					matricula = maps:get(<<"matricula">>, Map, undefined),
 					ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 					ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),

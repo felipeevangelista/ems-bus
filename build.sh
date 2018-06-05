@@ -16,7 +16,7 @@
 # -----------------------------------------------------------------------------------------------------
 # 10/11/2015  Everton Agilar     Initial release script release
 # 29/09/2017  Everton Agilar     Reads /etc/default/erlangms-build
-#
+# 05/05/2018  Everton Agilar     Build with docker
 #
 #
 #
@@ -25,28 +25,25 @@
 #
 ########################################################################################################
 
-VERSION_SCRIPT="2.0.0"
+VERSION_SCRIPT="3.0.0"
 
-# Get linux description
-LINUX_DESCRIPTION=$(awk -F"=" '{ if ($1 == "PRETTY_NAME"){ 
-									gsub("\"", "", $2);  print $2 
-								 } 
-							   }'  /etc/os-release)
-
-						   
-							   
-echo "Build erlangms tool ( Version: $VERSION_SCRIPT   Hostname: `hostname` )"
-
-
-SKIP_DEPS="false"
-SKIP_CLEAN="false"
-KEEP_DB="false"
+if [ -z "$ERLANGMS_IN_DOCKER" ]; then
+	echo "Build erlangms tool ( Version: $VERSION_SCRIPT   Hostname: `hostname` )"
+fi
 
 # Erlang Runtime version required > 20
 ERLANG_VERSION=20
 
-# Erlang Runtime version installled
-ERLANG_VERSION_OS=`erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().'  -noshell 2> /dev/null | sed 's/[^0-9]//g'`
+# Skip deps before build 
+SKIP_DEPS="false"
+
+# Skip clean before build 
+SKIP_CLEAN="false"
+
+KEEP_DB="false"
+
+# Profile of build: local or docker
+PROFILE="local"
 
 
 # The settings may be stored in the /etc/default/erlangms-build
@@ -69,14 +66,12 @@ help() {
 	echo ""
 	echo "Additional parameters:"
 	echo "  --keep-db               -> Does not delete the priv/db folder"
-	echo "  --skip-deps             -> Skip rebar deps"
-	echo "  --skip-clean            -> Skip rebar clean"
+	echo "  --skip-deps             -> Skip rebar deps before build"
+	echo "  --skip-clean            -> Skip rebar clean before build"
 	echo "  --keep-db=true|false    -> Define if delete the priv/db folder"
 	echo "  --skip-dep=true|false   -> Define if skip rebar deps"
 	echo "  --skip-clean=true|false -> Define if rebar clean"
 	echo "  --clean                 -> Equal to --skip-clean=true"
-	echo "  --rmdb | --cleandb      -> Equal to --keep-db=false"
-	echo "  --getdeps               -> Equal to --skip-deps=false"
 	echo
 	exit 1
 }
@@ -136,6 +131,50 @@ function clean_deps(){
 	find ./deps  -maxdepth 1 -type d -not -name "*jiffy*" | sed '1d' | xargs rm -rf 
 }
 
+function prerequisites_docker(){
+  printf "Checking ErlangMS prerequisites... "
+  apt-get -y install libodbc1
+
+  echo "Create .hosts.erlang if it not exist..."
+  if [ ! -f $HOME/.hosts.erlang ]; then
+	echo \'$(hostname | cut -d. -f1)\'. > $HOME/.hosts.erlang 
+  fi
+
+  echo "Config /etc/odbcinst.ini FreeTDS SQL-server driver..."
+  JTDS_ENTRY_CONF=$(sed -rn '/\[FreeTDS\]/, /(^$|^#)/p' /etc/odbcinst.ini 2> /dev/null)
+  if [ -z "$JTDS_ENTRY_CONF" ]; then
+	LIB_TDODBC_PATH="/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so"
+	if [ ! -z "$LIB_TDODBC_PATH" ]; then
+		echo " " >> /etc/odbcinst.ini 
+		echo "# Driver for SQL-server" >> /etc/odbcinst.ini 
+		echo "[FreeTDS]" >> /etc/odbcinst.ini 
+		echo "Description=FreeTDS Driver" >> /etc/odbcinst.ini 
+		echo "Driver=$LIB_TDODBC_PATH" >> /etc/odbcinst.ini 
+		echo " " >> /etc/odbcinst.ini 
+	fi
+  fi
+
+  echo "Tunning fs.file-max. At least it should be 1000000..."
+  FILE_MAX_DEF=1000000
+  FILE_MAX=$(cat /proc/sys/fs/file-max)
+  if [ $FILE_MAX -lt $FILE_MAX_DEF ]; then
+		# Ajusta ou adiciona o valor para fs.file-max
+		if grep -q 'fs.file-max' /etc/sysctl.conf ; then
+			sed -ri "s/^fs.file-max=[0-9]{1,10}$/fs.file-max=$FILE_MAX_DEF/" /etc/sysctl.conf
+		else
+			echo "" >> /etc/sysctl.conf
+			echo "# File descriptors limit" >> /etc/sysctl.conf
+			echo "fs.file-max=$FILE_MAX_DEF" >> /etc/sysctl.conf
+		fi
+		sysctl -p > /dev/null 2>&1
+  fi
+
+
+}	
+	
+	
+	
+
 # ========================== main ==============================
 
 if [ "$1" = "--help" ]; then
@@ -161,12 +200,8 @@ for P in $*; do
 			SKIP_CLEAN="false"
 		elif [[ "$P" =~ --keep[\_-]db$ ]]; then
 			KEEP_DB="true"
-		elif [ "$P" = "--rmdb" ]; then
-			KEEP_DB="false"
-		elif [ "$P" = "--cleandb" ]; then
-			KEEP_DB="false"
-		elif [ "$P" = "--getdeps" ]; then
-			SKIP_DEPS="false"
+		elif [[ "$P" =~ ^--profile=(local|docker)$ ]]; then
+			PROFILE="$(echo $P | cut -d= -f2)"
 		elif [ "$P" = "--help" ]; then
 			help
 		else
@@ -176,44 +211,88 @@ for P in $*; do
 	fi
 done
 
-check_erlang_version
 
-echo "Distro: $LINUX_DESCRIPTION"
-echo "Erlang version: $ERLANG_VERSION_OS"
-echo "SKIP DEPS: $SKIP_DEPS" 
-echo "SKIP CLEAN: $SKIP_CLEAN" 
-echo "KEEP DB: $KEEP_DB" 
-echo "Date: $(date '+%d/%m/%Y %H:%M:%S')"
-echo "============================================================================="
+if [ "$PROFILE" = "docker" ]; then
+	#VERSION=$(cat src/ems_bus.app.src | sed -rn  's/^.*\{vsn.*([0-9]{1,2}\.[0-9]{1,2}.[0-9]{1,2}).*$/\1/p')
+	VERSION=$$
+	IMAGE=erlangms
 
-# Clean somes files
-rm -f *.dump
-
-if [ "$KEEP_DB" = "false" ]; then
-	echo "Clearing the db folder before build..."
-	rm -Rf priv/db
-fi	
-
-echo "Compiling the project erlangms..."
-if [ "$SKIP_DEPS" = "false" ]; then
-	clean_deps
-	if [ "$SKIP_CLEAN" = "false" ]; then	
-		tools/rebar/rebar clean get-deps compile	
-	else
-		tools/rebar/rebar get-deps compile	
+	ID_IMAGE=$(sudo docker ps -f name=erlangms | awk '{print $1}' | sed '1d')
+	if [ ! -z "$ID_IMAGE" ]; then
+		echo "Stop current image $IMAGE..."
+		sudo docker stop $ID_IMAGE > /dev/null 2>&1
 	fi
-else
-	if [ "$SKIP_CLEAN" = "false" ]; then	
-		tools/rebar/rebar clean compile	
-	else
-		tools/rebar/rebar compile	
+
+	LS_IMAGES=$(sudo docker images $IMAGE)
+	if [ ! -z "$LS_IMAGE" ]; then
+		echo "Remove previous images $LS_IMAGES..."
+		sudo docker rmi $LS_IMAGES > /dev/null 2>&1
 	fi
-fi
 
-if [ "$?" = "1" ]; then
-	echo "Oops, something wrong!"
+	sudo docker rm erlangms > /dev/null 2>&1
+
+	sudo docker build --no-cache -t $IMAGE:$VERSION $(dirname $0)
+
+	ID=$(sudo docker images | grep "$IMAGE" | head -n 1 | awk '{print $3}')
+
+	sudo docker tag "$ID" $IMAGE:latest
+	sudo docker tag "$ID" $IMAGE:$VERSION
 else
-	echo "Ok!"
+	if [ "$ERLANGMS_IN_DOCKER" = "true" ]; then
+		prerequisites_docker
+	fi
+
+	# Erlang Runtime version installled
+	ERLANG_VERSION_OS=`erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().'  -noshell 2> /dev/null | sed 's/[^0-9]//g'`
+
+	# Get linux description
+	LINUX_DESCRIPTION=$(awk -F"=" '{ if ($1 == "PRETTY_NAME"){ 
+										gsub("\"", "", $2);  print $2 
+									 } 
+								   }'  /etc/os-release)
+
+	if [ -s "$ERLANGMS_IN_DOCKER" ]; then
+		check_erlang_version	
+	fi
+
+
+	echo "============================================================================="
+	echo "Distro: $LINUX_DESCRIPTION"
+	echo "Erlang version: $ERLANG_VERSION_OS"
+	echo "Skip get-deps before build: $SKIP_DEPS" 
+	echo "Skip clear before build: $SKIP_CLEAN" 
+	echo "Keep database before build: $KEEP_DB" 
+	echo "Date: $(date '+%d/%m/%Y %H:%M:%S')"
+	echo "============================================================================="
+
+	# Clean somes files
+	rm -f *.dump
+
+	if [ "$KEEP_DB" = "false" ]; then
+		echo "Clearing the db folder before build..."
+		rm -Rf priv/db
+	fi	
+
+	echo "Compiling the project erlangms..."
+	if [ "$SKIP_DEPS" = "false" ]; then
+		clean_deps
+		if [ "$SKIP_CLEAN" = "false" ]; then	
+			tools/rebar/rebar clean get-deps compile	
+		else
+			tools/rebar/rebar get-deps compile	
+		fi
+	else
+		if [ "$SKIP_CLEAN" = "false" ]; then	
+			tools/rebar/rebar clean compile	
+		else
+			tools/rebar/rebar compile	
+		fi
+	fi
+
+	if [ "$?" = "1" ]; then
+		echo "Oops, something wrong!"
+	else
+		echo "Ok!"
+	fi
+
 fi
-
-

@@ -132,12 +132,13 @@ print_config_settings(_) -> ok.
 load_config() ->
 	case get_config_data() of
 		{ok, ConfigData, Filename} ->
-			ems_logger:format_alert("\nems_config loading configuration file ~p...\n", [Filename]),
+			ems_logger:format_info("ems_config loading configuration file ~p...", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Json} -> 
 					try
 						Result = parse_config(Json, Filename),
 						print_config_settings(Result),
+						erlang:garbage_collect(self()),
 						Result
 					catch 
 						_Exception:Reason ->
@@ -160,7 +161,7 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 	CatFilename2 = ems_util:parse_file_name_path(CatFilename, [], undefined),
 	case file:read_file_info(CatFilename2, [{time, universal}]) of
 		{ok, _} -> 
-			ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilename2]),
+			ems_logger:format_info("ems_config loading catalog ~p from ~p.", [CatNameStr, CatFilename2]),
 			parse_cat_path_search(T, [{CatName, CatFilename2}|Result]);
 		_ ->
 			CatFilenameDir = filename:dirname(CatFilename2),
@@ -170,10 +171,10 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 					CatTempDir = filename:join([?TEMP_PATH, "unzip_catalogs", CatNameStr]),
 					zip:unzip(CatFilenameZip, [{cwd, CatTempDir}]),
 					CatFilename3 = filename:join([CatTempDir, filename:basename(CatFilenameDir), filename:basename(CatFilename2)]),
-					ems_logger:format_info("ems_config reading catalog ~p from ~p.\n", [CatNameStr, CatFilenameZip]),
+					ems_logger:format_info("ems_config loading catalog ~p from ~p.", [CatNameStr, CatFilenameZip]),
 					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
 				_ ->
-					ems_logger:format_info("ems_config cannot read catalog ~p.\n", [CatFilename2]),
+					ems_logger:format_error("ems_config cannot load catalog ~p.", [CatFilename2]),
 					parse_cat_path_search(T, Result)
 			end
 	end.
@@ -282,6 +283,7 @@ parse_config(Json, NomeArqConfig) ->
 			 authorization = ems_util:parse_authorization_type(maps:get(<<"authorization">>, Json, ?AUTHORIZATION_TYPE_DEFAULT)),
 			 oauth2_with_check_constraint = ems_util:parse_bool(maps:get(<<"oauth2_with_check_constraint">>, Json, false)),
 			 oauth2_refresh_token = ems_util:parse_range(maps:get(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
+			 auth_allow_user_inative_credentials = ems_util:parse_bool(maps:get(<<"auth_allow_user_inative_credentials">>, Json, true)),
 			 config_file = NomeArqConfig,
 			 params = Json,
 			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
@@ -338,6 +340,7 @@ get_default_config() ->
 			 authorization				= oauth2,
 			 oauth2_with_check_constraint = false,
 			 oauth2_refresh_token 		= ?OAUTH2_DEFAULT_TOKEN_EXPIRY,
+			 auth_allow_user_inative_credentials = true,
 			 config_file			    = undefined,
 			 params						= #{},
 			 client_path_search			= ?CLIENT_PATH,

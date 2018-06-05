@@ -14,11 +14,10 @@
 			"type" : "mnesia",
 			"table_name" : ["catalog_post_db", "catalog_post_fs"],
 			"fields" : ["id", "rowid", "name", "url", "type", "service", "lang", 
-						"use_re", "public", "comment", "version", "owner", 
-						"async", "result_cache", "authorization", "lang", 
-						"debug", "timeout", "redirect_url", "cache_control", 
-						"enable", "content_type", "tcp_is_ssl",
-						"tcp_ssl_cacertfile", "tcp_ssl_certfile",
+						"use_re", "public", "comment", "version", "owner", "group", "glyphicon",
+						"async", "result_cache", "authorization", "lang", "debug", "timeout", 
+						"redirect_url", "cache_control", "enable", "content_type", 
+						"tcp_is_ssl", "tcp_ssl_cacertfile", "tcp_ssl_certfile",
 						"tcp_ssl_keyfile", "start_timeout"]
 		},
 		"schema_in" : "service",
@@ -70,15 +69,13 @@
 		"lang" : "erlang",
 		"datasource" : {
 			"type" : "mnesia",
-				"table_name" : ["catalog_post_db", "catalog_post_fs"],
-				"fields" : ["id", "rowid", "name", "url", "type", "service", "lang", 
-							"use_re", "public", "comment", "version", "owner", 
-							"async", "result_cache", "authorization", "lang", 
-							"debug", "timeout", "redirect_url", "cache_control", 
-							"enable", "content_type", "tcp_is_ssl",
-							"tcp_ssl_cacertfile", "tcp_ssl_certfile",
-							"tcp_ssl_keyfile", "start_timeout"]
-
+			"table_name" : ["catalog_post_db", "catalog_post_fs"],
+			"fields" : ["id", "rowid", "name", "url", "type", "service", "lang", 
+						"use_re", "public", "comment", "version", "owner", "group", "glyphicon",
+						"async", "result_cache", "authorization", "lang", "debug", "timeout", 
+						"redirect_url", "cache_control", "enable", "content_type", 
+						"tcp_is_ssl", "tcp_ssl_cacertfile", "tcp_ssl_certfile",
+						"tcp_ssl_keyfile", "start_timeout"]
 		},
 		"schema_in" : "service",
 		"schema_out" : "service"

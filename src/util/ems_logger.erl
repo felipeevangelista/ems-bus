@@ -223,8 +223,15 @@ checkpoint() ->
 
 
 % write direct messages to console
-format_info(Message) ->	io:format(Message).
-format_info(Message, Params) ->	io:format("~s", [io_lib:format(Message, Params)]).
+format_info(Message) when is_list(Message) ->	
+	format_info(list_to_binary(Message));
+format_info(Message) ->	
+	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\n">>])).
+
+format_info(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\n">>])).
+
 
 format_warn(Message) ->	io:format("\033[0;33m~s\033[0m", [Message]).
 format_warn(Message, Params) ->	io:format("\033[0;33m~s\033[0m", [io_lib:format(Message, Params)]).
@@ -235,8 +242,14 @@ format_error(Message, Params) -> io:format("\033[0;31m~s\033[0m", [io_lib:format
 format_debug(Message) -> io:format("\033[0;34m~s\033[0m", [Message]).
 format_debug(Message, Params) -> io:format("\033[1;34m~s\033[0m", [io_lib:format(Message, Params)]).
 
-format_alert(Message) ->	io:format("\033[0;46m~s\033[0m", [Message]).
-format_alert(Message, Params) ->	io:format("\033[0;46m~s\033[0m", [io_lib:format(Message, Params)]).
+format_alert(Message) when is_list(Message) ->	
+	format_alert(list_to_binary(Message));
+format_alert(Message) ->
+	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\033[0m\n">>])).
+
+format_alert(Message, Params) ->
+	Message2 = io_lib:format(Message, Params),
+	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\033[0m\n">>])).
 
 
 
@@ -246,7 +259,6 @@ format_alert(Message, Params) ->	io:format("\033[0;46m~s\033[0m", [io_lib:format
 %%====================================================================
  
 init(#service{properties = Props}) ->
-	info("Loading ESB ~s instance on Erlang/OTP ~s.", [?SERVER_NAME, erlang:system_info(otp_release)]),
 	Checkpoint = maps:get(<<"log_file_checkpoint">>, Props, ?LOG_FILE_CHECKPOINT),
 	LogFileMaxSize = maps:get(<<"log_file_max_size">>, Props, ?LOG_FILE_MAX_SIZE),
 	Conf = ems_config:getConfig(),
@@ -576,44 +588,46 @@ sync_log_buffer(State = #state{log_buffer = Buffer,
 	State2.
 
 	
-do_log_request(#request{rid = RID,
-						req_hash = ReqHash,
-						type = Type,
-						uri = Uri,
-						url = Url,
-						url_masked = UrlMasked,
-						version = Version,
-						content_type_in = ContentTypeIn,
-						content_type_out = ContentTypeOut,
-						content_length = ContentLength,
-						accept = Accept,
-						ip_bin = IpBin,
-						payload = Payload,
-						service = Service,
-						params_url = Params,
-						querystring_map = Query,
-						code = Code,
-						reason = Reason,
-						latency = Latency,
-						result_cache = ResultCache,
-						result_cache_rid = ResultCacheRid,
-						response_data = ResponseData,
-						authorization = Authorization,
-						cache_control = CacheControl,
-						etag = Etag,
-						if_modified_since = IfModifiedSince,
-						if_none_match = IfNoneMatch,
-						node_exec = Node,
-						referer = Referer,
-						user_agent = UserAgent,
-						user_agent_version = UserAgentVersion,
-						filename = Filename,
-						client = Client,
-						user = User,
-						scope = Scope,
-						oauth2_grant_type = GrantType,
-						oauth2_access_token = AccessToken,
-						oauth2_refresh_token = RefreshToken
+do_log_request(Request = #request{rid = RID,
+								  req_hash = ReqHash,
+								  type = Type,
+								  uri = Uri,
+								  url = Url,
+								  url_masked = UrlMasked,
+								  version = Version,
+								  content_type_in = ContentTypeIn,
+								  content_type_out = ContentTypeOut,
+								  content_length = ContentLength,
+								  accept = Accept,
+								  ip_bin = IpBin,
+								  payload = Payload,
+								  service = Service,
+								  params_url = Params,
+								  querystring_map = Query,
+								  code = Code,
+								  reason = Reason,
+								  reason_detail = ReasonDetail,
+								  reason_exception = ReasonException,
+								  latency = Latency,
+								  result_cache = ResultCache,
+								  result_cache_rid = ResultCacheRid,
+								  response_data = ResponseData,
+								  authorization = Authorization,
+							      cache_control = CacheControl,
+								  etag = Etag,
+								  if_modified_since = IfModifiedSince,
+								  if_none_match = IfNoneMatch,
+								  node_exec = Node,
+								  referer = Referer,
+								  user_agent = UserAgent,
+								  user_agent_version = UserAgentVersion,
+								  filename = Filename,
+								  client = Client,
+								  user = User,
+								  scope = Scope,
+								  oauth2_grant_type = GrantType,
+								  oauth2_access_token = AccessToken,
+								  oauth2_refresh_token = RefreshToken
 			  }, 
 			  State = #state{log_show_response = ShowResponse, 
 							 log_show_response_max_length = ShowResponseMaxLength, 
@@ -625,6 +639,7 @@ do_log_request(#request{rid = RID,
 	try
 		case UltReqHash == undefined orelse UltReqHash =/= ReqHash of
 			true ->
+				ems_user:add_history(Request),
 				case Service of
 					undefined -> 
 						ServiceService = <<>>,
@@ -782,21 +797,29 @@ do_log_request(#request{rid = RID,
 											_ -> [integer_to_binary(Client#client.id), <<" ">>, Client#client.name]
 									   end,
 					   <<"\n\tUser: ">>, case User of
-										public -> <<"public">>;
-										undefined -> <<>>;
-										_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
-									 end,
+											public -> <<"public">>;
+											undefined -> <<>>;
+											_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
+										 end,
 					   <<"\n\tNode: ">>, case Node of
-										undefined -> <<>>;
-										_ -> Node
-									 end,
+											undefined -> <<>>;
+											_ -> Node
+										 end,
 					   <<"\n\tFilename: ">>, case Filename of
 												undefined -> <<>>;
 												_ -> Filename
 											 end,
 					   <<"\n\tStatus: ">>, integer_to_binary(Code), 
 					   <<" <<">>, case is_atom(Reason) of
-										true -> atom_to_binary(Reason, utf8);
+										true -> 
+										   case ReasonDetail =/= undefined andalso is_atom(ReasonDetail) of
+												true ->
+												   case ReasonException =/= undefined andalso is_atom(ReasonException) of
+														true -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8), <<", ">>, atom_to_binary(ReasonException, utf8)];
+														false -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8)]
+												   end;
+												false -> atom_to_binary(Reason, utf8)
+										   end;
 										false -> <<"error">>
 								  end, <<">> (">>, integer_to_binary(Latency), <<"ms)\n}">>],
 					   

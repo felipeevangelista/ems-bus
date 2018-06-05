@@ -124,10 +124,7 @@
 -define(CSV2SQLITE_PATH, filename:join([?PRIV_PATH, "scripts", "csv2sqlite.py"])). 
 
 % Quanto tempo uma parsed query mnesia fica em cache para reutilização (módulo ems_db)
--define(LIFE_TIME_PARSED_QUERY, 60000 * 15). % 15 minutos
-
-% Quanto tempo uma parsed query mnesia fica em cache para reutilização (módulo ems_db)
--define(LIFE_TIME_ODBC_CONNECTION, 60000). % 1 minuto
+-define(DB_PARSED_QUERY_CACHE_TIMEOUT, 60000). 
 
 % Limits of API query
 -define(MAX_LIMIT_API_QUERY, 99999999).
@@ -143,7 +140,7 @@
 
 
 % Timeout to check odbc connection
--define(CHECK_VALID_CONNECTION_TIMEOUT, 15000). % 15 segundos
+-define(CHECK_VALID_CONNECTION_TIMEOUT, 22000). % 22 segundos
 -define(MAX_CLOSE_IDLE_CONNECTION_TIMEOUT, 3600000). % 1h
 -define(CLOSE_IDLE_CONNECTION_TIMEOUT, 300000). % 5 minutos
 
@@ -175,6 +172,7 @@
 -define(EMPTY_LIST_JSON, <<"[]"/utf8>>).
 -define(ACCESS_DENIED_JSON, <<"{\"error\": \"access_denied\"}"/utf8>>).
 -define(EINVALID_DATA_LOADER, <<"{\"error\": \"einvalid_data_loader\"}"/utf8>>).
+-define(HOST_DENIED_JSON, <<"{\"error\": \"host_denied\"}"/utf8>>).
 -define(OAUTH2_DEFAULT_TOKEN_EXPIRY, 3600).  % 1 hour
 -define(OAUTH2_MAX_TOKEN_EXPIRY, 2592000).   % 30 days
 
@@ -188,9 +186,22 @@
 							  }).
 
 
-% Default ports
+% LDAP
 -define(LDAP_SERVER_PORT, 2389).
 -define(LDAP_MAX_CONNECTIONS, 100000).
+-define(LDAP_MAX_SIZE_PACKET, 20000).
+-define(LDAP_SUCCESS, 0).
+-define(LDAP_INAPPRORIATE_AUTHENCATION, 48).
+-define(LDAP_INVALID_CREDENTIALS, 49).
+-define(LDAP_INSUFFICIENT_ACCESS_RIGHTS, 50).  
+-define(LDAP_NO_SUCH_OBJECT, 32).  
+-define(LDAP_INAPPROPRIATE_MATCHING, 18).  
+-define(LDAP_NO_SUCH_ATTRIBUTE, 16).  
+
+
+
+
+
 
 -define(HTTP_SERVER_PORT, 2381).
 -define(HTTP_MAX_CONNECTIONS, 100000).
@@ -212,6 +223,7 @@
 -define(SUFIXO_EMAIL_INSTITUCIONAL, "@unb.br").
 
 -define(RESULT_CACHE_MAX_SIZE_ENTRY, 524288). % 512KB
+
 
 
 %  Definição para o arquivo de configuração
@@ -242,6 +254,7 @@
 				 authorization :: binary(),
 				 oauth2_with_check_constraint :: boolean(),
 				 oauth2_refresh_token :: non_neg_integer(),
+				 auth_allow_user_inative_credentials :: boolean(),	% Permite login de usuários inativos.
 				 config_file,
 				 http_port_offset :: non_neg_integer(),
 				 https_port_offset :: non_neg_integer(),

@@ -3,16 +3,15 @@
 	{
 		"name": "/auth/client/:id",
 		"comment": "Get client by id",
-		"owner": "auth_client",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/client/:id",
 		"type": "GET",
-		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
-			"fields" : ["id", "name", "active"]
+			"fields" : ["id", "name", "active", "description", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -22,16 +21,15 @@
 	{	
 		"name": "/auth/client",
 		"comment": "List all clients",
-		"owner": "auth_client",
+		"owner": "auth",
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/client",
 		"type": "GET",
-		"authorization" : "public",
 		"lang" : "erlang",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
-			"fields" : ["id", "name", "active"]
+			"fields" : ["id", "name", "active", "description", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -72,16 +70,15 @@
 	{
 		"name": "/auth/client/fs/:id",
 		"comment": "Get client by id",
-		"owner": "auth_client",
+		"owner": "auth",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/client/fs/:id",
 		"type": "GET",
-		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],
-			"fields" : ["id", "name", "active"]
+			"fields" : ["id", "name", "active", "description", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -91,16 +88,15 @@
 	{	
 		"name": "/auth/client/fs",
 		"comment": "List all clients",
-		"owner": "auth_client",
+		"owner": "auth",
 		"service" : "ems_api_query_service:find",
 		"url": "/auth/client/fs",
 		"type": "GET",
-		"authorization" : "public",
 		"lang" : "erlang",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],
-			"fields" : ["id", "name", "active"]
+			"fields" : ["id", "name", "active", "description", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -137,6 +133,5 @@
 				}
 			]	
 	}
-	
-	
+		
 ]
