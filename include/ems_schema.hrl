@@ -455,45 +455,88 @@
 
 
 
--record(service_datasource, {id :: non_neg_integer(),
-							 rowid :: non_neg_integer(),
-							 type :: atom(),								%% postgresql, sqlserver, csvfile, mnesia
-							 driver :: binary(),							%% sqlite3, odbc, undefined
-							 connection :: binary(),
-							 table_name :: binary() | atom() | list(atom()),
-							 fields :: binary() | atom() | list(atom()),
-							 remap_fields :: map(),							%% Permite expor um campo com outro nome
-							 remap_fields_rev :: map(),						
-							 show_remap_fields :: boolean(),				%% Indica se deve mostrar os campos remapeados
-							 primary_key :: binary() | atom(),
-							 foreign_key :: binary() | atom(),
-							 foreign_table_name  :: binary() | atom(),			
-							 csv_delimiter :: binary(),
-							 sql :: binary(),
-							 timeout :: non_neg_integer(),
-							 max_pool_size :: non_neg_integer(),
-							 conn_ref,
-							 pid_module,
-							 pid_module_ref,
-							 owner,
-							 owner_ref,
-							 connection_count_metric_name :: atom(),		%% Quantas conexões alocadas
-							 connection_created_metric_name :: atom(),		%% Quantas conexões criadas
-							 connection_closed_metric_name :: atom(),   	%% Quantas conexões foram fechadas de forma normal
-							 connection_shutdown_metric_name :: atom(), 	%% Quantas conexões foram fechadas devido algum erro
-							 connection_reuse_metric_name :: atom(), 		%% Quantas conexões foram reutilizadas
-							 connection_unavailable_metric_name :: atom(), 	%% Quantas vezes não houve conexão
-							 connection_max_pool_size_exceeded_metric_name :: atom(), 	%% Quantas vezes excedeu o número de conexões permitidos
-							 sql_check_valid_connection :: string(),
-							 check_valid_connection_timeout :: non_neg_integer(),
-							 close_idle_connection_timeout :: non_neg_integer(),
-							 ctrl_path :: string(),
-							 ctrl_file :: string(),
-							 ctrl_insert,									%% Data que foi inserido no banco mnesia
-							 ctrl_update, 									%% Data que foi atualiado no banco mnesia			
-							 ctrl_modified,									%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-							 ctrl_hash										%% Hash gerado para poder comparar dois registros
+-record(service_datasource, {id :: non_neg_integer(),									%%  1 - id
+							 rowid :: non_neg_integer(),								%%  2 - rowid
+							 type :: atom(),											%%  3 - type					-> postgresql, sqlserver, csvfile, mnesia
+							 driver :: atom(),											%%  4 - driver					-> sqlite3, odbc, undefined
+							 connection :: string(),									%%  5 - connection		
+							 table_name :: binary() | atom() | list(atom()),			%%  6 - table_name
+							 fields :: binary() | atom() | list(atom()),				%%  7 - fields
+							 remap_fields :: map(),										%%  8 - remap_fields			-> Permite expor um campo com outro nome
+							 remap_fields_rev :: map(),									%%  9 - remap_fields_rev
+							 show_remap_fields :: boolean(),							%% 10 - show_remap_fields		-> Indica se deve mostrar os campos remapeados
+							 primary_key :: binary() | atom(),							%% 11 - primary_key
+							 foreign_key :: binary() | atom(),							%% 12 - foreign_key
+							 foreign_table_name  :: binary() | atom(),					%% 13 - foreign_table_name
+							 csv_delimiter :: binary(),									%% 14 - csv_delimiter
+							 sql :: binary(),											%% 15 - sql
+							 timeout :: non_neg_integer(),								%% 16 - timeout
+							 max_pool_size :: non_neg_integer(),						%% 17 - max_pool_size
+							 conn_ref,													%% 18 - conn_ref
+							 pid_module,												%% 19 - pid_module
+							 pid_module_ref,											%% 20 - pid_module_ref
+							 owner,														%% 21 - owner
+							 owner_ref,													%% 22 - owner_ref
+							 connection_count_metric_name :: atom(),					%% 23 - connection_count_metric_name
+							 connection_created_metric_name :: atom(),					%% 24 - connection_created_metric_name
+							 connection_closed_metric_name :: atom(),   				%% 25 - connection_closed_metric_name
+							 connection_shutdown_metric_name :: atom(), 				%% 26 - connection_shutdown_metric_name
+							 connection_reuse_metric_name :: atom(), 					%% 27 - connection_reuse_metric_name
+							 connection_unavailable_metric_name :: atom(), 				%% 28 - connection_unavailable_metric_name
+							 connection_max_pool_size_exceeded_metric_name :: atom(), 	%% 29 - connection_max_pool_size_exceeded_metric_name
+							 sql_check_valid_connection :: string(),					%% 30 - sql_check_valid_connection
+							 check_valid_connection_timeout :: non_neg_integer(),		%% 31 - check_valid_connection_timeout
+							 close_idle_connection_timeout :: non_neg_integer(),		%% 32 - close_idle_connection_timeout
+							 ctrl_path :: string(),										%% 33 - ctrl_path
+							 ctrl_file :: string(),										%% 34 - ctrl_file
+							 ctrl_insert :: binary(),									%% 35 - ctrl_insert				-> Data que foi inserido no banco mnesia
+							 ctrl_update :: binary(), 									%% 36 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+							 ctrl_modified :: binary(),									%% 37 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+							 ctrl_hash :: non_neg_integer()								%% 38 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
 							}).
+
+-define(SERVICE_DATASOURCE_DESCRIPTOR, {
+			   atom_type,									%%  0 - nome da tabela	
+			   non_neg_integer_type, 						%%  1 - id   
+			   non_neg_integer_type,						%%  2 - rowid
+			   atom_type,									%%  3 - type
+			   atom_type,									%%  4 - driver
+			   string_type,									%%  5 - connection		
+			   undefined,									%%  6 - table_name
+			   undefined, 									%%  7 - fields
+			   undefined, 									%%  8 - remap_fields
+			   undefined,									%%  9 - remap_fields_rev
+			   boolean_type, 								%% 10 - show_remap_fields
+			   undefined,									%% 11 - primary_key
+			   undefined, 									%% 12 - foreign_key
+			   undefined,									%% 13 - foreign_table_name
+			   binary_type,									%% 14 - csv_delimiter
+			   binary_type, 								%% 15 - sql
+			   non_neg_integer_type,						%% 16 - timeout
+			   non_neg_integer_type, 						%% 17 - max_pool_size
+			   undefined,									%% 18 - conn_ref
+			   undefined,									%% 19 - pid_module
+			   undefined, 									%% 20 - pid_module_ref
+			   undefined,									%% 21 - owner
+			   undefined, 									%% 22 - owner_ref
+			   atom_type, 									%% 23 - connection_count_metric_name
+			   atom_type, 									%% 24 - connection_created_metric_name
+			   atom_type, 					  				%% 25 - connection_closed_metric_name
+			   atom_type, 									%% 26 - connection_shutdown_metric_name
+			   atom_type, 				 					%% 27 - connection_reuse_metric_name
+			   atom_type, 									%% 28 - connection_unavailable_metric_name
+			   atom_type, 								 	%% 29 - connection_max_pool_size_exceeded_metric_name
+			   boolean_type,								%% 30 - sql_check_valid_connection
+			   non_neg_integer_type, 						%% 31 - check_valid_connection_timeout
+			   non_neg_integer_type, 						%% 32 - close_idle_connection_timeout
+			   string_type,									%% 33 - ctrl_path
+			   string_type, 								%% 34 - ctrl_file
+			   binary_type, 								%% 35 - ctrl_insert
+			   binary_type, 								%% 36 - ctrl_update
+			   binary_type,									%% 37 - ctrl_modified
+			   non_neg_integer_type							%% 38 - ctrl_hash
+		}).
+
 
 
 -record(service_owner, {  id :: non_neg_integer(),
@@ -506,7 +549,7 @@
 -record(service, {  id :: non_neg_integer(), 								%%  1 - id
 					rowid :: non_neg_integer(),								%%  2 - rowid									-> Identificador interno gerado para o contrato (utilizado para localizar o contrato)
 					name :: binary(), 										%%  3 - name									-> Nome do contrato do serviço (Por default usa-se a própria URL como name)
-					url :: string(),  										%%  4 - url										-> URL do contrato do serviço
+					url :: binary(),  										%%  4 - url										-> URL do contrato do serviço
 					type :: binary(),										%%  5 - type									-> Verbo HTTP do contrato (GET, POST, PUT, DELETE e OPTIONS) ou KERNEL para módulos do barramento
 					service :: binary(),									%%  6 - service									-> Serviço que será executado no contrato
 					middleware :: atom(),									%%  7 - middleware								-> Middleware para execução após processamento do serviço
@@ -590,6 +633,98 @@
 					glyphicon :: binary(),									%% 85 - glyphicon								-> classe css do glyphicon
 					metadata :: binary()									%% 86 - metadata 								-> Representação em json do que será enviado para o web service /catalog
 				}).
+
+
+-define(SERVICE_DESCRIPTOR, {
+			   atom_type,									%%  0 - nome da tabela	
+			   non_neg_integer_type,						%%  1 - id
+			   non_neg_integer_type,						%%  2 - rowid
+			   binary_type,									%%  3 - name
+			   binary_type, 	 							%%  4 - url										
+			   binary_type,								 	%%  5 - type
+			   binary_type,									%%  6 - service
+			   atom_type,									%%  7 - middleware
+			   string_type, 								%%  8 - module_name
+			   string_type,	 								%%  9 - module_name_canonical
+			   atom_type,  									%% 10 - module
+			   string_type,									%% 11 - function_name
+			   atom_type,									%% 12 - function
+			   boolean_type,								%% 13 - use_re
+			   undefined,									%% 14 - id_re_compiled
+			   boolean_type, 								%% 15 - public
+			   binary_type, 								%% 16 - comment
+			   binary_type, 								%% 17 - version
+			   binary_type,									%% 18 - owner
+			   binary_type,									%% 19 - group
+			   boolean_type,								%% 20 - async
+			   undefined,									%% 21 - querystring
+			   non_neg_integer_type,						%% 22 - qtd_querystring_req
+			   atom_type,									%% 23 - host
+			   binary_type,	  								%% 24 - host_name
+			   non_neg_integer_type,						%% 25 - result_cache
+			   atom_type,									%% 26 - authorization
+			   boolean_type,								%% 27 - authorization_public_check_credential
+			   boolean_type,								%% 28 - oauth2_with_check_constraint	
+			   boolean_type,								%% 29 - oauth2_allow_client_credentials
+			   boolean_type,								%% 30 - oauth2_token_encrypt
+			   boolean_type,						  		%% 31 - auth_allow_user_inative_credentials
+			   binary_type,									%% 32 - page
+			   undefined,									%% 33 - page_module
+			   binary_type,									%% 34 - page_mime_type
+			   undefined,									%% 35 - node
+			   binary_type,									%% 36 - lang
+			   undefined,									%% 37 - datasource
+			   boolean_type,								%% 38 - debug
+			   non_neg_integer_type,						%% 39 - schema_in
+			   non_neg_integer_type,						%% 40 - schema_out
+			   non_neg_integer_type, 						%% 41 - pool_size
+			   non_neg_integer_type,						%% 42 - pool_max
+			   non_neg_integer_type, 						%% 43 - timeout
+			   non_neg_integer_type, 			  			%% 44 - timeout_alert_threshold
+			   boolean_type,								%% 45 - log_show_response
+			   boolean_type,								%% 46 - log_show_payload
+			   non_neg_integer_type,						%% 47 - expires
+			   binary_type,									%% 48 - cache_control
+			   boolean_type,								%% 49 - enable				
+			   binary_type, 								%% 50 - content_type
+			   string_type,									%% 51 - path
+			   binary_type,									%% 52 - filename
+			   binary_type,									%% 53 - redirect url						
+			   undefined, 									%% 54 - tcp_listen_address
+			   undefined,									%% 55 - tcp_listen_address_t
+			   undefined, 									%% 56 - tcp_listen_prefix_interface_names
+			   undefined, 									%% 57 - tcp_allowed_address
+			   undefined, 									%% 58 - tcp_allowed_address_t
+			   undefined, 									%% 59 - tcp_max_connections
+			   non_neg_integer_type,						%% 60 - tcp_port
+			   boolean_type, 								%% 61 - tcp_is_ssl
+			   binary_type, 								%% 62 - tcp_ssl_cacertfile
+			   binary_type, 								%% 63 - tcp_ssl_certfile
+			   binary_type, 								%% 64 - tcp_ssl_keyfile
+			   binary_type, 								%% 65 - protocol
+			   undefined, 									%% 66 - properties
+			   string_type,									%% 67 - ctrl_path
+			   string_type, 								%% 68 - ctrl_file
+			   binary_type, 								%% 69 - ctrl_insert
+			   binary_type, 								%% 70 - ctrl_update
+			   binary_type,									%% 71 - ctrl_modified
+			   non_neg_integer_type,						%% 72 - ctrl_hash
+			   non_neg_integer_type,						%% 73 - start_timeout
+			   atom_type, 									%% 74 - service_exec_metric_name			
+			   atom_type, 									%% 75 - service_result_cache_hit_metric_name
+			   atom_type, 									%% 76 - service_host_denied_metric_name
+			   atom_type, 									%% 77 - service_auth_denied_metric_name
+			   atom_type, 									%% 78 - service_error_metric_name
+			   atom_type, 									%% 79 - service_unavailable_metric_name
+			   atom_type, 									%% 80 - service_timeout_metric_name
+			   atom_type, 									%% 81 - service_resend_msg1
+			   non_neg_integer_type,						%% 82 - http_max_content_length
+			   undefined, 									%% 83 - http_headers
+			   boolean_type,								%% 84 - restricted
+			   binary_type,									%% 85 - glyphicon
+			   binary_type									%% 86 - metadata
+		}).
+
 
 			   
 -record(request, {

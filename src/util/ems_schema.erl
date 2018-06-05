@@ -234,6 +234,22 @@ get_schema_table(user_telefone_fs) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
 get_schema_table(user_telefone_db) -> ?USER_TELEFONE_SCHEMA_DESCRIPTOR;
 get_schema_table(user_history) -> ?USER_HISTORY_DESCRIPTOR;
 get_schema_table(stat_counter_hist) -> ?STAT_COUNTER_HIST_DESCRIPTOR;
+get_schema_table(service) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_get_fs) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_get_db) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_put_fs) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_put_db) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_post_fs) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_post_db) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_delete_fs) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_delete_db) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_re_fs) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_re_db) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_kernel_fs) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_kernel_db) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_options_fs) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(catalog_options_db) -> ?SERVICE_DESCRIPTOR;
+get_schema_table(service_datasource) -> ?SERVICE_DATASOURCE_DESCRIPTOR;
 get_schema_table(_) -> undefined.
 
 
