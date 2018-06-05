@@ -503,92 +503,92 @@
 						}).
 
 
--record(service, {  id :: non_neg_integer(), 					%% Id do serviço
-					rowid :: non_neg_integer(),					%% Identificador interno do contrato (utilizado para localizar o contrato)
-					name :: binary(), 							%% Nome do contrato do serviço (Por default usa-se a própria URL como name)
-					url :: string(),  							%% URL do contrato do serviço
-					type :: binary(),							%% Verbo HTTP do contrato (GET, POST, PUT, DELETE e OPTIONS) ou KERNEL para módulos do barramento
-					service :: binary(),						%% Serviço que será executado no contrato
-					middleware :: atom(),						%% Miidleware definido para pós processamento do serviço
-					module_name :: string(), 					%% Nome do módulo do serviço que vai atender a requisição. Ex.: br.erlangms.HelloWorldService  
-					module_name_canonical :: string(), 			%% Nome do módulo canonico do serviço que vai atender a requisição. Ex.: HelloWorldService  
-					module :: atom(),  							%% Atom do processo do módulo de serviço que vai atender a requisição
-					function_name :: string(),					%% Nome da mensagem ou função que vai ser invocada no processo que vai atender a requisição
-					function :: atom(),  						%% Atom da mensagem ou função que vai ser invocada no processo que vai atender a requisição
-					use_re = false :: boolean(),				%% Flag que indica se usa expressão regular
-					id_re_compiled = undefined, 				%% Identificador da expressão regular que vai verificar se a URL bate com a URL da requisição
-					public = true :: boolean(), 				%% Indica se o contrato estará listado no Portal API Management
-					comment :: binary(), 						%% Comentário sobre o que o contrato oferece em termos de serviço
-					version :: binary(), 						%% Versão do contrato do serviço
-					owner :: binary(),  						%% Quem é o proprietário pelo serviço. Ex.: auth
-					group :: binary(),							%% Quem é o grupo do serviço. Ex.: auth/user
-					async :: boolean(),							%% Indica se o serviço será processado em segundo plano (chamada assíncrona)
-					querystring :: list(map()),					%% Definição da querystring para o contrato do serviço
-					qtd_querystring_req :: non_neg_integer(), 	%% Indica quantas querystrings são obrigatórias
-					host :: atom(),  							%% Atom do host onde está o módulo do serviço que vai processar a requisição
-					host_name,				  					%% Nome do host onde está o módulo do serviço que vai processar a requisição
-					result_cache :: non_neg_integer(), 			%% Indica quanto tempo em milisegundos o resultado vai ficar armazenado em cache
-					authorization :: atom(),					%% Forma de autenticação (public, basic, oauth2)
-					authorization_public_check_credential :: boolean(),		%% Faz a checagem da credencial do usuário quando o serviço é publico
-					oauth2_with_check_constraint :: boolean(),
-					oauth2_allow_client_credentials :: boolean(),
-					oauth2_token_encrypt :: boolean(),
-					auth_allow_user_inative_credentials :: boolean(),  % Permite login de usuários inativos.
-					page,										%% Page django file
-					page_module,								%% Page module django file compiled
-					page_mime_type :: binary(),					%% Page mime type
-					node,										%% Node ou lista de node onde os serviços estão publicados
-					lang :: binary(),							%% Linguagem que foi utilizada para implementar o serviço
-					datasource :: #service_datasource{},		%% Datasource para a fonte de dados
-					debug = false :: boolean(),					%% Permite habilitar um modo debug (depende da implementação do serviço)
-					schema_in :: non_neg_integer(),
-					schema_out :: non_neg_integer(),
-					pool_size :: non_neg_integer(),
-					pool_max :: non_neg_integer(),
-					timeout :: non_neg_integer(),				%% Tempo que o dispatcher aguarda em milisegundos o processamento de um serviço antes de retornar etimeout_service para o cliente
-					timeout_alert_threshold :: non_neg_integer(),  	% Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
-					log_show_response :: boolean(),		%% Se true, imprime o response no log
-					log_show_payload :: boolean(),		%% Se true, imprime o payload no log
-					expires :: non_neg_integer(),				%% Cabeçalho HTTP expires
-					cache_control :: binary(),					%% Cabeçalho HTTP cache-control
-					enable = false :: boolean(),
-					content_type :: binary(),					%% Tipo de conteúdo (Ex.: application/json, application/pdf)
-					path :: string(),							%% Local para carregar arquivos estáticos
-					filename :: binary(),						%% Alguns serviços podem precisar informar um nome de arquivo
-					redirect_url :: binary(),					%% redirect url						
-					tcp_listen_address,
-					tcp_listen_address_t,
-					tcp_listen_prefix_interface_names :: list(string()),
-					tcp_allowed_address,
-					tcp_allowed_address_t,
-					tcp_max_connections :: non_neg_integer(),
-					tcp_port :: non_neg_integer(),
-					tcp_is_ssl :: boolean(),
-					tcp_ssl_cacertfile,
-					tcp_ssl_certfile,
-					tcp_ssl_keyfile,
-					protocol :: binary(),
-					properties :: map(),						%% Outros parâmetros
-					ctrl_path :: string(),						%% Local de onde o catálogo foi carregado
-					ctrl_file :: string(),						%% Nome do arquivo onde está especificado o catálogo
-				    ctrl_insert,								%% Data que foi inserido no banco mnesia
-					ctrl_update, 								%% Data que foi atualiado no banco mnesia			
-					ctrl_modified,								%% Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-					ctrl_hash,									%% Hash gerado para poder comparar dois registros
-					start_timeout :: non_neg_integer(),			%% Define um timeout inicial para o processo
-					service_exec_metric_name :: atom(),
-					service_result_cache_hit_metric_name :: atom(),
-					service_host_denied_metric_name :: atom(),
-					service_auth_denied_metric_name :: atom(),
-					service_error_metric_name :: atom(),
-					service_unavailable_metric_name :: atom(),
-					service_timeout_metric_name :: atom(),
-					service_resend_msg1 :: atom(),
-					http_max_content_length :: non_neg_integer(),
-					http_headers :: map(),
-					restricted :: boolean(),					%% Serviços restrito para admins
-					glyphicon :: binary(),						%% classe do glyphicon
-					metadata :: binary()						%% Representação em json do que será enviado para o web service /catalog
+-record(service, {  id :: non_neg_integer(), 								%%  1 - id
+					rowid :: non_neg_integer(),								%%  2 - rowid									-> Identificador interno gerado para o contrato (utilizado para localizar o contrato)
+					name :: binary(), 										%%  3 - name									-> Nome do contrato do serviço (Por default usa-se a própria URL como name)
+					url :: string(),  										%%  4 - url										-> URL do contrato do serviço
+					type :: binary(),										%%  5 - type									-> Verbo HTTP do contrato (GET, POST, PUT, DELETE e OPTIONS) ou KERNEL para módulos do barramento
+					service :: binary(),									%%  6 - service									-> Serviço que será executado no contrato
+					middleware :: atom(),									%%  7 - middleware								-> Middleware para execução após processamento do serviço
+					module_name :: string(), 								%%  8 - module_name								-> Nome do módulo do serviço que vai atender a requisição. Ex.: br.erlangms.HelloWorldService  
+					module_name_canonical :: string(), 						%%  9 - module_name_canonical					-> Nome do módulo canonico do serviço que vai atender a requisição. Ex.: HelloWorldService  
+					module :: atom(),  										%% 10 - module 									-> Atom do processo do módulo de serviço que vai atender a requisição
+					function_name :: string(),								%% 11 - function_name							-> Nome da mensagem ou função que vai ser invocado para atender a requisição
+					function :: atom(),  									%% 12 - function 								-> Atom da mensagem ou função que vai ser invocado para atender a requisição
+					use_re = false :: boolean(),							%% 13 - use_re									-> Flag que indica se usa expressão regular
+					id_re_compiled = undefined, 							%% 14 - id_re_compiled							-> Expressão regular compilada
+					public = true :: boolean(), 							%% 15 - public									-> Indica se o contrato estará listado no Portal API Management
+					comment :: binary(), 									%% 16 - comment									-> Comentário sobre o que o contrato oferece em termos de serviço
+					version :: binary(), 									%% 17 - version									-> Versão do contrato do serviço
+					owner :: binary(),  									%% 18 - owner									-> Quem é o proprietário pelo serviço. Ex.: auth
+					group :: binary(),										%% 19 - group									-> Quem é o grupo do serviço. Ex.: auth/user
+					async :: boolean(),										%% 20 - async									-> Indica se o serviço será processado em segundo plano (chamada assíncrona)
+					querystring :: list(map()),								%% 21 - querystring								-> Definição da querystring para o contrato do serviço
+					qtd_querystring_req :: non_neg_integer(), 				%% 22 - qtd_querystring_req						-> Indica quantas querystrings são obrigatórias
+					host :: atom(),  										%% 23 - host									-> Atom do host onde está o módulo do serviço que vai processar a requisição
+					host_name :: binary(),	  								%% 24 - host_name								-> Nome do host onde está o módulo do serviço que vai processar a requisição
+					result_cache :: non_neg_integer(), 						%% 25 - result_cache							-> Indica quanto tempo em milisegundos o resultado vai ficar armazenado em cache
+					authorization :: atom(),								%% 26 - authorization							-> Forma de autenticação (public, basic, oauth2)
+					authorization_public_check_credential :: boolean(),		%% 27 - authorization_public_check_credential	-> Faz a checagem da credencial do usuário quando o serviço é publico
+					oauth2_with_check_constraint :: boolean(),				%% 28 - oauth2_with_check_constraint	
+					oauth2_allow_client_credentials :: boolean(),			%% 29 - oauth2_allow_client_credentials
+					oauth2_token_encrypt :: boolean(),						%% 30 - oauth2_token_encrypt
+					auth_allow_user_inative_credentials :: boolean(),  		%% 31 - auth_allow_user_inative_credentials 	-> Permite login de usuários inativos.
+					page :: binary(),										%% 32 - page									-> Page django file
+					page_module :: pid(),									%% 33 - page_module								-> Page module django file compiled
+					page_mime_type :: binary(),								%% 34 - page_mime_type							-> Page mime type
+					node :: list(),											%% 35 - node									-> Node ou lista de node onde os serviços estão publicados
+					lang :: binary(),										%% 36 - lang									-> Linguagem que foi utilizada para implementar o serviço
+					datasource :: #service_datasource{},					%% 37 - datasource								-> Datasource para a fonte de dados
+					debug = false :: boolean(),								%% 38 - debug									-> Permite habilitar um modo debug (depende da implementação do serviço)
+					schema_in :: non_neg_integer(),							%% 39 - schema_in
+					schema_out :: non_neg_integer(),						%% 40 - schema_out
+					pool_size :: non_neg_integer(),							%% 41 - pool_size
+					pool_max :: non_neg_integer(),							%% 42 - pool_max
+					timeout :: non_neg_integer(),							%% 43 - timeout									-> Tempo que o dispatcher aguarda em milisegundos o processamento de um serviço antes de retornar etimeout_service para o cliente
+					timeout_alert_threshold :: non_neg_integer(),  			%% 44 - timeout_alert_threshold					-> Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
+					log_show_response :: boolean(),							%% 45 - log_show_response						-> Se true, imprime o response no log
+					log_show_payload :: boolean(),							%% 46 - log_show_payload						-> Se true, imprime o payload no log
+					expires :: non_neg_integer(),							%% 47 - expires									-> Cabeçalho HTTP expires
+					cache_control :: binary(),								%% 48 - cache_control							-> Cabeçalho HTTP cache-control
+					enable = false :: boolean(),							%% 49 - enable				
+					content_type :: binary(),								%% 50 - content_type							-> Tipo de conteúdo (Ex.: application/json, application/pdf)
+					path :: string(),										%% 51 - path									-> Local no disco para carregar arquivos estáticos
+					filename :: binary(),									%% 52 - filename								-> Alguns serviços podem precisar informar um nome de arquivo
+					redirect_url :: binary(),								%% 53 - redirect url						
+					tcp_listen_address :: list(),							%% 54 - tcp_listen_address
+					tcp_listen_address_t :: tuple(),						%% 55 - tcp_listen_address_t
+					tcp_listen_prefix_interface_names :: list(string()),	%% 56 - tcp_listen_prefix_interface_names
+					tcp_allowed_address :: list(),							%% 57 - tcp_allowed_address
+					tcp_allowed_address_t :: tuple(),						%% 58 - tcp_allowed_address_t
+					tcp_max_connections :: non_neg_integer(),				%% 59 - tcp_max_connections
+					tcp_port :: non_neg_integer(),							%% 60 - tcp_port
+					tcp_is_ssl :: boolean(),								%% 61 - tcp_is_ssl
+					tcp_ssl_cacertfile :: binary(),							%% 62 - tcp_ssl_cacertfile
+					tcp_ssl_certfile :: binary(),							%% 63 - tcp_ssl_certfile
+					tcp_ssl_keyfile :: binary(),							%% 64 - tcp_ssl_keyfile
+					protocol :: binary(),									%% 65 - protocol
+					properties :: map(),									%% 66 - properties								-> Outros parâmetros
+				    ctrl_path :: string(),									%% 67 - ctrl_path
+					ctrl_file :: string(),									%% 68 - ctrl_file
+					ctrl_insert :: binary(),								%% 69 - ctrl_insert								-> Data que foi inserido no banco mnesia
+					ctrl_update :: binary(), 								%% 70 - ctrl_update								-> Data que foi atualiado no banco mnesia			
+					ctrl_modified :: binary(),								%% 71 - ctrl_modified							-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+					ctrl_hash :: non_neg_integer(),							%% 72 - ctrl_hash 								-> Hash gerado para poder comparar dois registros	
+					start_timeout :: non_neg_integer(),						%% 73 - start_timeout							-> Define um timeout inicial para aguardar antes de iniciar o processo do serviço
+					service_exec_metric_name :: atom(),						%% 74 - service_exec_metric_name			
+					service_result_cache_hit_metric_name :: atom(),			%% 75 - service_result_cache_hit_metric_name
+					service_host_denied_metric_name :: atom(),				%% 76 - service_host_denied_metric_name
+					service_auth_denied_metric_name :: atom(),				%% 77 - service_auth_denied_metric_name
+					service_error_metric_name :: atom(),					%% 78 - service_error_metric_name
+					service_unavailable_metric_name :: atom(),				%% 79 - service_unavailable_metric_name
+					service_timeout_metric_name :: atom(),					%% 80 - service_timeout_metric_name
+					service_resend_msg1 :: atom(),							%% 81 - service_resend_msg1
+					http_max_content_length :: non_neg_integer(),			%% 82 - http_max_content_length
+					http_headers :: map(),									%% 83 - http_headers
+					restricted :: boolean(),								%% 84 - restricted								-> Serviço restrito aos admins
+					glyphicon :: binary(),									%% 85 - glyphicon								-> classe css do glyphicon
+					metadata :: binary()									%% 86 - metadata 								-> Representação em json do que será enviado para o web service /catalog
 				}).
 
 			   
