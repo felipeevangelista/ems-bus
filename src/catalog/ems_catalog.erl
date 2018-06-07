@@ -468,7 +468,13 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		ContentType = maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON),
 		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
 		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
-		Path = ems_util:parse_file_name_path(maps:get(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),
+		Path0 = ems_util:parse_file_name_path(maps:get(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),
+		% Vamos substituir todas as variáveis não encontradas pelo caminho base do catálogo
+		% Quando a pasta for assets, então o caminho base é sem o assets
+		case filename:basename(CtrlPath) =:= "assets" of
+			true -> Path = ems_util:replace_vars_with(Path0, string:slice(CtrlPath, 0, length(CtrlPath) - 7));
+			false -> Path = ems_util:replace_vars_with(Path0, CtrlPath)
+		end,
 		Filename = ems_util:parse_file_name_path(maps:get(<<"filename">>, Map, undefined), StaticFilePathDefault, undefined),
 		RedirectUrl = maps:get(<<"redirect_url">>, Map, undefined),
 		Protocol = maps:get(<<"protocol">>, Map, <<>>),

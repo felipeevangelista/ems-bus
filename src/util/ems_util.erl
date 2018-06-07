@@ -75,6 +75,7 @@
  		 replacenth/3,
 		 replace/3,
 		 replace_all/2,
+		 replace_vars_with/2,
 		 encrypt_public_key/2,
 		 decrypt_private_key/2,
 		 open_file/1,
@@ -983,6 +984,9 @@ replace_all_vars(Subject, []) -> Subject;
 replace_all_vars(Subject, [{Key, Value}|VarTail]) -> 
 	NewSubject = replace(Subject, "{{ "++ binary_to_list(Key) ++ " }}", Value),
 	replace_all_vars(NewSubject, VarTail).
+
+
+replace_vars_with(Subject, Value) -> re:replace(Subject, "{{ .+ }}", Value, [global, {return, list}]).
 
 
 % Process the path "~" and "." wildcards and variable path. Return path

@@ -23,6 +23,7 @@ start(_StartType, StartArgs) ->
 	case ems_config:start() of
 		{ok, _Pid} ->
 			Conf = ems_config:getConfig(),
+			ems_logger:set_level(info),
 			ems_dispatcher:start(),
 			Ret = ems_bus_sup:start_link(StartArgs),
 			ems_logger:info("Hosts in the cluster: ~p.", [ems_util:get_host_list()]),
@@ -35,7 +36,6 @@ start(_StartType, StartArgs) ->
 				true -> ems_logger:info("Default authorization mode: ~p <<with check constraint>>.", [AuthorizationMode]);
 				false -> ems_logger:info("Default authorization mode: ~p.", [AuthorizationMode])
 			end,
-			ems_logger:set_level(info),
 			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;
 		{error, Reason} ->

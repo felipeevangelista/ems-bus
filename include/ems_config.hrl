@@ -238,6 +238,7 @@
 				 cat_restricted_services_owner :: list(binary()),   %% Lista de owners de serviços restritos
 				 cat_restricted_services_admin :: list(binary()),	%% Lista de admins que podem consumir os serviços
 				 static_file_path :: list(string()),				%% Lista de diretórios para arquivos estáticos
+				 static_file_path_map :: map(),					
 				 ems_hostname :: binary(),							%% Nome da maquina onde o barramento está sendo executado
 				 ems_host :: atom(),								%% Atom do name da maquina onde o barramento está sendo executado
 				 ems_file_dest :: string(),							%% Nome do arquivo de configuração (útil para saber o local do arquivo)
