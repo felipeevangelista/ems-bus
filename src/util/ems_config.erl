@@ -294,6 +294,14 @@ parse_config(Json, NomeArqConfig) ->
 	StaticFilePathMap = maps:from_list(StaticFilePath),
 	CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath),
 	Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
+	case maps:get(<<"rest_base_url">>, Json, <<>>) of
+		<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
+		RestBaseUrlValue -> RestBaseUrl = RestBaseUrlValue
+	end,
+	case maps:get(<<"rest_auth_url">>, Json, <<>>) of
+		<<>> ->	RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
+		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
+	end,
 	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
 			 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
 			 cat_node_search = maps:get(<<"node_search">>, Json, <<>>),
@@ -326,6 +334,8 @@ parse_config(Json, NomeArqConfig) ->
 			 oauth2_with_check_constraint = ems_util:parse_bool(maps:get(<<"oauth2_with_check_constraint">>, Json, false)),
 			 oauth2_refresh_token = ems_util:parse_range(maps:get(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
 			 auth_allow_user_inative_credentials = ems_util:parse_bool(maps:get(<<"auth_allow_user_inative_credentials">>, Json, true)),
+			 rest_base_url = RestBaseUrl, 
+			 rest_auth_url = RestAuthUrl,
 			 config_file = NomeArqConfig,
 			 params = Json,
 			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
