@@ -302,6 +302,7 @@ parse_config(Json, NomeArqConfig) ->
 		<<>> ->	RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
 		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
 	end,
+	RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),
 	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
 			 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
 			 cat_node_search = maps:get(<<"node_search">>, Json, <<>>),
@@ -336,6 +337,7 @@ parse_config(Json, NomeArqConfig) ->
 			 auth_allow_user_inative_credentials = ems_util:parse_bool(maps:get(<<"auth_allow_user_inative_credentials">>, Json, true)),
 			 rest_base_url = RestBaseUrl, 
 			 rest_auth_url = RestAuthUrl,
+			 rest_url_mask = RestUrlMask,
 			 config_file = NomeArqConfig,
 			 params = Json,
 			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),

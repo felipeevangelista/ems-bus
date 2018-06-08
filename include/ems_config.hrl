@@ -258,6 +258,7 @@
 				 auth_allow_user_inative_credentials :: boolean(),	% Permite login de usuários inativos.
 				 rest_base_url :: binary(),
 				 rest_auth_url :: binary(),
+				 rest_url_mask :: boolean(),
 				 config_file,
 				 http_port_offset :: non_neg_integer(),
 				 https_port_offset :: non_neg_integer(),
