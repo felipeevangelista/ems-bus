@@ -218,7 +218,7 @@
 
 
 -ifdef(win32_plataform).
-	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"//">>]).
+	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"\\">>]).
 -else.
 	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"lo">>, <<"enp">>, <<"eth">>, <<"wl">>]).
 -endif.

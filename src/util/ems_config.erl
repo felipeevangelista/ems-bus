@@ -286,28 +286,41 @@ parse_config(Json, NomeArqConfig) ->
 	{ok, Hostname} = inet:gethostname(),
 	HostnameBin = list_to_binary(Hostname),
  	TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
+	
+	io:format("aqui prefix ~p\n", [TcpListenPrefixInterfaceNames]),
+	
 	TcpListenAddress = maps:get(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
+ 	io:format("p1  ~p\n", [TcpListenAddress_t]),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
+ 	io:format("aqui2!\n"),
  	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, false)),
 	HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers">>, Json, #{})),
 	HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers_options">>, Json, #{})),
 	HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
 	HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders),
 	{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"rest_default_querystring">>, Json, []), []),
+	io:format("aqui3!\n"),
 	StaticFilePathProbing = ems_util:parse_bool(maps:get(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
 	StaticFilePath = parse_static_file_path(maps:get(<<"static_file_path">>, Json, #{})),
 	StaticFilePathMap = maps:from_list(StaticFilePath),
 	CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
 	Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
+	io:format("aqui4\n"),
 	case maps:get(<<"rest_base_url">>, Json, <<>>) of
-		<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
+		<<>> ->	
+			io:format("aqui4.1\n"),
+			io:format("is ~p\n", [TcpListenMainIp]),
+			
+			RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]),
+			io:format("aqui4.2\n");
 		RestBaseUrlValue -> RestBaseUrl = RestBaseUrlValue
 	end,
 	case maps:get(<<"rest_auth_url">>, Json, <<>>) of
 		<<>> ->	RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
 		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
 	end,
+	io:format("aqui5\n"),
 	RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),
 	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
 			 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							

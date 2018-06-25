@@ -1188,7 +1188,8 @@ ip_list()->
 				{flags, Flags} = lists:keyfind(flags, 1, Params),
 				lists:member(running, Flags) andalso lists:member(up, Flags)
 			end,
-			List2 = [ lists:keyfind(addr, 1, P) || {_InterfaceName, P} <- List, CheckIfUpFunc(P) ],
+			List2 = [ hd_or_empty([ P || {ParamName, ParamValue} = P <- IfParams, ParamName == addr, tuple_size(ParamValue) == 4 ]) 
+							|| {_IfName, IfParams} <- List ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};
@@ -1200,12 +1201,8 @@ ip_list()->
 ip_list(TcpListenPrefixInterfaceNames)->
 	 case inet:getifaddrs() of
 		{ok, List} ->
-			CheckIfUpFunc = fun(Params) ->
-				{flags, Flags} = lists:keyfind(flags, 1, Params),
-				lists:member(running, Flags) andalso lists:member(up, Flags)
-			end,
-			List2 = [ lists:keyfind(addr, 1, P) || {InterfaceName, P} <- List, CheckIfUpFunc(P) andalso 
-																			   lists:any(fun(Prefix) -> lists:prefix(Prefix, InterfaceName) end, TcpListenPrefixInterfaceNames) ],
+			List2 = [ hd_or_empty([ P || {ParamName, ParamValue} = P <- IfParams, ParamName == addr, tuple_size(ParamValue) == 4 ]) 
+							|| {IfName, IfParams} = If <- List, lists:any(fun(Prefix) -> lists:prefix(Prefix, IfName) end, TcpListenPrefixInterfaceNames) ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};
