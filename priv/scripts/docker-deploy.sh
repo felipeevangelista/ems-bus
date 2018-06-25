@@ -374,7 +374,7 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | grep APP_VERSION | sed '1!d' |  sed -r 's/^.+=(.+)"$/\1/')
 	IMAGE=$APP_NAME
-	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
+	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id&limit=1"
 	APP_ID=$(curl -ks "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
@@ -402,7 +402,7 @@ elif [ ! -z "$IMAGE" ]; then
 	if [ -z "$APP_NAME" ]; then
 		APP_NAME=$(echo $IMAGE | awk -F/ '{ print $2 }')
 	fi
-	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
+	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id&limit=1"
 	APP_ID=$(curl -ks "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
@@ -444,7 +444,7 @@ else
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | | grep APP_VERSION | sed '1!d' |  sed -r 's/^.+=(.+)"$/\1/')
 	IMAGE=$APP_NAME
-	APP_ID=$(curl -ks "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	APP_ID=$(curl -ks "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id&limit=1" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
 		echo "Error: HTTT/REST request to $ERLANGMS_BASE_URL/auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."

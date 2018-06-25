@@ -120,7 +120,7 @@ CONFIG_ARQ="/etc/default/erlangms-docker"
 APP_NAME=""
 
 # Github repository ERLANGMS release: onde está o setup do barramento
-ERLANGMS_RELEASE_URL="https://github.com/erlangms/releases/raw/master"
+ERLANGMS_RELEASE_URL="http://github.com/erlangms/releases/raw/master"
 
 # Onde está o template docker utilizado por este build
 ERLANGMS_DOCKER_GIT_URL="https://github.com/erlangMS/docker"

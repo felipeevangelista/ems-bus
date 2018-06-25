@@ -58,6 +58,10 @@
 % Caminho inicial para os arquivos estáticos
 -define(STATIC_FILE_PATH, filename:join(?PRIV_PATH, "www")).
 
+% Sonda a lista static_file_path para localizar contratos de serviços
+-define(STATIC_FILE_PATH_PROBING, true).
+
+
 % Caminho do arquivo de clientes
 -define(CLIENT_PATH, filename:join(?CONF_PATH, "clients.json")).
 
@@ -239,6 +243,7 @@
 				 cat_restricted_services_admin :: list(binary()),	%% Lista de admins que podem consumir os serviços
 				 static_file_path :: list(string()),				%% Lista de diretórios para arquivos estáticos
 				 static_file_path_map :: map(),					
+				 static_file_path_probing :: boolean(),				%% Sonda a lista static_file_path para localizar contratos de serviços
 				 ems_hostname :: binary(),							%% Nome da maquina onde o barramento está sendo executado
 				 ems_host :: atom(),								%% Atom do name da maquina onde o barramento está sendo executado
 				 ems_file_dest :: string(),							%% Nome do arquivo de configuração (útil para saber o local do arquivo)

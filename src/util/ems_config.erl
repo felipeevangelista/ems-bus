@@ -214,10 +214,15 @@ parse_cat_path_search_([{CatName, CatFilename}|T], Result) ->
 	end.
 
 
--spec parse_cat_path_search(map(), list(string())) -> list().
-parse_cat_path_search(CatPathSearch, StaticFilePath) ->
-	% Vamos descobrir mais catálogos a partir da lista static_file_path 
-	CatPathSearch2 = get_cat_path_search_from_static_file_path(CatPathSearch, StaticFilePath),
+-spec parse_cat_path_search(map(), list(string()), boolean()) -> list().
+parse_cat_path_search(CatPathSearch, StaticFilePath, StaticFilePathProbing) ->
+	case StaticFilePathProbing of
+		true ->
+			% Vamos descobrir mais catálogos a partir da lista static_file_path 
+			CatPathSearch2 = get_cat_path_search_from_static_file_path(CatPathSearch, StaticFilePath);
+		false ->
+			CatPathSearch2 = CatPathSearch
+	end,
 	% Processar as entradas da lista. Pode ser um .zip
 	CatPathSearch3 = parse_cat_path_search_(CatPathSearch2, []),
 	% Adiciona o catálogo do barramento
@@ -290,9 +295,10 @@ parse_config(Json, NomeArqConfig) ->
 	HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
 	HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders),
 	{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"rest_default_querystring">>, Json, []), []),
+	StaticFilePathProbing = ems_util:parse_bool(maps:get(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
 	StaticFilePath = parse_static_file_path(maps:get(<<"static_file_path">>, Json, #{})),
 	StaticFilePathMap = maps:from_list(StaticFilePath),
-	CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath),
+	CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
 	Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
 	case maps:get(<<"rest_base_url">>, Json, <<>>) of
 		<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
@@ -309,6 +315,7 @@ parse_config(Json, NomeArqConfig) ->
 			 cat_path_search = CatPathSearch,
 			 static_file_path = StaticFilePath,
 			 static_file_path_map = StaticFilePathMap,
+			 static_file_path_probing = StaticFilePathProbing,
 			 cat_disable_services = maps:get(<<"disable_services">>, Json, []),
 			 cat_enable_services = maps:get(<<"enable_services">>, Json, []),
 			 cat_disable_services_owner = maps:get(<<"disable_services_owner">>, Json, []),
@@ -377,6 +384,7 @@ get_default_config() ->
 			 cat_enable_services_owner	= [],
 			 cat_restricted_services_owner = [],
 			 cat_restricted_services_admin = [],
+			 static_file_path_probing  = ?STATIC_FILE_PATH_PROBING,
 			 static_file_path			= [],
 			 ems_hostname 				= HostnameBin,
 			 ems_host	 				= list_to_atom(Hostname),

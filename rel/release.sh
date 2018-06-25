@@ -87,7 +87,7 @@ clean(){
 	cd $WORKING_DIR
 	rm -Rf ems-bus
 	rm -Rf ems_bus
-	rm -f *.tar.gz
+	#rm -f *.tar.gz
 	rm -f *.tar
 	rm -f ../priv/scripts/*.log
 	rm -rf ../priv/db
