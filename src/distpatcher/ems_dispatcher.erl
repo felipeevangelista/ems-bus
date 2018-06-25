@@ -18,6 +18,7 @@
 start() -> 
 	ems_cache:new(ets_result_cache_get),
 	ets:new(ems_dispatcher_post_time, [set, named_table, public]),
+	ems_cache:new(ets_web_service_correios_cache),
 	ets:insert(ems_dispatcher_post_time, {post_time, 0}),
 	ets:new(ctrl_node_dispatch, [set, named_table, public]).
 
