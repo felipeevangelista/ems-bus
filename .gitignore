@@ -25,3 +25,4 @@ rel/deb/ems-bus-Debian-jessie_amd64/**
 rel/deb/ems-bus-Ubuntu-xenial_amd64/**
 rel/deb/ems-bus-Ubuntu-yakkety_amd64/**
 rel/deb/*.deb
+rel/deb/*/control
