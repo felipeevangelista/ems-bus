@@ -2335,6 +2335,23 @@ parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) ->
 	end.
 
 -spec parse_tcp_listen_address_t(list(string()) | list(binary()), list(tuple()), list(string())) -> list(tuple()). 
+-ifdef(win32_plataform).
+parse_tcp_listen_address_t([], _, Result) -> Result;
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
+	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
+	case inet:parse_address(H) of
+		{ok, {0, 0, 0, 0}} -> [{127,0,0,1}];
+		{ok, L2} -> 
+			case lists:member(L2, Result) of
+				true -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result);
+				false -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, [L2|Result])
+			end;
+		{error, einval} ->
+			ems_logger:format_warn("ems_config parse invalid listen addresss ~p.", [H]),
+			parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result)
+	end.
+-else.
 parse_tcp_listen_address_t([], _, Result) -> Result;
 parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
 	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
@@ -2343,15 +2360,18 @@ parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
 		{ok, {0, 0, 0, 0}} ->
 			case ip_list(TcpListenPrefixInterfaceNames) of
 				{ok, IpList} -> IpList;
-				_Error -> []
+				_Error -> [{127,0,0,1}]
 			end;
 		{ok, L2} -> 
 			case lists:member(L2, Result) of
 				true -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result);
 				false -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, [L2|Result])
 			end;
-		{error, einval} -> erlang:error(einvalid_tcp_listen_address)
+		{error, einval} -> 
+			ems_logger:format_warn("ems_config parse invalid listen addresss ~p.", [H]),
+			parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result)
 	end.
+-endif.
 	
 -spec parse_allowed_address(all | undefined | null | binary() | string() | list()) -> list(tuple()).
 parse_allowed_address(all) -> all;
