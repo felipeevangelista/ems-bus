@@ -1184,10 +1184,6 @@ replacenth(ReplaceIndex,Value,[V|List],Acc,Index) ->
 ip_list()->
 	 case inet:getifaddrs() of
 		{ok, List} ->
-			CheckIfUpFunc = fun(Params) ->
-				{flags, Flags} = lists:keyfind(flags, 1, Params),
-				lists:member(running, Flags) andalso lists:member(up, Flags)
-			end,
 			List2 = [ hd_or_empty([ P || {ParamName, ParamValue} = P <- IfParams, ParamName == addr, tuple_size(ParamValue) == 4 ]) 
 							|| {_IfName, IfParams} <- List ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],

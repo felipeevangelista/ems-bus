@@ -16,9 +16,10 @@
 
 start(_StartType, StartArgs) ->
 	erlang:system_flag(min_heap_size, 22000),
+	{ok, Hostname} = inet:gethostname(),
 	io:format("\n"),
 	T1 = ems_util:get_milliseconds(),
-	ems_logger:format_alert("Loading ESB ~s instance on Erlang/OTP ~s...", [?SERVER_NAME, erlang:system_info(otp_release)]),
+	ems_logger:format_alert("Loading ESB ~s on ~s ( Erlang/OTP Version: ~s )", [?SERVER_NAME, Hostname, erlang:system_info(otp_release)]),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->
@@ -36,6 +37,8 @@ start(_StartType, StartArgs) ->
 				true -> ems_logger:info("Default authorization mode: ~p <<with check constraint>>.", [AuthorizationMode]);
 				false -> ems_logger:info("Default authorization mode: ~p.", [AuthorizationMode])
 			end,
+			ems_logger:info("rest_base_url: ~p.", [Conf#config.rest_base_url]),
+			ems_logger:info("rest_auth_url: ~p.", [Conf#config.rest_auth_url]),
 			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;
 		{error, Reason} ->
