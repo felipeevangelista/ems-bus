@@ -180,7 +180,7 @@ Login.LoginSistemas = (function() {
 			crossDomain: true,
 			contentType: 'application/json',
 			beforeSend: function (xhr) {
-				xhr.setRequestHeader ("Authorization", "Basic " + btoa($('#username').val() + ":" + $('#pass').val()));
+				xhr.setRequestHeader ("Authorization", "Basic " + btoa($('#username').val().trim() + ":" + $('#pass').val()));
 			},
 			error: onErroSalvandoEstilo.bind(this),
 			success: function(data, textStatus, headers){

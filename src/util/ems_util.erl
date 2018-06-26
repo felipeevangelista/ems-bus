@@ -22,6 +22,8 @@
 		 json_decode_as_map_file/1,
 		 json_field_strip_and_escape/1,
 		 tuple_to_binlist/1, 
+		 list_to_integer_def/2,
+		 binary_to_integer_def/2,
 		 binlist_to_atomlist/1,
 		 list_to_binlist/1,
 		 mes_extenso/1,
@@ -3308,4 +3310,21 @@ get_host_list() ->
 		Hosts -> 
 			Hosts2 = [atom_to_list(R) || R <- Hosts],
 			list_to_binary(lists:flatten(lists:join(",", Hosts2)))
+	end.
+
+
+-spec list_to_integer_def(list(), integer() | undefined) -> integer().
+list_to_integer_def(S, Default) ->
+	try
+		list_to_integer(S)
+	catch
+		_:_ -> Default
+	end.
+
+-spec binary_to_integer_def(binary(), integer() | undefined) -> integer().
+binary_to_integer_def(B, Default) ->
+	try
+		binary_to_integer(B)
+	catch
+		_:_ -> Default
 	end.
