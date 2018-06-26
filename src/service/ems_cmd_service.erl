@@ -21,7 +21,7 @@ execute(Request = #request{service = #service{properties = Properties, content_t
 			{ok, Request#request{code = 200, 
 								 response_data = ems_schema:to_json({ok, Result})}
 			};
-		<<"plain/text">> ->
+		_ -> 
 			{ok, Request#request{code = 200, 
 								 response_data = Result}
 			}
