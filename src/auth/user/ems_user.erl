@@ -477,9 +477,10 @@ new_from_map(Map, Conf) ->
 					rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
 					data_nascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
 					sexo = case maps:get(<<"sexo">>, Map, undefined) of
-								undefined -> undefined;
-								SexoValue when is_binary(SexoValue) -> binary_to_integer(SexoValue);
-								SexoValue -> SexoValue
+								SexoValue when is_binary(SexoValue) -> ems_util:list_to_integer_def(string:strip(binary_to_list(SexoValue)), undefined);
+								SexoValue when is_list(SexoValue) -> ems_util:list_to_integer_def(string:strip(SexoValue), undefined);
+								SexoValue when is_integer(SexoValue) -> SexoValue;
+								undefined -> undefined
 							end,
 					telefone = ?UTF8_STRING(maps:get(<<"telefone">>, Map, <<>>)),
 					celular = ?UTF8_STRING(maps:get(<<"celular">>, Map, <<>>)),
@@ -487,9 +488,9 @@ new_from_map(Map, Conf) ->
 					nome_pai = ?UTF8_STRING(maps:get(<<"nome_pai">>, Map, <<>>)),
 					nome_mae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
 					nacionalidade = case maps:get(<<"nacionalidade">>, Map, undefined) of
-										undefined -> undefined;
-										NacionalidadeValue when is_binary(NacionalidadeValue) -> binary_to_integer(NacionalidadeValue);
-										NacionalidadeValue -> NacionalidadeValue
+										NacionalidadeValue when is_binary(NacionalidadeValue) -> ems_util:binary_to_integer_def(NacionalidadeValue, undefined);
+										NacionalidadeValue when is_integer(NacionalidadeValue) -> NacionalidadeValue;
+										undefined -> undefined
 									end,
 					email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
 					type = maps:get(<<"type">>, Map, 1),
