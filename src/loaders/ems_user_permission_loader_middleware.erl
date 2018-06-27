@@ -86,7 +86,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_file = NewRecord#user_permission.ctrl_file,
 												 ctrl_update = CtrlDate,
 												 ctrl_modified = NewRecord#user_permission.ctrl_modified,
-												 ctrl_hash = NewRecord#user_permission.ctrl_hash
+												 ctrl_hash = NewRecord#user_permission.ctrl_hash,
+												 glyphicon = NewRecord#user_permission.glyphicon
 											},
 								{ok, UserPermission, Table, update};
 							false -> 

@@ -355,7 +355,8 @@
 						  ctrl_insert :: binary(),				%% 16 - ctrl_insert				-> Data que foi inserido no banco mnesia
 						  ctrl_update :: binary(), 				%% 17 - ctrl_update				-> Data que foi atualiado no banco mnesia			
 						  ctrl_modified :: binary(),			%% 18 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-						  ctrl_hash :: non_neg_integer()		%% 19 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+						  ctrl_hash :: non_neg_integer(),		%% 19 - ctrl_hash 				-> Hash gerado para poder comparar dois registros
+						  glyphicon :: binary()				    %% 20 - glyphicon	
           }).
 
 
@@ -379,7 +380,8 @@
 			   binary_type,										%% 16 - ctrl_insert
 			   binary_type, 									%% 17 - ctrl_update
 			   binary_type,										%% 18 - ctrl_modified
-			   non_neg_integer_type								%% 19 - ctrl_hash 	
+			   non_neg_integer_type,							%% 19 - ctrl_hash 	
+			   binary_type										%% 20 - glyphicon
 		}).
 
 
