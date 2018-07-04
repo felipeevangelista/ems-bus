@@ -1200,7 +1200,7 @@ ip_list(TcpListenPrefixInterfaceNames)->
 	 case inet:getifaddrs() of
 		{ok, List} ->
 			List2 = [ hd_or_empty([ P || {ParamName, ParamValue} = P <- IfParams, ParamName == addr, tuple_size(ParamValue) == 4 ]) 
-							|| {IfName, IfParams} = If <- List, lists:any(fun(Prefix) -> lists:prefix(Prefix, IfName) end, TcpListenPrefixInterfaceNames) ],
+							|| {IfName, IfParams} <- List, lists:any(fun(Prefix) -> lists:prefix(Prefix, IfName) end, TcpListenPrefixInterfaceNames) ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};

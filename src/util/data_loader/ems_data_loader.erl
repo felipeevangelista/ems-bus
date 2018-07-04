@@ -330,7 +330,6 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 				{ok, State2 = #state{insert_count = InsertCount, update_count = UpdateCount, error_count = ErrorCount, disable_count = DisableCount, skip_count = SkipCount}} ->
 					do_after_load_or_update_checkpoint(State2),
 					ems_data_loader_ctl:notify_finish_work(Name, check_load_or_update_checkpoint, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),
-					erlang:garbage_collect(self()),
 					case Loading of
 						true -> {noreply, State2#state{wait_count = 0}, UpdateCheckpoint + 60000};
 						false -> {noreply, State2#state{wait_count = 0}, UpdateCheckpoint}
@@ -432,7 +431,6 @@ do_check_count_checkpoint(State = #state{name = Name,
 						?DEBUG("~s do_check_count_checkpoint exception to execute sql ~p. Reason: ~p.", [Name, SqlCount, Error4]),
 						Error4
 				end,
-				erlang:garbage_collect(self()),
 				Result;
 			Error5 -> 
 				?DEBUG("~s do_check_count_checkpoint has no connection to check counts.", [Name]),
