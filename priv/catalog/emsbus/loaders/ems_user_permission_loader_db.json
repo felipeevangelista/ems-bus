@@ -34,7 +34,7 @@
 					t.TraNomeMenu as name,
 					up.APePerId as perfil_id,
 					t.TraOrdem as position,
-					pt.PTrGlyphicon as glyphicon 
+					t.TraGlyphicon as glyphicon 
 			from BDAcesso.dbo.TB_Usuario u join BDAcesso.dbo.TB_Acessos_Perfil up  
 							  on u.UsuId = up.APeUsuId 
 					join BDAcesso.dbo.TB_Perfil_Transacao pt 
@@ -57,7 +57,7 @@
 					t.TraNomeMenu as name,
 					up.APePerId as perfil_id,
 					t.TraOrdem as position,
-					pt.PTrGlyphicon as glyphicon  
+					t.TraGlyphicon as glyphicon  
 			from BDAcesso.dbo.TB_Usuario u join BDAcesso.dbo.TB_Acessos_Perfil up  
 							  on u.UsuId = up.APeUsuId 
 					join BDAcesso.dbo.TB_Perfil_Transacao pt 
