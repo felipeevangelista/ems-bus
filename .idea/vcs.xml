@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/cowboy" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/cowlib" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/erlsom" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/erlydtl" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/esqlite" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/ibrowse" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/inotify" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/jesse" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/json_rec" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/jsx" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mochiweb" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/oauth2" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/parse_trans" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/poolboy" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/ranch" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/rfc3339" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/soap" vcs="Git" />
+  </component>
+</project>
