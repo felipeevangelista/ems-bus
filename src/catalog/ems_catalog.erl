@@ -86,7 +86,7 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 			   QtdQuerystringRequired, Host, HostName, ResultCache,
 			   Authorization, Node, Lang, Datasource,
 			   Debug, SchemaIn, SchemaOut, PoolSize, PoolMax, Properties,
-			   Page, PageModule, Timeout, TimeoutAlertThreshold,
+			   Timeout, TimeoutAlertThreshold,
 			   Middleware, CacheControl, 
 			   ExpiresMinute, Public, ContentType, Path, Filename,
 			   RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, 
@@ -134,8 +134,6 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 					result_cache = ResultCache,
 					authorization = Authorization,
 					node = Node,
-					page = Page,
-					page_module = PageModule,
 					datasource = Datasource,
 					debug = Debug,
 					lang = Lang,
@@ -196,8 +194,7 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 			Type, Enable, Comment, Version, Owner, Group, Glyphicon, Async, Querystring, 
 			QtdQuerystringRequired, Host, HostName, ResultCache,
 			Authorization, Node, Lang, Datasource, Debug, SchemaIn, SchemaOut, 
-			PoolSize, PoolMax, Properties, Page, 
-			PageModule, Timeout, TimeoutAlertThreshold,
+			PoolSize, PoolMax, Properties, Timeout, TimeoutAlertThreshold,
 			Middleware, CacheControl, ExpiresMinute, Public, 
 			ContentType, Path, Filename,
 			RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, AllowedAddress_t, 
@@ -239,8 +236,6 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 			    result_cache = ResultCache,
 			    authorization = Authorization,
 			    node = Node,
-			    page = Page,
-			    page_module = PageModule,
 			    datasource = Datasource,
 			    debug = Debug,
 			    lang = Lang,
@@ -313,16 +308,7 @@ parse_ssl_path(FilenameCat, FilenameConfig, StaticFilePathDefault) ->
 	end.
 	
 
-compile_page_module(undefined, _, _) -> undefined;
-compile_page_module(Page, Rowid, Conf) -> 
-	ModuleNamePage =  "page" ++ integer_to_list(Rowid),
-	PageFile = ems_util:parse_file_name_path(Page, "", Conf#config.static_file_path),
-	case ems_django:compile_file(binary_to_list(PageFile), ModuleNamePage) of
-		{ok, PageModule} -> PageModule;
-		_ -> erlang:error(einvalid_page_module_service)
-	end.
 
-	
 -spec parse_datasource(map(), non_neg_integer(), #config{}) -> #service_datasource{} | undefined.
 parse_datasource(undefined, _, _) -> undefined;
 parse_datasource(M, Rowid, Conf) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid, Conf#config.ems_datasources);
@@ -518,8 +504,6 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 				{Mapost, MapostName} = parse_host_service(maps:get(<<"host">>, Map, CatHostSearchDefault), ModuleName, Node, Conf)
 		end,
 		{Querystring, QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"querystring">>, Map, []), RestDefaultQuerystring),
-		Page = maps:get(<<"page">>, Map, undefined),
-		PageModule = compile_page_module(Page, Rowid, Conf),
 		CtrlModified = maps:get(<<"ctrl_modified">>, Map, undefined),
 		CtrlHash = erlang:phash2(Map),
 		StartTimeout = maps:get(<<"start_timeout">>, Map, undefined),
@@ -543,8 +527,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										   Mapost, MapostName, ResultCache,
 										   Authorization, Node, Lang,
 										   Datasource, Debug, SchemaIn, SchemaOut, 
-										   PoolSize, PoolMax, Map, Page, 
-										   PageModule, Timeout, TimeoutAlertThreshold,
+										   PoolSize, PoolMax, Map, Timeout, TimeoutAlertThreshold,
 										   Middleware, CacheControl, ExpiresMinute, 
 										   Public, ContentType, Path, Filename,
 										   RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, 
@@ -573,8 +556,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										Mapost, MapostName, ResultCache,
 										Authorization, Node, Lang,
 										Datasource, Debug, SchemaIn, SchemaOut, 
-										PoolSize, PoolMax, Map, Page, 
-										PageModule, Timeout, TimeoutAlertThreshold,
+										PoolSize, PoolMax, Map, Timeout, TimeoutAlertThreshold,
 										Middleware, CacheControl, 
 										ExpiresMinute, Public, 
 										ContentType, Path, Filename,
