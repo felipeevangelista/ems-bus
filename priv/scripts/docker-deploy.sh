@@ -181,6 +181,7 @@ help() {
 # Se o arquivo for informado com --client_conf, então o arquivo não precisa ser gerado
 make_conf_file(){
 	if [ "$CLIENT_CONF_IN_MEMORY" = "true" ]; then
+		echo "make conf_file $CLIENT_CONF in memory..."
 		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app_id\":$APP_ID,\"app_name\":\"$APP_NAME\",\"app_version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\",\"url_mask\":\"$ERLANGMS_URL_MASK\",\"erlangms_version\":\"$ERLANGMS_VERSION\"}" > $CLIENT_CONF
 	fi
 }
@@ -189,6 +190,7 @@ make_conf_file(){
 # Get expose ports from docker image if not defined in parameters
 # Labels: HTTP_PORT and HTTPS_PORT
 get_expose_ports(){
+	echo "Get expose ports from image..."
 	if [ -z "$SERVER_HTTP_PORT_LISTENER" ]; then
 		SERVER_HTTP_PORT_LISTENER=$( sudo docker inspect $IMAGE | sed -n '/HTTP_PORT/ p' | uniq | sed -r 's/[^0-9]+//g;' )
 	fi
@@ -357,6 +359,7 @@ ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 
 
 # Credentials to HTTP REST
+echo "Get access_token from $ERLANGMS_BASE_URL/authorize..."
 ERLANGMS_ACCESS_TOKEN=$(curl -ksX POST $ERLANGMS_BASE_URL/authorize -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=password&username=$ERLANGMS_USER&password=$ERLANGMS_PASSWD" | egrep -o "\"access_token\":? ?\"[A-Za-z0-9]+\"" | awk -F: '{ print $2 }' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
 ERLANGMS_AUTHORIZATION_HEADER="Bearer $ERLANGMS_ACCESS_TOKEN"
 ERLANGMS_VERSION=$(curl -ks "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
