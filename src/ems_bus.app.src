@@ -19,7 +19,6 @@
 					ranch,
 					cowlib,
 					cowboy,
-					erlydtl,
 					json_rec,
 					jsx,
 					jiffy,
