@@ -325,6 +325,7 @@ parse_node_service(<<>>) -> <<>>;
 parse_node_service(List) -> List.
 
 %% @doc O host pode ser um alias definido no arquivo de configuração
+-ifdef(win32_plataform).
 parse_host_service(<<>>, _,_,_) -> {'', atom_to_list(node())};
 parse_host_service(_Host, ModuleName, Node, Conf) ->
 	ModuleNameCanonical = [case X of 46 -> 95; _ -> X end || X <- ModuleName], % Troca . por _
@@ -344,9 +345,35 @@ parse_host_service(_Host, ModuleName, Node, Conf) ->
 	ClusterName = [case X of
 						[] -> ModuleNameCanonical ++ K  ++ "@" ++ Y;
 						_  -> ModuleNameCanonical ++ K ++ "_" ++ X ++ "@" ++ Y 
-				   end || X <- ListNode2, Y <- ListHost2, K <- ["", "01", "02", "03", "04", "05"]],
+				   end || X <- ListNode2, Y <- ListHost2, K <- [""]],
 	ClusterNode = lists:map(fun(X) -> list_to_atom(X) end, ClusterName),
+	io:format("is ~p\n", [{ClusterNode, ClusterName}]),
 	{ClusterNode, ClusterName}.
+-else.
+parse_host_service(<<>>, _,_,_) -> {'', atom_to_list(node())};
+parse_host_service(_Host, ModuleName, Node, Conf) ->
+	ModuleNameCanonical = [case X of 46 -> 95; _ -> X end || X <- ModuleName], % Troca . por _
+	ListHost = case net_adm:host_file() of
+		{error, _Reason} -> [Conf#config.ems_host];
+		Hosts -> Hosts
+	end,
+	case erlang:is_list(Node) of
+		true  -> ListNode = Node;
+		false -> ListNode = [Node]
+	end,
+	ListHost2 = [case string:tokens(atom_to_list(X), ".") of
+					[N, _] -> N;
+					[N] -> N
+				 end || X <- ListHost],
+	ListNode2 = lists:map(fun(X) -> binary_to_list(X) end, ListNode),
+	ClusterName = [case X of
+						[] -> ModuleNameCanonical ++ K  ++ "@" ++ Y;
+						_  -> ModuleNameCanonical ++ K ++ "_" ++ X ++ "@" ++ Y 
+				   end || X <- ListNode2, Y <- ListHost2, K <- ["", "02"]],
+	ClusterNode = lists:map(fun(X) -> list_to_atom(X) end, ClusterName),
+	io:format("is ~p\n", [{ClusterNode, ClusterName}]),
+	{ClusterNode, ClusterName}.
+-endif.
 
 
 -spec new_from_map(map(), #config{}) -> {ok, #service{}} | {error, atom()}.
@@ -496,12 +523,12 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		case Lang of
 			<<"erlang">> -> 
 				Node = <<>>,
-				Mapost = '',
-				MapostName = HostNameDefault,
+				Host = '',
+				HostName = HostNameDefault,
 				ems_util:compile_modulo_erlang(Path, ModuleNameCanonical);
 			_ ->	
 				Node = parse_node_service(maps:get(<<"node">>, Map, CatNodeSearchDefault)),
-				{Mapost, MapostName} = parse_host_service(maps:get(<<"host">>, Map, CatHostSearchDefault), ModuleName, Node, Conf)
+				{Host, HostName} = parse_host_service(maps:get(<<"host">>, Map, CatHostSearchDefault), ModuleName, Node, Conf)
 		end,
 		{Querystring, QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"querystring">>, Map, []), RestDefaultQuerystring),
 		CtrlModified = maps:get(<<"ctrl_modified">>, Map, undefined),
@@ -524,7 +551,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										   FunctionName, Type, Enable, Comment, 
 										   Version, Owner, Group, Glyphicon, Async, 
 										   Querystring, QtdQuerystringRequired,
-										   Mapost, MapostName, ResultCache,
+										   Host, HostName, ResultCache,
 										   Authorization, Node, Lang,
 										   Datasource, Debug, SchemaIn, SchemaOut, 
 										   PoolSize, PoolMax, Map, Timeout, TimeoutAlertThreshold,
@@ -553,7 +580,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										FunctionName, Type, Enable, Comment,
 										Version, Owner, Group, Glyphicon, Async, 
 										Querystring, QtdQuerystringRequired,
-										Mapost, MapostName, ResultCache,
+										Host, HostName, ResultCache,
 										Authorization, Node, Lang,
 										Datasource, Debug, SchemaIn, SchemaOut, 
 										PoolSize, PoolMax, Map, Timeout, TimeoutAlertThreshold,

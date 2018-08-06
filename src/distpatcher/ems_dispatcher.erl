@@ -295,8 +295,10 @@ dispatch_service_work_send(Request = #request{t1 = T1,
 						   ShowDebugResponseHeaders,
 						   Msg,
 						   Count) ->
+	io:format("--> ~p   -  ~p  -  ~p\n", [Host, HostName, ModuleName]),
 	case get_work_node(Host, Host, HostName, ModuleName) of
 		{ok, Node} ->
+			io:format("node is ~p\n", [Node]),
 			{Module, Node} ! Msg,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			case Type of 
