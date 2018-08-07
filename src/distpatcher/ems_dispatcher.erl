@@ -277,7 +277,7 @@ dispatch_service_work(Request = #request{rid = Rid,
 	T2 = ems_util:get_milliseconds(),
 	Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
 			ClientJson, UserJson, Metadata, Scope, T2, Timeout}, self()},
-	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 4).
+	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 1).
 
 
 dispatch_service_work_send(_, #service{service_unavailable_metric_name = ServiceUnavailableMetricName}, _, _, 0) -> 
@@ -295,10 +295,8 @@ dispatch_service_work_send(Request = #request{t1 = T1,
 						   ShowDebugResponseHeaders,
 						   Msg,
 						   Count) ->
-	io:format("--> ~p   -  ~p  -  ~p\n", [Host, HostName, ModuleName]),
 	case get_work_node(Host, Host, HostName, ModuleName) of
 		{ok, Node} ->
-			io:format("node is ~p\n", [Node]),
 			{Module, Node} ! Msg,
 			ems_logger:info("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			case Type of 
@@ -376,7 +374,14 @@ dispatch_service_work_receive(Request = #request{rid = Rid},
 			end
 	end.
 
-
+-ifdef(win32_plataform).
+get_work_node('', _, _, _) -> {ok, node()};
+get_work_node([], _, _, _) -> {error, eunavailable_service};
+get_work_node(_, _, _, _) -> 
+	{ok, Hostname} = inet:gethostname(),
+	Node = erlang:list_to_atom("node01@" ++ Hostname), 
+	{ok, Node}.
+-else.
 get_work_node('', _, _, _) -> {ok, node()};
 get_work_node([], _, _, _) -> {error, eunavailable_service};
 get_work_node([_|T], HostList, HostNames, ModuleName) -> 
@@ -413,7 +418,7 @@ get_work_node([_|T], HostList, HostNames, ModuleName) ->
 		pong -> {ok, Node};
 		pang -> get_work_node(T, HostList, HostNames, ModuleName)
 	end.
-		
+-endif.	
 
 
 -spec dispatch_middleware_function(#request{}, boolean()) -> {ok, request, #request{}} | {error, request, #request{}}.
