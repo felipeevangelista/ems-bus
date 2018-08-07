@@ -370,7 +370,6 @@ parse_host_service(_Host, ModuleName, Node, Conf) ->
 						_  -> ModuleNameCanonical ++ K ++ "_" ++ X ++ "@" ++ Y 
 				   end || X <- ListNode2, Y <- ListHost2, K <- ["", "02"]],
 	ClusterNode = lists:map(fun(X) -> list_to_atom(X) end, ClusterName),
-	io:format("is ~p\n", [{ClusterNode, ClusterName}]),
 	{ClusterNode, ClusterName}.
 -endif.
 
