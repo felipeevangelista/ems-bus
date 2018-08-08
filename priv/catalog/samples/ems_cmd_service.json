@@ -2,7 +2,7 @@
 	{
 		"name": "/logger/cat/error",
 		"comment": "Show log of jboss",
-		"owner": "samples",
+		"owner": "emsbus",
 		"version": "1.0.0",
 		"service" : "ems_cmd_service:execute",
 		"url": "/logger/cat/error",
@@ -14,12 +14,12 @@
 	},
 	
 	{
-		"name": "/samples/jboss/tail",
+		"name": "/emsbus/jboss/tail",
 		"comment": "Show log of jboss",
-		"owner": "samples",
+		"owner": "emsbus",
 		"version": "1.0.0",
 		"service" : "ems_cmd_service:execute",
-		"url": "/samples/jboss/tail",
+		"url": "/emsbus/jboss/tail",
 		"script" : [ "tail /home/agilar/desenvolvimento/servers/wildfly10/standalone/log/server.log" ],
 		"content_type" : "plain/text",
 		"type": "GET",
@@ -29,12 +29,12 @@
 
 	
 	{
-		"name": "/samples/jboss/restart",
+		"name": "/emsbus/jboss/restart",
 		"comment": "Show log of jboss",
-		"owner": "samples",
+		"owner": "emsbus",
 		"version": "1.0.0",
 		"service" : "ems_cmd_service:execute",
-		"url": "/samples/jboss/restart",
+		"url": "/emsbus/jboss/restart",
 		"script" : [ "/home/agilar/desenvolvimento/erlangms/ems-bus/priv/scripts/restart_apache.sh && echo true || echo false" ],
 		"type": "GET",
 		"authorization": "basic",
@@ -42,12 +42,12 @@
 	},
 
 	{
-		"name": "/samples/systemctl/status",
+		"name": "/emsbus/systemctl/status",
 		"comment": "Show log of jboss",
-		"owner": "samples",
+		"owner": "emsbus",
 		"version": "1.0.0",
 		"service" : "ems_cmd_service:execute",
-		"url": "/samples/systemctl/status",
+		"url": "/emsbus/systemctl/status",
 		"script" : [ "systemctl" ],
 		"content_type" : "plain/text",
 		"type": "GET",

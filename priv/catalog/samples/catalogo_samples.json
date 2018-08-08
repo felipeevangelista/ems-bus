@@ -5,11 +5,6 @@
 	},
 	
 	{
-		"catalog": "/samples/catalogo_cep", 
-		"file": "catalogo_cep.json"
-	},
-	
-	{
 		"catalog": "/samples/catalogo_hello_world", 
 		"file": "catalogo_hello_world.json"
 	},
@@ -30,8 +25,8 @@
 	},
 	
 	{
-		"catalog": "/samples/catalogo_cmd_service", 
-		"file": "catalogo_cmd_service.json"
+		"catalog": "/samples/ems_cmd_service", 
+		"file": "ems_cmd_service.json"
 	}	
 	
 ]

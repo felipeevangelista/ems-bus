@@ -19,7 +19,7 @@ start(_StartType, StartArgs) ->
 	{ok, Hostname} = inet:gethostname(),
 	io:format("\n"),
 	T1 = ems_util:get_milliseconds(),
-	ems_logger:format_alert("Loading ESB ~s on ~s ( Erlang/OTP Version: ~s )", [?SERVER_NAME, Hostname, erlang:system_info(otp_release)]),
+	ems_logger:format_alert("Loading ErlangMS ~s ( Hostname: ~s  Erlang/OTP Version: ~s )", [?SERVER_NAME, Hostname, erlang:system_info(otp_release)]),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->

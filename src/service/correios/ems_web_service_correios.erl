@@ -21,16 +21,16 @@ get_cache_table() ->
 % end,
   ets_web_service_correios_cache.
   
-busca_cep(Request = #request{service = #service{properties = Props, timeout = Timeout}}) -> 
-	
-	io:format("Entrou aqui"),
-	
-	 
+busca_cep(Request = #request{service = #service{timeout = Timeout}}) -> 
 	case ems_util:get_param_url(<<"cep">>, undefined, Request) of
+		{error, _Reason} -> 
+			{error, Request#request{code = 400, 
+  								    response_data = ems_schema:to_json(<<"{\"error\" : \"einvalid_cep\"}">>)
+  								    }
+			};
 		Cep ->
 			Result = ems_cache:get(get_cache_table(), Timeout, Cep, 
 									fun() -> 
-										io:format("PEsquisar cep >>>>>>>> ~p~n~n",[Cep]),
 										Result = correios_client:consultaCEP(#'P0:consultaCEP'{'cep' = binary_to_list(Cep)}, [], []),
 										
 											case Result of
@@ -53,13 +53,7 @@ busca_cep(Request = #request{service = #service{properties = Props, timeout = Ti
 											 end
 									 end
 								),
-			Result;
-			
-		_ -> 
-			{error, Request#request{code = 400, 
-  								    response_data = ems_schema:to_json(<<"{\"error\" : \"einvalid_cep\"}">>)
-  								    }
-			}
+			Result
 	end.
 	
 	 
