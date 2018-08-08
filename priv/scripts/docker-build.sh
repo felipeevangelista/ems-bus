@@ -427,7 +427,7 @@ build_image(){
 
 	# build docker image $APP_NAME:$APP_VERSION
 	echo "sudo docker build . -t $APP_DOCKER_FILENAME"
-	sudo docker build . -t $APP_DOCKER_FILENAME
+	sudo docker build --no-cache . -t $APP_DOCKER_FILENAME
 	
 	# Add tag $APP_DOCKER_LATEST
 	echo "sudo docker tag $APP_DOCKER_FILENAME $APP_DOCKER_LATEST"

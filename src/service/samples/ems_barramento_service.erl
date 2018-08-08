@@ -29,7 +29,6 @@ execute(Request) ->
 												<<"\"app_name\":\""/utf8>>, Client#client.name, <<"\","/utf8>>, 
 												<<"\"app_version\":\""/utf8>>, Client#client.version, <<"\","/utf8>>, 
 												<<"\"environment\":\"desenv\","/utf8>>, 
-												<<"\"docker_version\":\"\","/utf8>>, 
 												<<"\"url_mask\":"/utf8>>, ems_util:boolean_to_binary(Conf#config.rest_url_mask), <<","/utf8>>,
 												<<"\"erlangms_version\":\""/utf8>>, list_to_binary(ems_util:version()), <<"\""/utf8>>, 
 											<<"}"/utf8>>]),

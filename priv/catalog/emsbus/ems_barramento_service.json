@@ -1,5 +1,5 @@
 {
-	"name": "/barramento",
+	"name": "ems_barramento_service",
 	"comment": "Informações do barramento utilizado por front-ends.",
 	"owner": "emsbus",
 	"version": "1.0.0",
