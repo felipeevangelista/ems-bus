@@ -30,7 +30,8 @@
 		 all/1,
 		 add_history/1,
 		 add_history/3,
-		 add_history/4]).
+		 add_history/4,
+		 get_admim_user/0]).
 
 
 -spec find_by_id(non_neg_integer()) -> {ok, #user{}} | {error, enoent}.
@@ -361,6 +362,12 @@ find_by_name(Name) when is_list(Name) ->
 	find_by_name(list_to_binary(Name));
 find_by_name(Name) -> 
 	case ems_db:find_first([user_db, user_aluno_ativo_db, user_aluno_inativo_db], [{name, "==", Name}]) of
+		{ok, Record} -> {ok, Record};
+		_ -> {error, enoent}
+	end.
+	
+get_admim_user() ->
+	case ems_db:get([user_fs], 1) of
 		{ok, Record} -> {ok, Record};
 		_ -> {error, enoent}
 	end.

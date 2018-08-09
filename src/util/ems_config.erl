@@ -345,6 +345,7 @@ parse_config(Json, NomeArqConfig) ->
 			 rest_base_url = RestBaseUrl, 
 			 rest_auth_url = RestAuthUrl,
 			 rest_url_mask = RestUrlMask,
+			 rest_environment = maps:get(<<"rest_environment">>, Json, HostnameBin),
 			 config_file = NomeArqConfig,
 			 params = Json,
 			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),

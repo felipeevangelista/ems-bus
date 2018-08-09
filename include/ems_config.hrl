@@ -264,6 +264,8 @@
 				 rest_base_url :: binary(),
 				 rest_auth_url :: binary(),
 				 rest_url_mask :: boolean(),
+				 rest_default_querystring :: map(),					%% querystring default
+				 rest_environment :: binary(),
 				 config_file,
 				 http_port_offset :: non_neg_integer(),
 				 https_port_offset :: non_neg_integer(),
@@ -288,7 +290,6 @@
 				 log_show_response = false :: boolean(),	%% Se true, imprime o response no log
 				 log_show_payload = false :: boolean(),		%% Se true, imprime o payload no log
 				 log_show_response_max_length :: boolean(),	%% show response if content length < show_response_max_length
-				 log_show_payload_max_length :: boolean(),	%% show payload if content length < show_response_max_length
-				 rest_default_querystring :: map()			%% querystring default
+				 log_show_payload_max_length :: boolean()	%% show payload if content length < show_response_max_length
 		 }). 	
 

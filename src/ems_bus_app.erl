@@ -2,8 +2,8 @@
 
 -behaviour(application).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 
 %% Application callbacks
@@ -33,12 +33,12 @@ start(_StartType, StartArgs) ->
 									oauth2 -> <<"oauth2">>;
 									public -> <<"public">>
 								end,
-			case Conf#config.oauth2_with_check_constraint of
-				true -> ems_logger:info("Default authorization mode: ~p <<with check constraint>>.", [AuthorizationMode]);
-				false -> ems_logger:info("Default authorization mode: ~p.", [AuthorizationMode])
-			end,
 			ems_logger:info("rest_base_url: ~p.", [Conf#config.rest_base_url]),
 			ems_logger:info("rest_auth_url: ~p.", [Conf#config.rest_auth_url]),
+			case Conf#config.oauth2_with_check_constraint of
+				true -> ems_logger:info("rest_authorization: ~p <<with check constraint>>.", [AuthorizationMode]);
+				false -> ems_logger:info("rest_authorization: ~p.", [AuthorizationMode])
+			end,
 			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;
 		{error, Reason} ->
