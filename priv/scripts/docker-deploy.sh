@@ -449,7 +449,7 @@ elif [ ! -z "$IMAGE" ]; then
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
 			   -e rest_base_url="$ERLANGMS_BASE_URL" \
 			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
-			   -it --restart always $IMAGE:$IMAGE_ID $ENTRYPOINT  
+			   -dit --restart always $IMAGE:$IMAGE_ID $ENTRYPOINT  
 else
 	if [ -z "$APP_NAME" ]; then
 		APP_NAME=$(echo $TAR_FILE | awk -F: '{ print $1 }')
