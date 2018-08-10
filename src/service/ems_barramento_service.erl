@@ -90,7 +90,7 @@ execute(Request) ->
 																	end;
 																_ -> 						
 																	{error, Request#request{code = 400, 
-																							response_data = <<y/utf8>>}
+																							response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 																	}
 															end;
 														_ ->
