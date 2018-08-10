@@ -13,6 +13,7 @@
 # -----------------------------------------------------------------------------------------------------
 # 28/07/2017  Everton Agilar     Initial release
 # 05/03/2018  Everton Agilar     Add url_mask option in conf file
+# 10/08/2018  Everton Agilar     Passa variáveis do ambiente rest_base_url e rest_auth_url para a imagem
 #
 #
 #
@@ -26,7 +27,7 @@ WORKING_DIR=$(pwd)
 DOCKER_VERSION="17.03.2"
 
 # Parameters
-VERSION_SCRIPT="3.0.0"
+VERSION_SCRIPT="3.0.1"
 
 echo "Deploy ErlangMS images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
 
@@ -393,12 +394,16 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	echo "docker image remove previous $IMAGE"
 	docker image remove $IMAGE > /dev/null 2>&1
 
-	echo docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
-					--network bridge -p $SERVER_ADDR:$SERVER_HTTPS_PORT_LISTENER:$SERVER_HTTPS_PORT_LISTENER \
+	echo docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+			   --network bridge -p $SERVER_ADDR:$SERVER_HTTPS_PORT_LISTENER:$SERVER_HTTPS_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
-	docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+	docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
 
 elif [ ! -z "$IMAGE" ]; then
@@ -434,13 +439,17 @@ elif [ ! -z "$IMAGE" ]; then
 	print_info
 
 	echo docker run  --name erlangms_$APP_NAME \
-			   --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+			   --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $IMAGE:$IMAGE_ID $ENTRYPOINT 
 	docker run --name erlangms_$APP_NAME \
-			   --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+			   --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
-			   -dit --restart always $IMAGE:$IMAGE_ID $ENTRYPOINT  
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
+			   -it --restart always $IMAGE:$IMAGE_ID $ENTRYPOINT  
 else
 	if [ -z "$APP_NAME" ]; then
 		APP_NAME=$(echo $TAR_FILE | awk -F: '{ print $1 }')
@@ -465,11 +474,15 @@ else
 	echo docker load -i $TAR_FILE
 	docker load -i $TAR_FILE
 
-	echo docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+	echo docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
-	docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+	docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
 
 fi
