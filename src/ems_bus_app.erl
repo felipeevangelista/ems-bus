@@ -39,6 +39,8 @@ start(_StartType, StartArgs) ->
 				true -> ems_logger:info("rest_authorization: ~p <<with check constraint>>.", [AuthorizationMode]);
 				false -> ems_logger:info("rest_authorization: ~p.", [AuthorizationMode])
 			end,
+			ems_logger:info("rest_environment: ~p.", [Conf#config.rest_environment]),
+			ems_logger:info("tcp_listen_address: ~p.", [Conf#config.tcp_listen_address]),
 			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;
 		{error, Reason} ->

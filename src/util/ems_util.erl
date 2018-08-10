@@ -57,6 +57,7 @@
          get_client_request_by_id/1,
          get_user_request_by_login_and_password/1,
          get_user_request_by_login/1,
+         get_param_or_variable/3,
          date_add_minute/2,
          date_dec_minute/2,
          date_add_second/2,
@@ -3327,4 +3328,16 @@ binary_to_integer_def(B, Default) ->
 		binary_to_integer(B)
 	catch
 		_:_ -> Default
+	end.
+
+-spec get_param_or_variable(binary(), list(map()), any()) -> any().
+get_param_or_variable(ParamName, ParamsMap, DefaultValue) ->
+	Result1 = maps:get(ParamName, ParamsMap, DefaultValue),				
+	case os:getenv(ParamName) of % variável de ambiente em minúsculo, igual ao parâmetro
+		false -> 
+			case os:getenv(string:uppercase(binary_to_list(ParamName))) of % variável de ambiente em maiúsculo, padrão Linux
+				false -> Result1;
+				Result2 -> list_to_binary(Result2)
+			end;
+		Result2 -> list_to_binary(Result2)
 	end.

@@ -286,7 +286,7 @@ parse_config(Json, NomeArqConfig) ->
 	{ok, Hostname} = inet:gethostname(),
 	HostnameBin = list_to_binary(Hostname),
  	TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
-	TcpListenAddress = maps:get(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
+	TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
  	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, false)),
@@ -300,11 +300,11 @@ parse_config(Json, NomeArqConfig) ->
 	StaticFilePathMap = maps:from_list(StaticFilePath),
 	CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
 	Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
-	case maps:get(<<"rest_base_url">>, Json, <<>>) of
+	case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
 		<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
 		RestBaseUrlValue -> RestBaseUrl = RestBaseUrlValue
 	end,
-	case maps:get(<<"rest_auth_url">>, Json, <<>>) of
+	case ems_util:get_param_or_variable(<<"rest_auth_url">>, Json, <<>>) of
 		<<>> ->	RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
 		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
 	end,
@@ -345,7 +345,7 @@ parse_config(Json, NomeArqConfig) ->
 			 rest_base_url = RestBaseUrl, 
 			 rest_auth_url = RestAuthUrl,
 			 rest_url_mask = RestUrlMask,
-			 rest_environment = maps:get(<<"rest_environment">>, Json, HostnameBin),
+			 rest_environment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
 			 config_file = NomeArqConfig,
 			 params = Json,
 			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
