@@ -8,8 +8,8 @@
 
 -module(ems_barramento_service).
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
 
 -export([execute/1]).
   
@@ -90,7 +90,7 @@ execute(Request) ->
 																	end;
 																_ -> 						
 																	{error, Request#request{code = 400, 
-																							response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
+																							response_data = <<y/utf8>>}
 																	}
 															end;
 														_ ->
