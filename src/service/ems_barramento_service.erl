@@ -24,14 +24,10 @@ execute(Request) ->
 			case ems_user:get_admim_user() of
 				{ok, AdminUser} ->
 					RestAuthUrl = binary_to_list(Conf#config.rest_auth_url),
-					io:format("aqui1 ~p\n", [RestAuthUrl]),
 					RestUrl = binary_to_list(erlang:iolist_to_binary([Conf#config.rest_base_url, <<"/auth/client?filter={\"name\":\"">>, AppName, <<"\"}&fields=id,version&limit=1">>])),
-					io:format("aqui1.1 ~p\n", [RestUrl]),
 					GrantQuery = binary_to_list(iolist_to_binary([<<"grant_type=password&username=">>, AdminUser#user.name, <<"&password=">>, <<"5outLag1">>])),
-					io:format("aqui1.2 ~p\n", [GrantQuery]),
 					case httpc:request(post, {[RestAuthUrl], [], "application/x-www-form-urlencoded", GrantQuery}, [], []) of
 						{ok, {_, _, AuthPayload}} ->
-							io:format("aqui2 ~p\n", [AuthPayload]),
 							case ems_util:json_decode_as_map(list_to_binary(AuthPayload)) of
 								{ok, AuthParams} -> 
 									case maps:is_key(<<"error">>, AuthParams) of
@@ -56,7 +52,6 @@ execute(Request) ->
 																							response_data = ?ENOENT_JSON}
 																	};
 																false ->
-																	io:format("aqui3\n"),
 																	ClientId = maps:get(<<"id">>, ClientParams),
 																	ClientVersion = maps:get(<<"version">>, ClientParams),
 																	ContentData = iolist_to_binary([<<"{"/utf8>>,
@@ -76,20 +71,17 @@ execute(Request) ->
 																	}
 															end;
 														_ -> 						
-															io:format("aqui4\n"),
 															{error, Request#request{code = 400, 
 																					response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 															}
 													end;
 												_ ->
-													io:format("aqui5\n"),
 													{error, Request#request{code = 400, 
 																			response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 													}
 											end
 									end;
 								_ ->
-									io:format("aqui6\n"),
 									{error, Request#request{code = 400, 
 															response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 									}
