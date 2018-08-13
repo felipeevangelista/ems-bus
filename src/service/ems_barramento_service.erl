@@ -28,6 +28,7 @@ execute(Request) ->
 					RestUrl = binary_to_list(erlang:iolist_to_binary([Conf#config.rest_base_url, <<"/auth/client?filter={\"name\":\"">>, AppName, <<"\"}&fields=id,version&limit=1">>])),
 					io:format("aqui1.1 ~p\n", [RestUrl]),
 					GrantQuery = binary_to_list(iolist_to_binary([<<"grant_type=password&username=">>, AdminUser#user.name, <<"&password=">>, <<"5outLag1">>])),
+					io:format("aqui1.2 ~p\n", [GrantQuery]),
 					case httpc:request(post, {[RestAuthUrl], [], "application/x-www-form-urlencoded", GrantQuery}, [], []) of
 						{ok, {_, _, AuthPayload}} ->
 							io:format("aqui2 ~p\n", [AuthPayload]),
