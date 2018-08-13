@@ -2343,7 +2343,11 @@ parse_tcp_listen_address_t([], _, Result) -> Result;
 parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
 	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
 parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
-	case inet:parse_address(H) of
+	IP = case H of
+			 "*.*.*.*" -> "0.0.0.0";
+			 Value -> Value
+		  end,
+	case inet:parse_address(IP) of
 		{ok, {0, 0, 0, 0}} -> [{127,0,0,1}];
 		{ok, L2} -> 
 			case lists:member(L2, Result) of
@@ -2359,7 +2363,11 @@ parse_tcp_listen_address_t([], _, Result) -> Result;
 parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
 	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
 parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
-	case inet:parse_address(H) of
+	IP = case H of
+			 "*.*.*.*" -> "0.0.0.0";
+			 Value -> Value
+		  end,
+	case inet:parse_address(IP) of
 		{ok, {0, 0, 0, 0}} ->
 			case ip_list(TcpListenPrefixInterfaceNames) of
 				{ok, IpList} -> IpList;
