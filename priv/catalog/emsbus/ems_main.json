@@ -73,6 +73,16 @@
 	{
 		"catalog": "/emsbus/tcp_servers", 
 		"file": "tcp_servers/ems_tcp_servers.json"
+	},
+
+	{
+		"catalog": "/emsbus/ems_barramento_service", 
+		"file": "ems_barramento_service.json"
+	},
+	
+	{
+		"catalog": "/emsbus/ems_correios_service", 
+		"file": "ems_correios_service.json"
 	}
-		
+	
 ]

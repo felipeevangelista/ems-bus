@@ -33,7 +33,6 @@ start() ->
     application:start(ranch),
 	application:start(cowlib),
 	application:start(cowboy),
-	application:start(erlydtl),
 	application:start(json_rec),
 	application:start(jsx),
 	application:start(poolboy),
@@ -41,6 +40,7 @@ start() ->
 	application:start(jesse),
 	application:start(mochiweb),
     application:start(oauth2),
+    application:start(ibrowse),
 	application:start(ems_bus).
     
 stop() -> 
@@ -57,7 +57,6 @@ stop() ->
 	application:stop(compiler),
 	application:stop(poolboy),
 	application:stop(jsx),
-	application:stop(erlydtl),
 	application:stop(cowboy),
 	application:stop(cowlib),
 	application:stop(ranch),
@@ -65,4 +64,5 @@ stop() ->
     application:stop(ssl),
     application:stop(inets),
     application:stop(crypto),
-    application:stop(oauth2).
+    application:stop(oauth2),
+    application:start(ibrowse).

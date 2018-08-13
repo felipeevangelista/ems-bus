@@ -22,6 +22,8 @@
 		 json_decode_as_map_file/1,
 		 json_field_strip_and_escape/1,
 		 tuple_to_binlist/1, 
+		 list_to_integer_def/2,
+		 binary_to_integer_def/2,
 		 binlist_to_atomlist/1,
 		 list_to_binlist/1,
 		 mes_extenso/1,
@@ -55,6 +57,7 @@
          get_client_request_by_id/1,
          get_user_request_by_login_and_password/1,
          get_user_request_by_login/1,
+         get_param_or_variable/3,
          date_add_minute/2,
          date_dec_minute/2,
          date_add_second/2,
@@ -75,6 +78,7 @@
  		 replacenth/3,
 		 replace/3,
 		 replace_all/2,
+		 replace_vars_with/2,
 		 encrypt_public_key/2,
 		 decrypt_private_key/2,
 		 open_file/1,
@@ -985,6 +989,9 @@ replace_all_vars(Subject, [{Key, Value}|VarTail]) ->
 	replace_all_vars(NewSubject, VarTail).
 
 
+replace_vars_with(Subject, Value) -> re:replace(Subject, "{{ .+ }}", Value, [global, {return, list}]).
+
+
 % Process the path "~" and "." wildcards and variable path. Return path
 -spec parse_file_name_path(string() | binary(), list(tuple()) | undefined, binary() | undefined) -> string().
 parse_file_name_path(undefined, _, _) -> <<>>;
@@ -1180,11 +1187,8 @@ replacenth(ReplaceIndex,Value,[V|List],Acc,Index) ->
 ip_list()->
 	 case inet:getifaddrs() of
 		{ok, List} ->
-			CheckIfUpFunc = fun(Params) ->
-				{flags, Flags} = lists:keyfind(flags, 1, Params),
-				lists:member(running, Flags) andalso lists:member(up, Flags)
-			end,
-			List2 = [ lists:keyfind(addr, 1, P) || {_InterfaceName, P} <- List, CheckIfUpFunc(P) ],
+			List2 = [ hd_or_empty([ P || {ParamName, ParamValue} = P <- IfParams, ParamName == addr, tuple_size(ParamValue) == 4 ]) 
+							|| {_IfName, IfParams} <- List ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};
@@ -1196,12 +1200,8 @@ ip_list()->
 ip_list(TcpListenPrefixInterfaceNames)->
 	 case inet:getifaddrs() of
 		{ok, List} ->
-			CheckIfUpFunc = fun(Params) ->
-				{flags, Flags} = lists:keyfind(flags, 1, Params),
-				lists:member(running, Flags) andalso lists:member(up, Flags)
-			end,
-			List2 = [ lists:keyfind(addr, 1, P) || {InterfaceName, P} <- List, CheckIfUpFunc(P) andalso 
-																			   lists:any(fun(Prefix) -> lists:prefix(Prefix, InterfaceName) end, TcpListenPrefixInterfaceNames) ],
+			List2 = [ hd_or_empty([ P || {ParamName, ParamValue} = P <- IfParams, ParamName == addr, tuple_size(ParamValue) == 4 ]) 
+							|| {IfName, IfParams} <- List, lists:any(fun(Prefix) -> lists:prefix(Prefix, IfName) end, TcpListenPrefixInterfaceNames) ],
 			List3 = [ element(2, X) || X <- List2, is_tuple(X) ],
 			List4 = [ X || X <- List3, tuple_size(X) == 4 ],
 			{ok, List4};
@@ -2338,6 +2338,23 @@ parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) ->
 	end.
 
 -spec parse_tcp_listen_address_t(list(string()) | list(binary()), list(tuple()), list(string())) -> list(tuple()). 
+-ifdef(win32_plataform).
+parse_tcp_listen_address_t([], _, Result) -> Result;
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
+	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
+parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
+	case inet:parse_address(H) of
+		{ok, {0, 0, 0, 0}} -> [{127,0,0,1}];
+		{ok, L2} -> 
+			case lists:member(L2, Result) of
+				true -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result);
+				false -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, [L2|Result])
+			end;
+		{error, einval} ->
+			ems_logger:format_warn("ems_config parse invalid listen addresss ~p.", [H]),
+			parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result)
+	end.
+-else.
 parse_tcp_listen_address_t([], _, Result) -> Result;
 parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) when is_binary(H) ->
 	parse_tcp_listen_address_t([binary_to_list(H) | T], TcpListenPrefixInterfaceNames, Result);
@@ -2346,15 +2363,18 @@ parse_tcp_listen_address_t([H|T], TcpListenPrefixInterfaceNames, Result) ->
 		{ok, {0, 0, 0, 0}} ->
 			case ip_list(TcpListenPrefixInterfaceNames) of
 				{ok, IpList} -> IpList;
-				_Error -> []
+				_Error -> [{127,0,0,1}]
 			end;
 		{ok, L2} -> 
 			case lists:member(L2, Result) of
 				true -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result);
 				false -> parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, [L2|Result])
 			end;
-		{error, einval} -> erlang:error(einvalid_tcp_listen_address)
+		{error, einval} -> 
+			ems_logger:format_warn("ems_config parse invalid listen addresss ~p.", [H]),
+			parse_tcp_listen_address_t(T, TcpListenPrefixInterfaceNames, Result)
 	end.
+-endif.
 	
 -spec parse_allowed_address(all | undefined | null | binary() | string() | list()) -> list(tuple()).
 parse_allowed_address(all) -> all;
@@ -3291,4 +3311,33 @@ get_host_list() ->
 		Hosts -> 
 			Hosts2 = [atom_to_list(R) || R <- Hosts],
 			list_to_binary(lists:flatten(lists:join(",", Hosts2)))
+	end.
+
+
+-spec list_to_integer_def(list(), integer() | undefined) -> integer().
+list_to_integer_def(S, Default) ->
+	try
+		list_to_integer(S)
+	catch
+		_:_ -> Default
+	end.
+
+-spec binary_to_integer_def(binary(), integer() | undefined) -> integer().
+binary_to_integer_def(B, Default) ->
+	try
+		binary_to_integer(B)
+	catch
+		_:_ -> Default
+	end.
+
+-spec get_param_or_variable(binary(), list(map()), any()) -> any().
+get_param_or_variable(ParamName, ParamsMap, DefaultValue) ->
+	Result1 = maps:get(ParamName, ParamsMap, DefaultValue),				
+	case os:getenv(ParamName) of % variável de ambiente em minúsculo, igual ao parâmetro
+		false -> 
+			case os:getenv(string:uppercase(binary_to_list(ParamName))) of % variável de ambiente em maiúsculo, padrão Linux
+				false -> Result1;
+				Result2 -> list_to_binary(Result2)
+			end;
+		Result2 -> list_to_binary(Result2)
 	end.

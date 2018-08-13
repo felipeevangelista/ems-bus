@@ -86,7 +86,7 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 			   QtdQuerystringRequired, Host, HostName, ResultCache,
 			   Authorization, Node, Lang, Datasource,
 			   Debug, SchemaIn, SchemaOut, PoolSize, PoolMax, Properties,
-			   Page, PageModule, Timeout, TimeoutAlertThreshold,
+			   Timeout, TimeoutAlertThreshold,
 			   Middleware, CacheControl, 
 			   ExpiresMinute, Public, ContentType, Path, Filename,
 			   RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, 
@@ -134,8 +134,6 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 					result_cache = ResultCache,
 					authorization = Authorization,
 					node = Node,
-					page = Page,
-					page_module = PageModule,
 					datasource = Datasource,
 					debug = Debug,
 					lang = Lang,
@@ -196,8 +194,7 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 			Type, Enable, Comment, Version, Owner, Group, Glyphicon, Async, Querystring, 
 			QtdQuerystringRequired, Host, HostName, ResultCache,
 			Authorization, Node, Lang, Datasource, Debug, SchemaIn, SchemaOut, 
-			PoolSize, PoolMax, Properties, Page, 
-			PageModule, Timeout, TimeoutAlertThreshold,
+			PoolSize, PoolMax, Properties, Timeout, TimeoutAlertThreshold,
 			Middleware, CacheControl, ExpiresMinute, Public, 
 			ContentType, Path, Filename,
 			RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, AllowedAddress_t, 
@@ -239,8 +236,6 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 			    result_cache = ResultCache,
 			    authorization = Authorization,
 			    node = Node,
-			    page = Page,
-			    page_module = PageModule,
 			    datasource = Datasource,
 			    debug = Debug,
 			    lang = Lang,
@@ -313,16 +308,7 @@ parse_ssl_path(FilenameCat, FilenameConfig, StaticFilePathDefault) ->
 	end.
 	
 
-compile_page_module(undefined, _, _) -> undefined;
-compile_page_module(Page, Rowid, Conf) -> 
-	ModuleNamePage =  "page" ++ integer_to_list(Rowid),
-	PageFile = ems_util:parse_file_name_path(Page, "", Conf#config.static_file_path),
-	case ems_django:compile_file(binary_to_list(PageFile), ModuleNamePage) of
-		{ok, PageModule} -> PageModule;
-		_ -> erlang:error(einvalid_page_module_service)
-	end.
 
-	
 -spec parse_datasource(map(), non_neg_integer(), #config{}) -> #service_datasource{} | undefined.
 parse_datasource(undefined, _, _) -> undefined;
 parse_datasource(M, Rowid, Conf) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid, Conf#config.ems_datasources);
@@ -339,6 +325,7 @@ parse_node_service(<<>>) -> <<>>;
 parse_node_service(List) -> List.
 
 %% @doc O host pode ser um alias definido no arquivo de configuração
+-ifdef(win32_plataform).
 parse_host_service(<<>>, _,_,_) -> {'', atom_to_list(node())};
 parse_host_service(_Host, ModuleName, Node, Conf) ->
 	ModuleNameCanonical = [case X of 46 -> 95; _ -> X end || X <- ModuleName], % Troca . por _
@@ -358,9 +345,33 @@ parse_host_service(_Host, ModuleName, Node, Conf) ->
 	ClusterName = [case X of
 						[] -> ModuleNameCanonical ++ K  ++ "@" ++ Y;
 						_  -> ModuleNameCanonical ++ K ++ "_" ++ X ++ "@" ++ Y 
-				   end || X <- ListNode2, Y <- ListHost2, K <- ["", "01", "02", "03", "04", "05"]],
+				   end || X <- ListNode2, Y <- ListHost2, K <- [""]],
 	ClusterNode = lists:map(fun(X) -> list_to_atom(X) end, ClusterName),
 	{ClusterNode, ClusterName}.
+-else.
+parse_host_service(<<>>, _,_,_) -> {'', atom_to_list(node())};
+parse_host_service(_Host, ModuleName, Node, Conf) ->
+	ModuleNameCanonical = [case X of 46 -> 95; _ -> X end || X <- ModuleName], % Troca . por _
+	ListHost = case net_adm:host_file() of
+		{error, _Reason} -> [Conf#config.ems_host];
+		Hosts -> Hosts
+	end,
+	case erlang:is_list(Node) of
+		true  -> ListNode = Node;
+		false -> ListNode = [Node]
+	end,
+	ListHost2 = [case string:tokens(atom_to_list(X), ".") of
+					[N, _] -> N;
+					[N] -> N
+				 end || X <- ListHost],
+	ListNode2 = lists:map(fun(X) -> binary_to_list(X) end, ListNode),
+	ClusterName = [case X of
+						[] -> ModuleNameCanonical ++ K  ++ "@" ++ Y;
+						_  -> ModuleNameCanonical ++ K ++ "_" ++ X ++ "@" ++ Y 
+				   end || X <- ListNode2, Y <- ListHost2, K <- ["", "02"]],
+	ClusterNode = lists:map(fun(X) -> list_to_atom(X) end, ClusterName),
+	{ClusterNode, ClusterName}.
+-endif.
 
 
 -spec new_from_map(map(), #config{}) -> {ok, #service{}} | {error, atom()}.
@@ -468,7 +479,13 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		ContentType = maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON),
 		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
 		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
-		Path = ems_util:parse_file_name_path(maps:get(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),
+		Path0 = ems_util:parse_file_name_path(maps:get(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),
+		% Vamos substituir todas as variáveis não encontradas pelo caminho base do catálogo
+		% Quando a pasta for assets, então o caminho base é sem o assets
+		case filename:basename(CtrlPath) =:= "assets" of
+			true -> Path = ems_util:replace_vars_with(Path0, string:slice(CtrlPath, 0, length(CtrlPath) - 7));
+			false -> Path = ems_util:replace_vars_with(Path0, CtrlPath)
+		end,
 		Filename = ems_util:parse_file_name_path(maps:get(<<"filename">>, Map, undefined), StaticFilePathDefault, undefined),
 		RedirectUrl = maps:get(<<"redirect_url">>, Map, undefined),
 		Protocol = maps:get(<<"protocol">>, Map, <<>>),
@@ -504,16 +521,14 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		case Lang of
 			<<"erlang">> -> 
 				Node = <<>>,
-				Mapost = '',
-				MapostName = HostNameDefault,
+				Host = '',
+				HostName = HostNameDefault,
 				ems_util:compile_modulo_erlang(Path, ModuleNameCanonical);
 			_ ->	
 				Node = parse_node_service(maps:get(<<"node">>, Map, CatNodeSearchDefault)),
-				{Mapost, MapostName} = parse_host_service(maps:get(<<"host">>, Map, CatHostSearchDefault), ModuleName, Node, Conf)
+				{Host, HostName} = parse_host_service(maps:get(<<"host">>, Map, CatHostSearchDefault), ModuleName, Node, Conf)
 		end,
 		{Querystring, QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"querystring">>, Map, []), RestDefaultQuerystring),
-		Page = maps:get(<<"page">>, Map, undefined),
-		PageModule = compile_page_module(Page, Rowid, Conf),
 		CtrlModified = maps:get(<<"ctrl_modified">>, Map, undefined),
 		CtrlHash = erlang:phash2(Map),
 		StartTimeout = maps:get(<<"start_timeout">>, Map, undefined),
@@ -534,11 +549,10 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										   FunctionName, Type, Enable, Comment, 
 										   Version, Owner, Group, Glyphicon, Async, 
 										   Querystring, QtdQuerystringRequired,
-										   Mapost, MapostName, ResultCache,
+										   Host, HostName, ResultCache,
 										   Authorization, Node, Lang,
 										   Datasource, Debug, SchemaIn, SchemaOut, 
-										   PoolSize, PoolMax, Map, Page, 
-										   PageModule, Timeout, TimeoutAlertThreshold,
+										   PoolSize, PoolMax, Map, Timeout, TimeoutAlertThreshold,
 										   Middleware, CacheControl, ExpiresMinute, 
 										   Public, ContentType, Path, Filename,
 										   RedirectUrl, ListenAddress, ListenAddress_t, AllowedAddress, 
@@ -564,11 +578,10 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										FunctionName, Type, Enable, Comment,
 										Version, Owner, Group, Glyphicon, Async, 
 										Querystring, QtdQuerystringRequired,
-										Mapost, MapostName, ResultCache,
+										Host, HostName, ResultCache,
 										Authorization, Node, Lang,
 										Datasource, Debug, SchemaIn, SchemaOut, 
-										PoolSize, PoolMax, Map, Page, 
-										PageModule, Timeout, TimeoutAlertThreshold,
+										PoolSize, PoolMax, Map, Timeout, TimeoutAlertThreshold,
 										Middleware, CacheControl, 
 										ExpiresMinute, Public, 
 										ContentType, Path, Filename,

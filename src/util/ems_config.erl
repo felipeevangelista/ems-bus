@@ -128,6 +128,7 @@ print_config_settings(Json = #config{ems_debug = true}) ->
 print_config_settings(_) -> ok.
 	
 
+
 % Load the configuration file
 load_config() ->
 	case get_config_data() of
@@ -155,14 +156,47 @@ load_config() ->
 	end.
 
 
-parse_cat_path_search([], Result) -> Result;
-parse_cat_path_search([{CatName, CatFilename}|T], Result) -> 
+get_cat_path_search_from_static_file_path_(CatPathSearch, []) -> CatPathSearch;
+get_cat_path_search_from_static_file_path_(CatPathSearch, [{_, Path}|T]) ->
+	ParseCatalogFun = fun(Filename, AccIn) -> 
+		DirName = filename:dirname(Filename),
+		LastDir = filename:basename(DirName),
+		case LastDir =:= "assets" of
+			true -> 
+				DirName2 = string:slice(DirName, 1, length(DirName) - 8),
+				LastDir2 = filename:basename(DirName2),
+				case LastDir2 =:= "dist" of
+					true -> 
+						CatName = list_to_binary(filename:rootname(filename:basename(Filename))),
+						[ {CatName, Filename} | AccIn ];
+					false -> AccIn
+				end;
+			false ->
+				case LastDir =:= "dist" of
+					true -> 
+						CatName = list_to_binary(filename:rootname(filename:basename(Filename))),
+						[ {CatName, Filename} | AccIn ];
+					false -> AccIn
+				end
+		end
+	end,
+	CatPathSearch2 = lists:reverse(filelib:fold_files(Path, "catalogo?.+\.json$", true, ParseCatalogFun, CatPathSearch)),
+	get_cat_path_search_from_static_file_path_(CatPathSearch2, T).
+
+
+get_cat_path_search_from_static_file_path(CatPathSearch, StaticFilePath) ->
+	ems_logger:format_info("ems_config search catalogs in static_file_path..."),
+	CatPathSearch2 = get_cat_path_search_from_static_file_path_(CatPathSearch, StaticFilePath),
+	CatPathSearch2.
+
+parse_cat_path_search_([], Result) -> Result;
+parse_cat_path_search_([{CatName, CatFilename}|T], Result) -> 
 	CatNameStr = binary_to_list(CatName),
 	CatFilename2 = ems_util:parse_file_name_path(CatFilename, [], undefined),
 	case file:read_file_info(CatFilename2, [{time, universal}]) of
 		{ok, _} -> 
 			ems_logger:format_info("ems_config loading catalog ~p from ~p.", [CatNameStr, CatFilename2]),
-			parse_cat_path_search(T, [{CatName, CatFilename2}|Result]);
+			parse_cat_path_search_(T, [{CatName, CatFilename2}|Result]);
 		_ ->
 			CatFilenameDir = filename:dirname(CatFilename2),
 			CatFilenameZip = CatFilenameDir ++ ".zip",
@@ -172,40 +206,48 @@ parse_cat_path_search([{CatName, CatFilename}|T], Result) ->
 					zip:unzip(CatFilenameZip, [{cwd, CatTempDir}]),
 					CatFilename3 = filename:join([CatTempDir, filename:basename(CatFilenameDir), filename:basename(CatFilename2)]),
 					ems_logger:format_info("ems_config loading catalog ~p from ~p.", [CatNameStr, CatFilenameZip]),
-					parse_cat_path_search(T, [{CatName, CatFilename3}|Result]);
+					parse_cat_path_search_(T, [{CatName, CatFilename3}|Result]);
 				_ ->
 					ems_logger:format_error("ems_config cannot load catalog ~p.", [CatFilename2]),
-					parse_cat_path_search(T, Result)
+					parse_cat_path_search_(T, Result)
 			end
 	end.
 
 
--spec parse_cat_path_search(map()) -> list().
-parse_cat_path_search(Json) ->
-	CatPathSearch = maps:to_list(maps:get(<<"catalog_path">>, Json, #{})),
-	CatPathSearch2 = parse_cat_path_search(CatPathSearch, []),
-	[{<<"ems-bus">>, ?CATALOGO_ESB_PATH} | CatPathSearch2].
+-spec parse_cat_path_search(map(), list(string()), boolean()) -> list().
+parse_cat_path_search(CatPathSearch, StaticFilePath, StaticFilePathProbing) ->
+	case StaticFilePathProbing of
+		true ->
+			% Vamos descobrir mais catálogos a partir da lista static_file_path 
+			CatPathSearch2 = get_cat_path_search_from_static_file_path(CatPathSearch, StaticFilePath);
+		false ->
+			CatPathSearch2 = CatPathSearch
+	end,
+	% Processar as entradas da lista. Pode ser um .zip
+	CatPathSearch3 = parse_cat_path_search_(CatPathSearch2, []),
+	% Adiciona o catálogo do barramento
+	[{<<"ems-bus">>, ?CATALOGO_ESB_PATH} | CatPathSearch3].
 
 
 -spec parse_static_file_path(map()) -> list().
-parse_static_file_path(Json) ->
-	StaticFilePath = maps:get(<<"static_file_path">>, Json, #{}),
-	StaticFilePathList = maps:to_list(StaticFilePath),
+parse_static_file_path(StaticFilePathMap) ->
+	StaticFilePathList = maps:to_list(StaticFilePathMap),
 	StaticFilePathList2 = [{<<"login_path">>, list_to_binary(filename:join(?STATIC_FILE_PATH, "login"))} | StaticFilePathList],
-	StaticFilePathList3 = [{<<"www_path">>, list_to_binary(?STATIC_FILE_PATH)} | StaticFilePathList2],
+	StaticFilePathList3 = case lists:member(<<"www_path">>, StaticFilePathList2) of
+						     true -> StaticFilePathList2;
+							 false -> [{<<"www_path">>, list_to_binary(?STATIC_FILE_PATH)} | StaticFilePathList2]
+						  end,
 	[{K, ems_util:remove_ult_backslash_url(binary_to_list(V))} || {K, V} <- StaticFilePathList3].
 	
 
-parse_datasources([], _, Result) -> maps:from_list(Result);
-parse_datasources([DsName|T], Datasources, Result) ->
+parse_datasources_([], _, Result) -> maps:from_list(Result);
+parse_datasources_([DsName|T], Datasources, Result) ->
 	M = maps:get(DsName, Datasources),
 	Ds = ems_db:create_datasource_from_map(M, undefined, #{}),
-	parse_datasources(T, Datasources, [{DsName, Ds} | Result]).
+	parse_datasources_(T, Datasources, [{DsName, Ds} | Result]).
 								
-	
-parse_datasources(Json) ->
-	Datasources = maps:get(<<"datasources">>, Json, #{}),
-	parse_datasources(maps:keys(Datasources), Datasources, []).
+parse_datasources(DatasourcesMap) ->
+	parse_datasources_(maps:keys(DatasourcesMap), DatasourcesMap, []).
 	
 	
 parse_tcp_allowed_address(undefined) -> all;
@@ -242,9 +284,9 @@ parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Result) ->
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, NomeArqConfig) ->
 	{ok, Hostname} = inet:gethostname(),
-	Hostname2 = list_to_binary(Hostname),
+	HostnameBin = list_to_binary(Hostname),
  	TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
-	TcpListenAddress = maps:get(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
+	TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
  	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, false)),
@@ -253,23 +295,39 @@ parse_config(Json, NomeArqConfig) ->
 	HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
 	HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders),
 	{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"rest_default_querystring">>, Json, []), []),
-	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => Hostname2}),
+	StaticFilePathProbing = ems_util:parse_bool(maps:get(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
+	StaticFilePath = parse_static_file_path(maps:get(<<"static_file_path">>, Json, #{})),
+	StaticFilePathMap = maps:from_list(StaticFilePath),
+	CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
+	Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
+	case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
+		<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
+		RestBaseUrlValue -> RestBaseUrl = RestBaseUrlValue
+	end,
+	case ems_util:get_param_or_variable(<<"rest_auth_url">>, Json, <<>>) of
+		<<>> ->	RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
+		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
+	end,
+	RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),
+	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
 			 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
 			 cat_node_search = maps:get(<<"node_search">>, Json, <<>>),
-			 cat_path_search = parse_cat_path_search(Json),
-			 static_file_path = parse_static_file_path(Json),
+			 cat_path_search = CatPathSearch,
+			 static_file_path = StaticFilePath,
+			 static_file_path_map = StaticFilePathMap,
+			 static_file_path_probing = StaticFilePathProbing,
 			 cat_disable_services = maps:get(<<"disable_services">>, Json, []),
 			 cat_enable_services = maps:get(<<"enable_services">>, Json, []),
 			 cat_disable_services_owner = maps:get(<<"disable_services_owner">>, Json, []),
 			 cat_enable_services_owner = maps:get(<<"enable_services_owner">>, Json, []),
 			 cat_restricted_services_owner = maps:get(<<"restricted_services_owner">>, Json, []),
 			 cat_restricted_services_admin = maps:get(<<"restricted_services_admin">>, Json, []),
-			 ems_hostname = Hostname2,
+			 ems_hostname = HostnameBin,
 			 ems_host = list_to_atom(Hostname),
 			 ems_file_dest = NomeArqConfig,
 			 ems_debug = ems_util:parse_bool(maps:get(<<"debug">>, Json, false)),
 			 ems_result_cache = ems_util:parse_result_cache(maps:get(<<"result_cache">>, Json, ?TIMEOUT_DISPATCHER_CACHE)),
-			 ems_datasources = parse_datasources(Json),
+			 ems_datasources = Datasources,
 			 show_debug_response_headers = ShowDebugResponseHeaders,
 			 tcp_listen_address	= TcpListenAddress,
 			 tcp_listen_address_t = TcpListenAddress_t,
@@ -284,6 +342,10 @@ parse_config(Json, NomeArqConfig) ->
 			 oauth2_with_check_constraint = ems_util:parse_bool(maps:get(<<"oauth2_with_check_constraint">>, Json, false)),
 			 oauth2_refresh_token = ems_util:parse_range(maps:get(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
 			 auth_allow_user_inative_credentials = ems_util:parse_bool(maps:get(<<"auth_allow_user_inative_credentials">>, Json, true)),
+			 rest_base_url = RestBaseUrl, 
+			 rest_auth_url = RestAuthUrl,
+			 rest_url_mask = RestUrlMask,
+			 rest_environment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
 			 config_file = NomeArqConfig,
 			 params = Json,
 			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
@@ -309,11 +371,11 @@ parse_config(Json, NomeArqConfig) ->
 -spec get_default_config() -> #config{}.
 get_default_config() ->
 	{ok, Hostname} = inet:gethostname(),
-	Hostname2 = list_to_binary(Hostname),
+	HostnameBin = list_to_binary(Hostname),
 	TcpListenAddress = [<<"0.0.0.0">>],
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
-	#config{cat_host_alias				= #{<<"local">> => Hostname2},
+	#config{ cat_host_alias				= #{<<"local">> => HostnameBin},
 			 cat_host_search			= <<>>,							
 			 cat_node_search			= <<>>,
 			 cat_path_search			= [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}],
@@ -323,8 +385,9 @@ get_default_config() ->
 			 cat_enable_services_owner	= [],
 			 cat_restricted_services_owner = [],
 			 cat_restricted_services_admin = [],
+			 static_file_path_probing  = ?STATIC_FILE_PATH_PROBING,
 			 static_file_path			= [],
-			 ems_hostname 				= Hostname2,
+			 ems_hostname 				= HostnameBin,
 			 ems_host	 				= list_to_atom(Hostname),
 			 ems_file_dest				= "",
 			 ems_debug					= false,
@@ -406,7 +469,7 @@ select_config_file(ConfigFile, ConfigFileDefault) ->
 get_tcp_listen_main_ip(TcpListenAddress_t) when length(TcpListenAddress_t) > 0 -> 
 	Ip = lists:last(TcpListenAddress_t),
 	{list_to_binary(inet:ntoa(Ip)), Ip};
-get_tcp_listen_main_ip(_) -> {undefined, undefined}.
+get_tcp_listen_main_ip(_) -> {<<"127.0.0.1">>, {127,0,0,1}}.
 
 
 	

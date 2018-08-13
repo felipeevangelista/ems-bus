@@ -7,15 +7,10 @@
 	"url": "/emsbus/ems_user_permission_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 30000,
+	"update_checkpoint" : 35000,
 	"check_remove_records" : true,
-	"check_remove_records_checkpoint" : 65000,
-	"group" : ["ems_user_loader_db", "ems_user_perfil_loader_db", 
-			   "ems_user_permission_loader_db", "ems_user_email_loader_db", 
-			   "ems_user_telefone_loader_db", "ems_user_endereco_loader_db",
-			   "ems_user_dados_funcionais_loader_db", 
-			   "ems_user_aluno_ativo_loader_db", 
-			   "ems_user_aluno_inativo_loader_db"],
+	"check_remove_records_checkpoint" : 3600000,
+	"group" : [],
 	"datasource" : "ds_ems_user_loader",
 	"start_timeout" : 5000,
 	"middleware" : "ems_user_permission_loader_middleware",
@@ -33,7 +28,8 @@
 					t.TraNomeFrm as url,
 					t.TraNomeMenu as name,
 					up.APePerId as perfil_id,
-					t.TraOrdem as position  
+					t.TraOrdem as position,
+					t.TraGlyphicon as glyphicon 
 			from BDAcesso.dbo.TB_Usuario u join BDAcesso.dbo.TB_Acessos_Perfil up  
 							  on u.UsuId = up.APeUsuId 
 					join BDAcesso.dbo.TB_Perfil_Transacao pt 
@@ -55,7 +51,8 @@
 					t.TraNomeFrm as url, 
 					t.TraNomeMenu as name,
 					up.APePerId as perfil_id,
-					t.TraOrdem as position  
+					t.TraOrdem as position,
+					t.TraGlyphicon as glyphicon  
 			from BDAcesso.dbo.TB_Usuario u join BDAcesso.dbo.TB_Acessos_Perfil up  
 							  on u.UsuId = up.APeUsuId 
 					join BDAcesso.dbo.TB_Perfil_Transacao pt 
@@ -68,5 +65,5 @@
 				  pt.PTrDataAlteracao >= ? or pt.PTrDataCadastramento >= ? or 
 				  t.TraDataAlteracao >= ? or t.TraDataCadastramento >= ?
 			",
-	"fields" : ["id", "user_id", "client_id", "grant_get", "grant_post", "grant_put", "grant_delete", "url", "name", "perfil_id", "position"]
+	"fields" : ["id", "user_id", "client_id", "grant_get", "grant_post", "grant_put", "grant_delete", "url", "name", "perfil_id", "position", "glyphicon"]
 }

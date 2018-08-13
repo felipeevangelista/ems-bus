@@ -1,7 +1,7 @@
 {application, ems_bus,
  [
   {description, "ErlangMS"},
-  {vsn, "1.0.40"},
+  {vsn, "2.0.0"},
   {registered, []},
   {applications, [
 					kernel,
@@ -19,14 +19,14 @@
 					ranch,
 					cowlib,
 					cowboy,
-					erlydtl,
 					json_rec,
 					jsx,
 					jiffy,
 					jesse,
 					poolboy,
 					mochiweb,
-					oauth2
+					oauth2,
+					ibrowse
                  ]},
   {mod, { ems_bus_app, []}},
   {env, [

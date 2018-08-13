@@ -58,6 +58,10 @@
 % Caminho inicial para os arquivos estáticos
 -define(STATIC_FILE_PATH, filename:join(?PRIV_PATH, "www")).
 
+% Sonda a lista static_file_path para localizar contratos de serviços
+-define(STATIC_FILE_PATH_PROBING, false).
+
+
 % Caminho do arquivo de clientes
 -define(CLIENT_PATH, filename:join(?CONF_PATH, "clients.json")).
 
@@ -214,7 +218,7 @@
 
 
 -ifdef(win32_plataform).
-	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"//">>]).
+	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, []).
 -else.
 	-define(TCP_LISTEN_PREFIX_INTERFACE_NAMES, [<<"lo">>, <<"enp">>, <<"eth">>, <<"wl">>]).
 -endif.
@@ -238,6 +242,8 @@
 				 cat_restricted_services_owner :: list(binary()),   %% Lista de owners de serviços restritos
 				 cat_restricted_services_admin :: list(binary()),	%% Lista de admins que podem consumir os serviços
 				 static_file_path :: list(string()),				%% Lista de diretórios para arquivos estáticos
+				 static_file_path_map :: map(),					
+				 static_file_path_probing :: boolean(),				%% Sonda a lista static_file_path para localizar contratos de serviços
 				 ems_hostname :: binary(),							%% Nome da maquina onde o barramento está sendo executado
 				 ems_host :: atom(),								%% Atom do name da maquina onde o barramento está sendo executado
 				 ems_file_dest :: string(),							%% Nome do arquivo de configuração (útil para saber o local do arquivo)
@@ -255,6 +261,11 @@
 				 oauth2_with_check_constraint :: boolean(),
 				 oauth2_refresh_token :: non_neg_integer(),
 				 auth_allow_user_inative_credentials :: boolean(),	% Permite login de usuários inativos.
+				 rest_base_url :: binary(),
+				 rest_auth_url :: binary(),
+				 rest_url_mask :: boolean(),
+				 rest_default_querystring :: map(),					%% querystring default
+				 rest_environment :: binary(),
 				 config_file,
 				 http_port_offset :: non_neg_integer(),
 				 https_port_offset :: non_neg_integer(),
@@ -279,7 +290,6 @@
 				 log_show_response = false :: boolean(),	%% Se true, imprime o response no log
 				 log_show_payload = false :: boolean(),		%% Se true, imprime o payload no log
 				 log_show_response_max_length :: boolean(),	%% show response if content length < show_response_max_length
-				 log_show_payload_max_length :: boolean(),	%% show payload if content length < show_response_max_length
-				 rest_default_querystring :: map()			%% querystring default
+				 log_show_payload_max_length :: boolean()	%% show payload if content length < show_response_max_length
 		 }). 	
 

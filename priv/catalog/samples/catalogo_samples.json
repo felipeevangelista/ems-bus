@@ -5,11 +5,6 @@
 	},
 	
 	{
-		"catalog": "/samples/catalogo_cep", 
-		"file": "catalogo_cep.json"
-	},
-	
-	{
 		"catalog": "/samples/catalogo_hello_world", 
 		"file": "catalogo_hello_world.json"
 	},
@@ -25,23 +20,13 @@
 	},
 	
 	{
-		"catalog": "/samples/hackathon", 
-		"file": "catalogo_hackathon.json"
-	},
-	
-	{
-		"catalog": "/samples/ems_barramento_service", 
-		"file": "ems_barramento_service.json"
-	},
-	
-	{
 		"catalog": "/samples/upload_file", 
 		"file": "upload_file.json"
 	},
 	
 	{
-		"catalog": "/samples/catalogo_cmd_service", 
-		"file": "catalogo_cmd_service.json"
+		"catalog": "/samples/ems_cmd_service", 
+		"file": "ems_cmd_service.json"
 	}	
 	
 ]

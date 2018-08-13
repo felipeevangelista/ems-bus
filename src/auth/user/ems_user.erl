@@ -30,7 +30,8 @@
 		 all/1,
 		 add_history/1,
 		 add_history/3,
-		 add_history/4]).
+		 add_history/4,
+		 get_admim_user/0]).
 
 
 -spec find_by_id(non_neg_integer()) -> {ok, #user{}} | {error, enoent}.
@@ -364,6 +365,12 @@ find_by_name(Name) ->
 		{ok, Record} -> {ok, Record};
 		_ -> {error, enoent}
 	end.
+	
+get_admim_user() ->
+	case ems_db:get([user_fs], 1) of
+		{ok, Record} -> {ok, Record};
+		_ -> {error, enoent}
+	end.
 
 
 -spec to_resource_owner(#user{}, non_neg_integer()) -> binary().
@@ -373,7 +380,7 @@ to_resource_owner(User, ClientId) ->
 		true -> 
 			{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]),
 			ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position]),
+			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
 			ListaPermissionJson = ems_schema:to_json(ListaPermission),
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
@@ -392,7 +399,7 @@ to_resource_owner(User, ClientId) ->
 		false ->
 			{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name]),
 			ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete]),
+			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
 			ListaPermissionJson = ems_schema:to_json(ListaPermission),
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
@@ -477,9 +484,10 @@ new_from_map(Map, Conf) ->
 					rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
 					data_nascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
 					sexo = case maps:get(<<"sexo">>, Map, undefined) of
-								undefined -> undefined;
-								SexoValue when is_binary(SexoValue) -> binary_to_integer(SexoValue);
-								SexoValue -> SexoValue
+								SexoValue when is_binary(SexoValue) -> ems_util:list_to_integer_def(string:strip(binary_to_list(SexoValue)), undefined);
+								SexoValue when is_list(SexoValue) -> ems_util:list_to_integer_def(string:strip(SexoValue), undefined);
+								SexoValue when is_integer(SexoValue) -> SexoValue;
+								undefined -> undefined
 							end,
 					telefone = ?UTF8_STRING(maps:get(<<"telefone">>, Map, <<>>)),
 					celular = ?UTF8_STRING(maps:get(<<"celular">>, Map, <<>>)),
@@ -487,9 +495,9 @@ new_from_map(Map, Conf) ->
 					nome_pai = ?UTF8_STRING(maps:get(<<"nome_pai">>, Map, <<>>)),
 					nome_mae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
 					nacionalidade = case maps:get(<<"nacionalidade">>, Map, undefined) of
-										undefined -> undefined;
-										NacionalidadeValue when is_binary(NacionalidadeValue) -> binary_to_integer(NacionalidadeValue);
-										NacionalidadeValue -> NacionalidadeValue
+										NacionalidadeValue when is_binary(NacionalidadeValue) -> ems_util:binary_to_integer_def(NacionalidadeValue, undefined);
+										NacionalidadeValue when is_integer(NacionalidadeValue) -> NacionalidadeValue;
+										undefined -> undefined
 									end,
 					email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
 					type = maps:get(<<"type">>, Map, 1),

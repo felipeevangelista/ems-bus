@@ -87,7 +87,7 @@ clean(){
 	cd $WORKING_DIR
 	rm -Rf ems-bus
 	rm -Rf ems_bus
-	rm -f *.tar.gz
+	#rm -f *.tar.gz
 	rm -f *.tar
 	rm -f ../priv/scripts/*.log
 	rm -rf ../priv/db
@@ -304,7 +304,7 @@ make_release(){
 			DEB_CONTROL_FILE=$SKEL_DEB_PACKAGE/DEBIAN/control
 			SKEL_PACKAGE_SOURCES=$SKEL_DEB_PACKAGE
 			# Updates the version in the file SPEC/emsbus.spec
-			sed -ri "s/Version: .{6}(.*$)/Version: $VERSION_RELEASE\1/" $DEB_CONTROL_FILE
+			sed -ri "s/Version: [0.9]{1,2}.[0-9]{1,2}.[0-9]{1,3}(.*$)/Version: $VERSION_RELEASE\1/" $DEB_CONTROL_FILE
 			RELEASE_PACK=$(grep 'Version' $DEB_CONTROL_FILE | cut -d'-' -f2-)	
 			PACKAGE_NAME=ems-bus-$VERSION_RELEASE-$RELEASE_PACK.x86_64.deb
 			PACKAGE_FILE=$SKEL_DEB_PACKAGE/$PACKAGE_NAME
@@ -344,7 +344,7 @@ make_release(){
 			cp -f deb/preinst $SKEL_DEB_PACKAGE/DEBIAN
 			cp -f deb/prerm $SKEL_DEB_PACKAGE/DEBIAN
 			
-			echo "deb build with dpkg-deb..."
+			echo "dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE"
 			dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE || die "Failed to generate package $SKEL_DEB_PACKAGE com dpkg-deb!"
 
 			send_build_repo $PACKAGE_FILE $PACKAGE_NAME

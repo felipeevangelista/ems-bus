@@ -13,6 +13,7 @@
 # -----------------------------------------------------------------------------------------------------
 # 28/07/2017  Everton Agilar     Initial release
 # 05/03/2018  Everton Agilar     Add url_mask option in conf file
+# 10/08/2018  Everton Agilar     Passa variáveis do ambiente rest_base_url e rest_auth_url para a imagem
 #
 #
 #
@@ -26,7 +27,7 @@ WORKING_DIR=$(pwd)
 DOCKER_VERSION="17.03.2"
 
 # Parameters
-VERSION_SCRIPT="3.0.0"
+VERSION_SCRIPT="3.0.1"
 
 echo "Deploy ErlangMS images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
 
@@ -181,6 +182,7 @@ help() {
 # Se o arquivo for informado com --client_conf, então o arquivo não precisa ser gerado
 make_conf_file(){
 	if [ "$CLIENT_CONF_IN_MEMORY" = "true" ]; then
+		echo "make conf_file $CLIENT_CONF in memory..."
 		echo "{\"ip\":\"$ERLANGMS_ADDR\",\"http_port\":$ERLANGMS_HTTP_PORT_LISTENER,\"https_port\":$ERLANGMS_HTTPS_PORT_LISTENER,\"base_url\":\"$ERLANGMS_BASE_URL\",\"auth_url\":\"$ERLANGMS_AUTH_URL\",\"auth_protocol\":\"$ERLANGMS_AUTH_PROTOCOL\",\"app_id\":$APP_ID,\"app_name\":\"$APP_NAME\",\"app_version\":\"$APP_VERSION\",\"environment\":\"$ENVIRONMENT\",\"docker_version\":\"$DOCKER_VERSION\",\"url_mask\":\"$ERLANGMS_URL_MASK\",\"erlangms_version\":\"$ERLANGMS_VERSION\"}" > $CLIENT_CONF
 	fi
 }
@@ -189,6 +191,7 @@ make_conf_file(){
 # Get expose ports from docker image if not defined in parameters
 # Labels: HTTP_PORT and HTTPS_PORT
 get_expose_ports(){
+	echo "Get expose ports from image..."
 	if [ -z "$SERVER_HTTP_PORT_LISTENER" ]; then
 		SERVER_HTTP_PORT_LISTENER=$( sudo docker inspect $IMAGE | sed -n '/HTTP_PORT/ p' | uniq | sed -r 's/[^0-9]+//g;' )
 	fi
@@ -357,6 +360,7 @@ ERLANGMS_AUTH_URL="$ERLANGMS_BASE_URL/authorize"
 
 
 # Credentials to HTTP REST
+echo "Get access_token from $ERLANGMS_BASE_URL/authorize..."
 ERLANGMS_ACCESS_TOKEN=$(curl -ksX POST $ERLANGMS_BASE_URL/authorize -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=password&username=$ERLANGMS_USER&password=$ERLANGMS_PASSWD" | egrep -o "\"access_token\":? ?\"[A-Za-z0-9]+\"" | awk -F: '{ print $2 }' | sed -r 's/^\"?(\<.*\>\$?)\"?$/\1/')
 ERLANGMS_AUTHORIZATION_HEADER="Bearer $ERLANGMS_ACCESS_TOKEN"
 ERLANGMS_VERSION=$(curl -ks "$ERLANGMS_BASE_URL/netadm/version" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
@@ -374,7 +378,7 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | grep APP_VERSION | sed '1!d' |  sed -r 's/^.+=(.+)"$/\1/')
 	IMAGE=$APP_NAME
-	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
+	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id&limit=1"
 	APP_ID=$(curl -ks "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
@@ -390,19 +394,23 @@ if [ -z "$TAR_FILE" -a -z "$IMAGE" -a "$CURRENT_DIR_IS_DOCKER_PROJECT_GITLAB"="1
 	echo "docker image remove previous $IMAGE"
 	docker image remove $IMAGE > /dev/null 2>&1
 
-	echo docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
-					--network bridge -p $SERVER_ADDR:$SERVER_HTTPS_PORT_LISTENER:$SERVER_HTTPS_PORT_LISTENER \
+	echo docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+			   --network bridge -p $SERVER_ADDR:$SERVER_HTTPS_PORT_LISTENER:$SERVER_HTTPS_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
-	docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+	docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
 
 elif [ ! -z "$IMAGE" ]; then
 	if [ -z "$APP_NAME" ]; then
 		APP_NAME=$(echo $IMAGE | awk -F/ '{ print $2 }')
 	fi
-	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id"
+	URL_REST_CLIENT_ID="$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id&limit=1"
 	APP_ID=$(curl -ks "$URL_REST_CLIENT_ID" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" 2>> /dev/null | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
@@ -431,12 +439,16 @@ elif [ ! -z "$IMAGE" ]; then
 	print_info
 
 	echo docker run  --name erlangms_$APP_NAME \
-			   --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+			   --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $IMAGE:$IMAGE_ID $ENTRYPOINT 
 	docker run --name erlangms_$APP_NAME \
-			   --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+			   --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $IMAGE:$IMAGE_ID $ENTRYPOINT  
 else
 	if [ -z "$APP_NAME" ]; then
@@ -444,7 +456,7 @@ else
 	fi
 	APP_VERSION=$(docker inspect $APP_NAME | | grep APP_VERSION | sed '1!d' |  sed -r 's/^.+=(.+)"$/\1/')
 	IMAGE=$APP_NAME
-	APP_ID=$(curl -ks "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
+	APP_ID=$(curl -ks "$ERLANGMS_BASE_URL/auth/client?filter=\{%22name%22%20:%20%22$APP_NAME%22\}&fields=id&limit=1" -H "Authorization: $ERLANGMS_AUTHORIZATION_HEADER" | sed -r 's/[^0-9.]+//g')
 	if [ -z "$APP_ID" ]; then
 		APP_ID=0
 		echo "Error: HTTT/REST request to $ERLANGMS_BASE_URL/auth/client failed, check the credentials of the configured user in /etc/default/erlangms-docker."
@@ -462,11 +474,15 @@ else
 	echo docker load -i $TAR_FILE
 	docker load -i $TAR_FILE
 
-	echo docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+	echo docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
-	docker run --network bridge -p $SERVER_ADDR:$SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
+	docker run --network bridge -p $SERVER_HTTP_PORT_LISTENER:$SERVER_HTTP_PORT_LISTENER \
 			   -v $CLIENT_CONF:/app/$APP_NAME/barramento \
+			   -e rest_base_url="$ERLANGMS_BASE_URL" \
+			   -e rest_auth_url="$ERLANGMS_AUTH_URL" \
 			   -dit --restart always $APP_NAME:$IMAGE_ID $ENTRYPOINT 
 
 fi

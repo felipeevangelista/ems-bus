@@ -1,8 +1,8 @@
 {
     "name": "ems_odbc_pool",
 	"comment": "Catalog for ems_odbc_pool",
-	"owner": "ems_bus",
-	"version": "1",
+	"owner": "emsbus",
+	"version": "1.0.0",
 	"service" : "ems_odbc_pool:start",
 	"url": "/emsbus/ems_odbc_pool",
 	"type": "KERNEL",

@@ -91,7 +91,8 @@ new_from_map(Map, _Conf) ->
 							  ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
 							  ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
 							  ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),
-							  ctrl_hash = erlang:phash2(Map)
+							  ctrl_hash = erlang:phash2(Map),
+							  glyphicon = maps:get(<<"glyphicon">>, Map, undefined)
 			}
 		}
 	catch
