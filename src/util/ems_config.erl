@@ -302,10 +302,14 @@ parse_config(Json, NomeArqConfig) ->
 	Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
 	case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
 		<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
-		RestBaseUrlValue -> RestBaseUrl = RestBaseUrlValue
+		RestBaseUrlValue -> RestBaseUrl = ems_util:remove_ult_backslash_url_binary(RestBaseUrlValue)
 	end,
 	case ems_util:get_param_or_variable(<<"rest_auth_url">>, Json, <<>>) of
-		<<>> ->	RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
+	<<>> ->	
+			case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of		
+				<<>> -> RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
+				_ -> RestAuthUrl = iolist_to_binary([RestBaseUrl, <<"/authorize"/utf8>>])
+			end;
 		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
 	end,
 	RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),

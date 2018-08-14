@@ -140,6 +140,7 @@
 		 quote/1,
  		 remove_quoted_str/1,
 		 remove_ult_backslash_url/1,
+		 remove_ult_backslash_url_binary/1,
 		 name_case/1,
 		 modernize/1,
 		 mes_abreviado/1,
@@ -613,6 +614,9 @@ remove_ult_backslash_url(Value) ->
 		"/" ++ T -> lists:reverse(T);
 		_ -> Value
 	end.
+
+remove_ult_backslash_url_binary(Url) -> list_to_binary(remove_ult_backslash_url(binary_to_list(Url))).
+
 
 %% @doc Função name case
 name_case([H|T]) when H >= $a, H =< $z -> 
