@@ -476,7 +476,10 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		end,
 		ExpiresMinute = ems_util:parse_range(maps:get(<<"expires_minute">>, Map, 0), ?SERVICE_MIN_EXPIRE_MINUTE, ?SERVICE_MAX_EXPIRE_MINUTE, einvalid_expires_minute),
 		Public = ems_util:parse_bool(maps:get(<<"public">>, Map, true)),
-		ContentType = maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON),
+		ContentType = case maps:is_key(<<"content_type">>, Map) of
+							true ->  maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON);
+							false -> maps:get(<<"content-type">>, Map, ?CONTENT_TYPE_JSON)
+					  end,
 		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
 		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
 		Path0 = ems_util:parse_file_name_path(maps:get(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),
