@@ -49,24 +49,23 @@ get_connection(Datasource = #service_datasource{id = Id}) ->
 				?DEBUG("ems_odbc_pool get_connection from datasource ~p.", [Id]),
 				Result;
 			{error, Reason} -> 
-				ems_logger:error("ems_odbc_pool get_connection exception from datasource ~p. Reason: ~p.", [Id, Reason]),
+				?DEBUG("ems_odbc_pool get_connection exception from datasource ~p. Reason: ~p.", [Datasource, Reason]),
 				{error, eunavailable_odbc_connection}
 		end
 	catch
 		_ : Reason2 ->
-			?DEBUG("ems_odbc_pool get_connection catch exception from datasource ~p. Reason: ~p.", [Id, Reason2]),
+			?DEBUG("ems_odbc_pool get_connection catch exception from datasource ~p. Reason: ~p.", [Datasource, Reason2]),
 			{error, eunavailable_odbc_connection}
 	end.
 
 
 -spec release_connection(#service_datasource{}) -> ok.
-release_connection(Datasource = #service_datasource{id = Id}) ->
+release_connection(Datasource) ->
 	try
 		gen_server:call(?SERVER, {release_connection, Datasource}, 60000)
 	catch 
 		_: _Reason -> 
-			% does not return error for the process that released or attempted to release a connection
-			?DEBUG("ems_odbc_pool release_connection catch exception from datasource ~p. Reason: ~p.", [Id, _Reason]),
+			?DEBUG("ems_odbc_pool release_connection catch exception from datasource ~p. Reason: ~p.", [Datasource, _Reason]),
 			ok
 	end.
 

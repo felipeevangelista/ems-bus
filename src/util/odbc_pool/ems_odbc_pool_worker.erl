@@ -160,7 +160,7 @@ handle_info({check_valid_connection, QueryCount}, State = #state{datasource = #s
 		true -> 
 			{noreply, State};
 		false ->
-			?DEBUG("ems_odbc_pool_worker check_valid_connection datasource ~p.", [Id]),
+			?DEBUG("ems_odbc_pool_worker check_valid_connection datasource id ~p.", [Id]),
 			case SqlCheckValidConnection =/= "" of
 				true ->
 					try

@@ -129,7 +129,7 @@ init(#service{name = Name,
 	SqlIds = re:replace(SqlLoad, "select ([^,]+),(.+)( from.+)( order by.+)?", "select \\1 \\3", [{return,list}]),
 	Fields = maps:get(<<"fields">>, Props, <<>>),
 	SourceType = binary_to_atom(maps:get(<<"source_type">>, Props, <<"db">>), utf8),
-	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 10000) + rand:uniform(3000),
+	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 60000) + rand:uniform(30000),
 	SyncFullCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_full_checkpoint">>]), utf8),
 	CheckCountCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_count_checkpoint">>]), utf8),
 	CheckRemoveCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_remove_checkpoint">>]), utf8),
@@ -255,7 +255,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, 0, 0, 0, 0, 0, Reason),
 								ems_db:inc_counter(ErrorCheckpointMetricName),
 								erlang:send_after(86400 * 1000, self(), check_sync_full),
-								ems_logger:warn("~s sync full wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
+								?DEBUG("~s sync full wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
 								{noreply, State#state{wait_count = 0}, TimeoutOnError}
 						end;
 					false ->
@@ -293,7 +293,7 @@ handle_info(check_count_records, State = #state{name = Name,
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, Reason),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
 					erlang:send_after(CheckRemoveRecordsCheckpoint, self(), check_count_records),
-					ems_logger:warn("~s check_count_records wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
+					?DEBUG("~s check_count_records wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
 					{noreply, State#state{wait_count = 0}, TimeoutOnError}
 			end;
 		false ->
@@ -337,7 +337,7 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 				{error, Reason} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, Reason),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
-					ems_logger:warn("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
+					?DEBUG("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
 					{noreply, State#state{wait_count = 0}, TimeoutOnError}
 			end;
 		false ->
@@ -402,7 +402,7 @@ do_check_count_checkpoint(State = #state{name = Name,
 										RemoveCount = do_check_remove_records(Codigos, State),
 										case RemoveCount > 0 of
 											true -> 
-												ems_logger:info("~s deletes ~p records.", [Name, RemoveCount]),
+												?DEBUG("~s deletes ~p records.", [Name, RemoveCount]),
 												case SqlUpdate == "" of
 													true ->
 														% Depois remover os registros apagados, é necessário invocar 
@@ -537,7 +537,7 @@ do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 				end,
 				Result;
 			Error4 -> 
-				?DEBUG("~s do_load has no connection to load data from database.", [Name]),
+				ems_logger:warn("~s do_load has no connection database.", [Name]),
 				Error4
 		end
 	catch
@@ -616,7 +616,7 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 						end,
 						Result;
 					Error2 -> 
-						?DEBUG("~s do_update has no connection to update data from database.", [Name]),
+						ems_logger:warn("~s do_update has no connection database.", [Name]),
 						Error2
 				end;
 			_ -> 

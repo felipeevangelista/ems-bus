@@ -13,7 +13,7 @@
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "ctrl_insert", "ctrl_update"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -42,7 +42,7 @@
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "ctrl_insert", "ctrl_update"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -94,7 +94,7 @@
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "ctrl_insert", "ctrl_update"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -123,7 +123,7 @@
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "ctrl_insert", "ctrl_update"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -175,7 +175,7 @@
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "ctrl_insert", "ctrl_update"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -204,7 +204,7 @@
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "ctrl_insert", "ctrl_update"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
