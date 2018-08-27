@@ -62,6 +62,7 @@ execute(Request) ->
 																		<<"\"app_id\":"/utf8>>, integer_to_binary(ClientId), <<","/utf8>>,
 																		<<"\"app_name\":\""/utf8>>, AppName, <<"\","/utf8>>,
 																		<<"\"app_version\":\""/utf8>>, ClientVersion, <<"\","/utf8>>,
+																		<<"\"server_name\":\""/utf8>>, Conf#config.ems_hostname, <<"\","/utf8>>,
 																		<<"\"environment\":\""/utf8>>, Conf#config.rest_environment, <<"\","/utf8>>,
 																		<<"\"url_mask\":"/utf8>>, ems_util:boolean_to_binary(Conf#config.rest_url_mask), <<","/utf8>>,
 																		<<"\"erlangms_version\":\""/utf8>>, list_to_binary(ems_util:version()), <<"\""/utf8>>,

@@ -56,6 +56,7 @@
          get_client_request_by_id_and_secret/1,
          get_client_request_by_id/1,
          get_user_request_by_login_and_password/1,
+         get_user_request_by_login_and_password/2,
          get_user_request_by_login/1,
          get_param_or_variable/3,
          date_add_minute/2,
@@ -2926,15 +2927,28 @@ get_client_request_by_id(Request = #request{authorization = Authorization}) ->
 
 -spec get_user_request_by_login_and_password(#request{}) -> {ok, #user{}} | {error, 
 																			 access_denied, 
-																			 enoent, einvalid_password | einative_user | einvalid_authorization_header | eparse_authorization_header_exception}.
+																			 enoent, einvalid_password | einative_user | 
+																			 einvalid_authorization_header | 
+																			 eparse_authorization_header_exception}.
+get_user_request_by_login_and_password(Request) ->
+	get_user_request_by_login_and_password(Request, undefined).
+
+
+-spec get_user_request_by_login_and_password(#request{}, #client{}) -> {ok, #user{}} | 
+																			{error, 
+																			 access_denied, 
+																			 enoent, einvalid_password | einative_user | 
+																			 einvalid_authorization_header | 
+																			 eparse_authorization_header_exception}.
 get_user_request_by_login_and_password(Request = #request{authorization = Authorization, 
-														  service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}}) ->
+														  service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}},
+									   Client) ->
     try
 		Username = ems_util:get_querystring(<<"username">>, <<>>, Request),
 		case Username =/= <<>> of
 			true ->
 				Password = ems_util:get_querystring(<<"password">>, <<>>, Request),
-				case ems_user:find_by_login_and_password(Username, Password) of
+				case ems_user:find_by_login_and_password(Username, Password, Client) of
 					{ok, User = #user{active = Active}} -> 
 						case Active orelse AuthAllowUserInativeCredentials of
 							true -> {ok, User};
@@ -2948,7 +2962,7 @@ get_user_request_by_login_and_password(Request = #request{authorization = Author
 					true ->
 						case parse_basic_authorization_header(Authorization) of
 							{ok, Login, Password} ->
-								case ems_user:find_by_login_and_password(Login, Password) of
+								case ems_user:find_by_login_and_password(Login, Password, Client) of
 									{ok, User = #user{active = Active}} -> 
 										case Active orelse AuthAllowUserInativeCredentials of
 											true -> {ok, User};

@@ -16,14 +16,13 @@
 
 start(_StartType, StartArgs) ->
 	erlang:system_flag(min_heap_size, 22000),
-	{ok, Hostname} = inet:gethostname(),
 	io:format("\n"),
 	T1 = ems_util:get_milliseconds(),
-	ems_logger:format_alert("Loading ErlangMS ~s ( Hostname: ~s  Erlang/OTP Version: ~s )", [?SERVER_NAME, Hostname, erlang:system_info(otp_release)]),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->
 			Conf = ems_config:getConfig(),
+			ems_logger:format_alert("Loading ~s instance ( Hostname: ~s  Erlang/OTP Version: ~s )", [?SERVER_NAME, Conf#config.ems_hostname, erlang:system_info(otp_release)]),
 			ems_logger:set_level(info),
 			ems_dispatcher:start(),
 			Ret = ems_bus_sup:start_link(StartArgs),
@@ -35,6 +34,7 @@ start(_StartType, StartArgs) ->
 								end,
 			ems_logger:info("rest_base_url: ~p.", [Conf#config.rest_base_url]),
 			ems_logger:info("rest_auth_url: ~p.", [Conf#config.rest_auth_url]),
+			ems_logger:info("rest_login_url: ~p.", [Conf#config.rest_login_url]),
 			case Conf#config.oauth2_with_check_constraint of
 				true -> ems_logger:info("rest_authorization: ~p <<with check constraint>>.", [AuthorizationMode]);
 				false -> ems_logger:info("rest_authorization: ~p.", [AuthorizationMode])

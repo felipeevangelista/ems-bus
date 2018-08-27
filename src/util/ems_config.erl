@@ -283,8 +283,16 @@ parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Result) ->
 
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, NomeArqConfig) ->
-	{ok, Hostname} = inet:gethostname(),
-	HostnameBin = list_to_binary(Hostname),
+	Hostname0 = ems_util:get_param_or_variable(<<"hostname">>, Json, undefined),
+	% permite setar o hostname no arquivo de configuração ou obter o nome da máquina pelo inet
+	case Hostname0 of
+		undefined -> 
+			{ok, Hostname} = inet:gethostname(),
+			HostnameBin = list_to_binary(Hostname);
+		_ ->
+			Hostname = binary_to_list(Hostname0),
+			HostnameBin = Hostname0
+	end,
  	TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
 	TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
@@ -311,6 +319,10 @@ parse_config(Json, NomeArqConfig) ->
 				_ -> RestAuthUrl = iolist_to_binary([RestBaseUrl, <<"/authorize"/utf8>>])
 			end;
 		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
+	end,
+	case ems_util:get_param_or_variable(<<"rest_login_url">>, Json, <<>>) of
+		<<>> ->	RestLoginUrl = iolist_to_binary([RestBaseUrl, <<"/login/index.html"/utf8>>]);
+		RestLoginUrlValue -> RestLoginUrl = ems_util:remove_ult_backslash_url_binary(RestLoginUrlValue)
 	end,
 	RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),
 	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
@@ -348,6 +360,7 @@ parse_config(Json, NomeArqConfig) ->
 			 auth_allow_user_inative_credentials = ems_util:parse_bool(maps:get(<<"auth_allow_user_inative_credentials">>, Json, true)),
 			 rest_base_url = RestBaseUrl, 
 			 rest_auth_url = RestAuthUrl,
+			 rest_login_url = RestLoginUrl,
 			 rest_url_mask = RestUrlMask,
 			 rest_environment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
 			 config_file = NomeArqConfig,

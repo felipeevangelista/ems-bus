@@ -263,6 +263,7 @@
 				 auth_allow_user_inative_credentials :: boolean(),	% Permite login de usuários inativos.
 				 rest_base_url :: binary(),
 				 rest_auth_url :: binary(),
+				 rest_login_url :: binary(),						% Url da tela de login
 				 rest_url_mask :: boolean(),
 				 rest_default_querystring :: map(),					%% querystring default
 				 rest_environment :: binary(),

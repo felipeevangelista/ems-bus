@@ -236,8 +236,8 @@ format_info(Message, Params) ->
 format_warn(Message) ->	io:format("\033[0;33m~s\033[0m", [Message]).
 format_warn(Message, Params) ->	io:format("\033[0;33m~s\033[0m", [io_lib:format(Message, Params)]).
 
-format_error(Message) -> io:format("\033[0;31m~s\033[0m", [Message]).
-format_error(Message, Params) -> io:format("\033[0;31m~s\033[0m", [io_lib:format(Message, Params)]).
+format_error(Message) -> io:format("\033[0;31m~s\033[0m\n", [Message]).
+format_error(Message, Params) -> io:format("\033[0;31m~s\033[0m\n", [io_lib:format(Message, Params)]).
 
 format_debug(Message) -> io:format("\033[0;34m~s\033[0m", [Message]).
 format_debug(Message, Params) -> io:format("\033[1;34m~s\033[0m", [io_lib:format(Message, Params)]).
@@ -594,6 +594,7 @@ do_log_request(Request = #request{rid = RID,
 								  uri = Uri,
 								  url = Url,
 								  url_masked = UrlMasked,
+								  host = Host,
 								  version = Version,
 								  content_type_in = ContentTypeIn,
 								  content_type_out = ContentTypeOut,
@@ -625,6 +626,7 @@ do_log_request(Request = #request{rid = RID,
 								  client = Client,
 								  user = User,
 								  scope = Scope,
+								  response_header = ResponseHeader,
 								  oauth2_grant_type = GrantType,
 								  oauth2_access_token = AccessToken,
 								  oauth2_refresh_token = RefreshToken
@@ -666,9 +668,8 @@ do_log_request(Request = #request{rid = RID,
 							false -> <<>>
 					   end,
 					   <<"\n\tAccept: ">>, Accept,
-					   <<"\n\tContent-Type in: ">>, ContentTypeIn, 
-						<<"\n\tContent-Type out: ">>, ContentTypeOut,
-						<<"\n\tPeer: ">>, IpBin, <<"  Referer: ">>, case Referer of
+					   <<"\n\tContent-Type in: ">>, ContentTypeIn, <<"   out: ">>, ContentTypeOut,
+						<<"\n\tHost: ">>, Host, <<"  Peer: ">>, IpBin, <<"  Referer: ">>, case Referer of
 																		undefined -> <<>>;
 																		_ -> Referer
 																	end,
@@ -766,37 +767,41 @@ do_log_request(Request = #request{rid = RID,
 													undefined -> <<>>;
 													_ -> IfNoneMatch
 										   end,
-					   <<"\n\tAuthorization mode: ">>, case AuthorizationService of
-															basic -> <<"basic, oauth2">>;
+					   <<"\n\tAuthorization type: ">>, case AuthorizationService of
+															basic -> 
+																case Authorization of
+																	<<>> -> <<"basic, oauth2">>;
+																	_ -> <<"oauth2">>
+																end;
 															oauth2 -> <<"oauth2">>;
 															_ -> <<"public">>
 													   end,
-					   <<"\n\tAuthorization header: <<">>, case Authorization of
-															undefined -> <<>>;
-															_ -> Authorization
-														 end, <<">>">>,
+					   case Authorization of
+							<<>> -> <<>>;
+							_ -> [<<" <<">>, Authorization, <<">>">>]
+					   end,
 					   case GrantType of
 									undefined -> <<>>;
-									_ -> [<<"\n\tOAuth2 grant type: ">>, GrantType]
+									_ -> [<<"\n\tOAuth2  grant-type: ">>, GrantType]
 					   end,
 					   case AccessToken of
 							undefined -> <<>>;
-							_ ->  [<<"\n\tOAuth2 access token: ">>, AccessToken]
+							_ ->  [<<"  token: ">>, AccessToken]
 					   end,
 					   case RefreshToken of
 							undefined -> <<>>;
-							_ ->  [<<"\n\tOAuth2 refresh token: ">>, RefreshToken]
+							_ ->  [<<"  refresh token: ">>, RefreshToken]
 					   end,
 					   case Scope of
 							undefined -> <<>>;
-							_ -> [<<"\n\tOAuth2 scope: ">>, Scope]
+							_ -> [<<"  scope: ">>, Scope]
 					   end,
 					  <<"\n\tClient: ">>, case Client of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ -> [integer_to_binary(Client#client.id), <<" ">>, Client#client.name]
 									   end,
-					   <<"\n\tUser: ">>, case User of
+					   <<"   User: ">>, case User of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
@@ -805,10 +810,14 @@ do_log_request(Request = #request{rid = RID,
 											undefined -> <<>>;
 											_ -> Node
 										 end,
-					   <<"\n\tFilename: ">>, case Filename of
-												undefined -> <<>>;
-												_ -> Filename
-											 end,
+					   case Filename of
+							undefined -> <<>>;
+							_ -> [<<"\n\tFilename: ">>, Filename]
+						end,
+						case Code of
+							302 ->  [<<"\n\tRedirect-to: ">>, maps:get(<<"location">>, ResponseHeader, <<>>)];
+							_ -> <<>>
+						end,
 					   <<"\n\tStatus: ">>, integer_to_binary(Code), 
 					   <<" <<">>, case is_atom(Reason) of
 										true -> 

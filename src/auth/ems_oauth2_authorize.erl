@@ -8,9 +8,6 @@
 
 
 execute(Request = #request{type = Type, 
-						   protocol_bin = Protocol, 
-						   port = Port, 
-						   host = Host, 
 						   user_agent = UserAgent, 
 						   user_agent_version = UserAgentVersion,
 						   service  = #service{oauth2_allow_client_credentials = OAuth2AllowClientCredentials}}) -> 
@@ -126,9 +123,11 @@ execute(Request = #request{type = Type,
 			{redirect, Client = #client{id = ClientId, redirect_uri = RedirectUri}} ->
 					ClientIdBin = integer_to_binary(ClientId),
 					ems_db:inc_counter(binary_to_atom(iolist_to_binary([<<"ems_oauth2_singlesignon_client_">>, ClientIdBin]), utf8)),
-					LocationPath = iolist_to_binary([Protocol, <<"://"/utf8>>, Host, <<":"/utf8>>, integer_to_binary(Port), 
-													 <<"/dados/login/index.html?response_type=code&client_id=">>, ClientIdBin, 
-													 <<"&redirect_uri=">>, RedirectUri]),
+					Config = ems_config:getConfig(),
+					%LocationPath = iolist_to_binary([Protocol, <<"://"/utf8>>, Host, <<":"/utf8>>, integer_to_binary(Port), 
+					%								 <<"/dados/login/index.html?response_type=code&client_id=">>, ClientIdBin, 
+					%								 <<"&redirect_uri=">>, RedirectUri]),
+					LocationPath = iolist_to_binary([Config#config.rest_login_url, <<"?response_type=code&client_id=">>, ClientIdBin, <<"&redirect_uri=">>, RedirectUri]),
 					Request2 = Request#request{code = 302, 
 											   reason = ok,
 											   operation = oauth2_client_redirect,
