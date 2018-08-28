@@ -10,8 +10,9 @@
 		"path" : "{{ login_path }}",
 		"type": "GET",
 		"authorization" : "public",
-		"cache_control" : "max-age=31536000, private, no-cache, no-store, must-revalidate",
-		"expires_minute" : 0,
+		"cache_control" : "max-age=86400, public",
+		"expires_minute" : 1440,
+		"result_cache" : 86400000,
 		"lang" : "erlang"
 	},
 
@@ -26,8 +27,9 @@
 		"path" : "{{ login_path }}",
 		"type": "GET",
 		"authorization" : "public",
-		"cache_control" : "max-age=31536000, private, no-cache, no-store, must-revalidate",
-		"expires_minute" : 0,
+		"cache_control" : "max-age=86400, public",
+		"expires_minute" : 1440,
+		"result_cache" : 86400000,
 		"lang" : "erlang"
 	}
 ]

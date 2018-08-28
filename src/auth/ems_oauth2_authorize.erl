@@ -172,7 +172,7 @@ code_request(Request) ->
     try
 		case ems_util:get_client_request_by_id(Request) of
 			{ok, Client} ->
-				case ems_util:get_user_request_by_login_and_password(Request) of
+				case ems_util:get_user_request_by_login_and_password(Request, Client) of
 					{ok, User} ->
 						RedirectUri = ems_util:to_lower_and_remove_backslash(ems_util:get_querystring(<<"redirect_uri">>, <<>>, Request)),
 						Scope = ems_util:get_querystring(<<"scope">>, <<>>, Request),
@@ -263,7 +263,7 @@ client_credentials_grant(Request, Client) ->
 -spec password_grant(#request{}, #client{}) -> {ok, list(), #client{}} | {error, access_denied, atom()}.
 password_grant(Request, Client) -> 
 	try
-		case ems_util:get_user_request_by_login_and_password(Request) of
+		case ems_util:get_user_request_by_login_and_password(Request, Client) of
 			{ok, User} ->
 				Scope = ems_util:get_querystring(<<"scope">>, <<>>, Request),	
 				case Client == undefined of

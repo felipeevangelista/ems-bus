@@ -20,8 +20,8 @@
 
 
 init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
-							    http_header_options = HttpHeaderOptions, 
-							    show_debug_response_headers = ShowDebugResponseHeaders}) ->
+							   http_header_options = HttpHeaderOptions, 
+							   show_debug_response_headers = ShowDebugResponseHeaders}) ->
 	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault, HttpHeaderOptions, ShowDebugResponseHeaders) of
 		{ok, Request = #request{t1 = T1}, Service, CowboyReq2} -> 
 			case ems_dispatcher:dispatch_request(Request, Service, ShowDebugResponseHeaders) of

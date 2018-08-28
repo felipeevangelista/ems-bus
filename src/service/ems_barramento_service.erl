@@ -68,7 +68,7 @@ execute(Request) ->
 																		<<"\"erlangms_version\":\""/utf8>>, list_to_binary(ems_util:version()), <<"\""/utf8>>,
 																		<<"}"/utf8>>]),
 																	{ok, Request#request{code = 200,
-																						response_data = ContentData}
+																						 response_data = ContentData}
 																	}
 															end;
 														_ -> 						

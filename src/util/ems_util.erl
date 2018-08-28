@@ -25,6 +25,8 @@
 		 list_to_integer_def/2,
 		 binary_to_integer_def/2,
 		 binlist_to_atomlist/1,
+		 binlist_to_atomlist_with_trim/1,
+		 list_to_atomlist_with_trim/1,
 		 list_to_binlist/1,
 		 mes_extenso/1,
 		 binlist_to_list/1,
@@ -1763,7 +1765,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 								 version = ServiceVersion,
 								 path = PathService,
 								 filename = FilenameService,
-								 redirect_url = RedirectUrlService,
 								 cache_control = CacheControlService,
 								 use_re = UseReService,
 								 lang = LangService,
@@ -1936,7 +1937,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 												Expires = cowboy_clock:rfc1123(ExpireDate),
 												case ShowDebugResponseHeaders of
 													false ->
-														HttpHeaderOptions#{<<"expires">> => Expires};
+														HttpHeaderOptions#{<<"expires">> => Expires,
+																		   <<"cache-control">> => CacheControlService};
 													true ->
 														HttpHeaderOptions#{<<"ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"ems-hash">> => integer_to_binary(ReqHash),
@@ -1947,7 +1949,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 																		   <<"ems-url">> => ServiceUrl,
 																		   <<"ems-path">> => PathService,
 																		   <<"ems-filename">> => FilenameService,
-																		   <<"ems-redirect_url">> => RedirectUrlService,
 																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
 																		   <<"ems-cache_control">> => CacheControlService,
 																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
@@ -1958,9 +1959,10 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 											_ -> 
 												case ShowDebugResponseHeaders of
 													false ->
-														HttpHeaderDefault;
+														HttpHeaderDefault#{<<"cache_control">> => CacheControlService};
 													true ->
-														HttpHeaderDefault#{<<"ems-rowid">> => integer_to_binary(Rowid),
+														HttpHeaderDefault#{<<"cache-control">> => CacheControlService,
+																		   <<"ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"ems-hash">> => integer_to_binary(ReqHash),
 																		   <<"ems-catalog">> => ServiceName,
 																		   <<"ems-owner">> => OwnerService,
@@ -1969,7 +1971,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 																		   <<"ems-url">> => ServiceUrl,
 																		   <<"ems-path">> => PathService,
 																		   <<"ems-filename">> => FilenameService,
-																		   <<"ems-redirect_url">> => RedirectUrlService,
 																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
 																		   <<"ems-cache_control">> => CacheControlService,
 																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
@@ -2492,8 +2493,7 @@ load_from_file_req(Request = #request{url = Url,
 									  if_none_match = IfNoneMatchReq,
 									  timestamp = Timestamp,
 									  response_header = ResponseHeader,
-									  service = #service{cache_control = CacheControl,
-														 expires = ExpiresMinute,
+									  service = #service{expires = ExpiresMinute,
 														 path = Path}}) ->
 	Filename = Path ++ string:substr(Url, string:len(hd(string:tokens(Url, "/")))+2),
 	case file:read_file_info(Filename, [{time, universal}]) of
@@ -2505,7 +2505,6 @@ load_from_file_req(Request = #request{url = Url,
 			ExpireDate = date_add_minute(Timestamp, ExpiresMinute + 120), % add +120min (2h) para ser horário GMT
 			Expires = cowboy_clock:rfc1123(ExpireDate),
 			ResponseHeader2 = ResponseHeader#{
-								<<"cache-control">> => CacheControl,
 								<<"etag">> => ETag,
 								<<"last-modified">> => LastModified,
 								<<"expires">> => Expires
@@ -2539,7 +2538,7 @@ load_from_file_req(Request = #request{url = Url,
 					end
 			end;
 		{error, Reason} = Error -> 
-			ems_logger:warn("ems_static_file_service file ~p does not exist.", [Filename]),
+			?DEBUG("ems_static_file_service file ~p does not exist.", [Filename]),
 			{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
 									 reason = Reason,	
 									 response_data = ems_schema:to_json(Error)}
@@ -2728,6 +2727,28 @@ print_str_map(_, [], _, _, Result) -> iolist_to_binary(lists:reverse(Result));
 print_str_map(Map, [Key|TKey], [Value|TValue], Sep, Result) ->
 	print_str_map(Map, TKey, TValue, <<", ">>, [[Sep, Key, <<"=\"">>, Value, <<"\"">>] | Result]).
 
+
+list_to_atomlist_with_trim([], Result) -> lists:reverse(Result);
+list_to_atomlist_with_trim([H|T], Result) ->
+	list_to_atomlist_with_trim(T, [list_to_atom(string:trim(H))|Result]).
+
+list_to_atomlist_with_trim([]) -> [];
+list_to_atomlist_with_trim(<<>>) -> [];
+list_to_atomlist_with_trim(undefined) -> [];
+list_to_atomlist_with_trim(L) ->
+	list_to_atomlist_with_trim(L, []).
+
+
+binlist_to_atomlist_with_trim([], Result) -> lists:reverse(Result);
+binlist_to_atomlist_with_trim([H|T], Result) ->
+	binlist_to_atomlist_with_trim(T, [list_to_atom(string:trim(binary_to_list(H)))|Result]).
+
+binlist_to_atomlist_with_trim([]) -> [];
+binlist_to_atomlist_with_trim(<<>>) -> [];
+binlist_to_atomlist_with_trim(undefined) -> [];
+binlist_to_atomlist_with_trim(L) ->
+	binlist_to_atomlist_with_trim(L, []).
+	
 
 -spec binlist_to_atomlist(list(binary()) | binary()) -> list(atom()) | atom().
 binlist_to_atomlist([])  -> [];

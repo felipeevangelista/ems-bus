@@ -58,6 +58,7 @@ do_basic_authorization(Service, Request = #request{authorization = <<>>}) ->
 do_basic_authorization(Service = #service{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Request = #request{authorization = Authorization}) ->
 	case ems_util:parse_basic_authorization_header(Authorization) of
 		{ok, Login, Password} ->
+			?DEBUG("ems_auth_user do_basic_authorization Authorization: ~p.", [Authorization]),
 			case ems_user:find_by_login_and_password(Login, Password) of
 				{ok, User = #user{active = Active}} -> 
 					case Active orelse AuthAllowUserInativeCredentials of
@@ -76,6 +77,7 @@ do_bearer_authorization(Service, Request = #request{authorization = <<>>}) ->
 	AccessToken = ems_util:get_querystring(<<"token">>, <<"access_token">>, <<>>, Request),
 	do_oauth2_check_access_token(AccessToken, Service, Request);
 do_bearer_authorization(Service, Request = #request{authorization = Authorization}) ->	
+	?DEBUG("ems_auth_user do_bearer_authorization Authorization: ~p.", [Authorization]),
 	case ems_util:parse_bearer_authorization_header(Authorization) of
 		{ok, AccessToken} -> 
 			do_oauth2_check_access_token(AccessToken, Service, Request);

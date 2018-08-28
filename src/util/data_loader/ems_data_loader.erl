@@ -530,20 +530,20 @@ do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 												 skip_count = SkipCount}}
 
 						end;
-					Error3 -> 
+					{error, Reason2} = Error2 -> 
 						ems_odbc_pool:release_connection(Datasource2),
-						?DEBUG("~s do_load exception to execute sql ~p. Reason: ~p.", [Name, SqlLoad, Error3]),
-						Error3
+						?DEBUG("~s do_load failed to execute sql ~p. Reason: ~p.", [Name, SqlLoad, Reason2]),
+						Error2
 				end,
 				Result;
-			Error4 -> 
-				ems_logger:warn("~s do_load has no connection database.", [Name]),
-				Error4
+			{error, Reason3} = Error3 -> 
+				ems_logger:warn("~s do_load failed to get connection. Reason: ~p.", [Name, Reason3]),
+				Error3
 		end
 	catch
-		_Exception:Reason3 -> 
-			ems_logger:error("~s do_load exception. Reason: ~p.", [Name, Reason3]),
-			{error, Reason3}
+		_Exception:Reason4 -> 
+			ems_logger:error("~s do_load exception. Reason: ~p.", [Name, Reason4]),
+			{error, Reason4}
 	end.
 
 -spec do_update(tuple(), tuple(), #config{}, #state{}) -> ok | {error, atom()}.
@@ -609,15 +609,15 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 												 error_count = ErrorCount,
 												 disable_count = DisabledCount,
 												 skip_count = SkipCount}};
-							Error -> 
-								?DEBUG("~s do_update exception to execute sql ~p. Reason: ~p.", [Name, SqlUpdate, Error]),
+							{error, Reason2} = Error2 -> 
+								?DEBUG("~s do_update failed to execute sql ~p. Reason: ~p.", [Name, SqlUpdate, Reason2]),
 								ems_odbc_pool:release_connection(Datasource2),
-								Error
+								Error2
 						end,
 						Result;
-					Error2 -> 
-						ems_logger:warn("~s do_update has no connection database.", [Name]),
-						Error2
+					{error, Reason3} = Error3 -> 
+						ems_logger:warn("~s do_update failed to get connection. Reason: ~p.", [Name, Reason3]),
+						Error3
 				end;
 			_ -> 
 				{ok, State#state{insert_count = 0,
@@ -626,9 +626,9 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 								 skip_count = 0}}
 		end
 	catch
-		_Exception:Reason3 -> 
-			ems_logger:error("~s do_update exception. Reason: ~p.", [Name, Reason3]),
-			{error, Reason3}
+		_Exception:Reason4 -> 
+			ems_logger:error("~s do_update exception. Reason: ~p.", [Name, Reason4]),
+			{error, Reason4}
 	end.
 
 -spec do_is_empty(#state{}) -> {ok, boolean()}.
