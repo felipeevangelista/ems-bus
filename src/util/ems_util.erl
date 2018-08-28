@@ -1758,12 +1758,18 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			{Service = #service{name = ServiceName,
 								 url = ServiceUrl,
 								 content_type = ContentTypeService,
-								 owner = ServiceOwner,
+								 owner = OwnerService,
+								 group = GroupService,
 								 version = ServiceVersion,
+								 path = PathService,
+								 filename = FilenameService,
+								 redirect_url = RedirectUrlService,
+								 cache_control = CacheControlService,
+								 use_re = UseReService,
 								 lang = LangService,
 								 timeout = TimeoutService,
 								 http_max_content_length = HttpMaxContentLengthService,
-								 authorization = ServiceAuthorization}, 
+								 authorization = AuthorizationService}, 
 			 ParamsMap, 
 			 QuerystringMap} -> 
 				case cowboy_req:body_length(CowboyReq) of
@@ -1909,7 +1915,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 						QuerystringMap2 = QuerystringMap,
 						CowboyReq2 = CowboyReq
 				end,
-				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, ServiceAuthorization, IpBin, UserAgent, Payload]),
+				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, AuthorizationService, IpBin, UserAgent, Payload]),
 				Request2 = Request#request{
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
@@ -1935,12 +1941,18 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 														HttpHeaderOptions#{<<"ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"ems-hash">> => integer_to_binary(ReqHash),
 																		   <<"ems-catalog">> => ServiceName,
-																		   <<"ems-owner">> => ServiceOwner,
+																		   <<"ems-owner">> => OwnerService,
+																		   <<"ems-group">> => GroupService,
 																		   <<"ems-version">> => ServiceVersion,
 																		   <<"ems-url">> => ServiceUrl,
+																		   <<"ems-path">> => PathService,
+																		   <<"ems-filename">> => FilenameService,
+																		   <<"ems-redirect_url">> => RedirectUrlService,
+																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
+																		   <<"ems-cache_control">> => CacheControlService,
 																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
 																		   <<"ems-lang">> => LangService,
-																		   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8),
+																		   <<"ems-authorization">> => atom_to_binary(AuthorizationService, utf8),
 																		   <<"expires">> => Expires}
 												end;
 											_ -> 
@@ -1951,12 +1963,18 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 														HttpHeaderDefault#{<<"ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"ems-hash">> => integer_to_binary(ReqHash),
 																		   <<"ems-catalog">> => ServiceName,
-																		   <<"ems-owner">> => ServiceOwner,
+																		   <<"ems-owner">> => OwnerService,
+																		   <<"ems-group">> => GroupService,
 																		   <<"ems-version">> => ServiceVersion,
 																		   <<"ems-url">> => ServiceUrl,
+																		   <<"ems-path">> => PathService,
+																		   <<"ems-filename">> => FilenameService,
+																		   <<"ems-redirect_url">> => RedirectUrlService,
+																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
+																		   <<"ems-cache_control">> => CacheControlService,
 																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
 																		   <<"ems-lang">> => LangService,
-																		   <<"ems-authorization">> => atom_to_binary(ServiceAuthorization, utf8)}
+																		   <<"ems-authorization">> => atom_to_binary(AuthorizationService, utf8)}
 												end
 									  end
 				},	

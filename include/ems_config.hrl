@@ -144,7 +144,7 @@
 
 
 % Timeout to check odbc connection
--define(CHECK_VALID_CONNECTION_TIMEOUT, 22000). % 22 segundos
+-define(CHECK_VALID_CONNECTION_TIMEOUT, 60000). % 22 segundos
 -define(MAX_CLOSE_IDLE_CONNECTION_TIMEOUT, 3600000). % 1h
 -define(CLOSE_IDLE_CONNECTION_TIMEOUT, 300000). % 5 minutos
 
