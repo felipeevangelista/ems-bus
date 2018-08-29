@@ -95,8 +95,12 @@
 % Caminho dos certificados ssl
 -define(SSL_PATH, filename:join(?PRIV_PATH, "ssl")).
 
-% Armazena o buffer do log a cada LOG_FILE_CHECKPOINT ms (Aumente este valor se existir muita contenção na escrita em disco)
--define(LOG_FILE_CHECKPOINT, 3000).  
+% Mostra no log payload e response
+-define(LOG_SHOW_RESPONSE, true).
+-define(LOG_SHOW_PAYLOAD, true).
+
+% Armazena o buffer do log a cada LOG_FILE_CHECKPOINT ms (Aumente este valor se existir muita contenção de escrita em disco)
+-define(LOG_FILE_CHECKPOINT, 400).  
 
 % Tamanho em KB máximo permitido para os arquivos de logs
 -define(LOG_FILE_MAX_SIZE, 51200000).  
@@ -165,9 +169,11 @@
 -define(ACCESS_CONTROL_EXPOSE_HEADERS, <<"Cache-Control, Content-Language, Content-Type, Expires, Last-Modified, Pragma, Content-Length">>).
 
 
+% Oauth2
+-define(OAUTH2_DEFAULT_AUTHORIZATION, oauth2).
 -define(AUTHORIZATION_TYPE_DEFAULT, <<"oauth2">>).
 
-
+% Mensagens de saída json comuns
 -define(CONTENT_TYPE_JSON, <<"application/json; charset=utf-8"/utf8>>).
 -define(CACHE_CONTROL_NO_CACHE, <<"max-age=31536000, private, no-cache, no-store, must-revalidate"/utf8>>).
 -define(CACHE_CONTROL_30_DAYS, <<"max-age=2592000, private"/utf8>>).
@@ -294,6 +300,8 @@
 				 log_show_response = false :: boolean(),	%% Se true, imprime o response no log
 				 log_show_payload = false :: boolean(),		%% Se true, imprime o payload no log
 				 log_show_response_max_length :: boolean(),	%% show response if content length < show_response_max_length
-				 log_show_payload_max_length :: boolean()	%% show payload if content length < show_response_max_length
+				 log_show_payload_max_length :: boolean(),	%% show payload if content length < show_response_max_length
+				 log_file_checkpoint :: non_neg_integer(),
+				 log_file_max_size :: non_neg_integer()
 		 }). 	
 

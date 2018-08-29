@@ -377,10 +377,12 @@ parse_config(Json, NomeArqConfig) ->
 			 ssl_certfile = maps:get(<<"ssl_certfile">>, Json, undefined),
 			 ssl_keyfile = maps:get(<<"ssl_keyfile">>, Json, undefined),
 			 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
-	 		 log_show_response = ems_util:parse_bool(maps:get(<<"log_show_response">>, Json, false)),
-			 log_show_payload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Json, false)),
+	 		 log_show_response = ems_util:parse_bool(maps:get(<<"log_show_response">>, Json, ?LOG_SHOW_RESPONSE)),
+			 log_show_payload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Json, ?LOG_SHOW_PAYLOAD)),
 	 		 log_show_response_max_length = maps:get(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH),
 			 log_show_payload_max_length = maps:get(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH),
+			 log_file_checkpoint = maps:get(<<"log_file_checkpoint">>, Json, ?LOG_FILE_CHECKPOINT),
+			 log_file_max_size = maps:get(<<"log_file_max_size">>, Json, ?LOG_FILE_MAX_SIZE),
 			 rest_default_querystring = Querystring
 		}.
 
@@ -438,10 +440,12 @@ get_default_config() ->
 			 ssl_certfile = undefined,
 			 ssl_keyfile = undefined,
 			 sufixo_email_institucional = ?SUFIXO_EMAIL_INSTITUCIONAL, 
-	 		 log_show_response = false,
-			 log_show_payload = false,
+	 		 log_show_response = ?LOG_SHOW_RESPONSE,
+			 log_show_payload = ?LOG_SHOW_PAYLOAD,
 	 		 log_show_response_max_length = ?LOG_SHOW_RESPONSE_MAX_LENGTH,
 			 log_show_payload_max_length = ?LOG_SHOW_PAYLOAD_MAX_LENGTH,
+			 log_file_checkpoint = ?LOG_FILE_CHECKPOINT,
+			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
 			 rest_default_querystring = []
 		}.
 

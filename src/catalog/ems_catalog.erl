@@ -401,7 +401,9 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 								 http_headers = HttpHeadersDefault,
 								 rest_default_querystring = RestDefaultQuerystring,
 								 auth_allow_user_inative_credentials = AuthAllowUserInativeCredentialsDefault,
-								 show_debug_response_headers = ShowDebugResponseHeadersDefault}) ->
+								 show_debug_response_headers = ShowDebugResponseHeadersDefault,
+								 log_show_response = LogShowResponseDefault,
+								 log_show_payload = LogShowPayloadDefault}) ->
 	try
 		Name = ems_util:parse_name_service(maps:get(<<"name">>, Map)),
 		Owner = maps:get(<<"owner">>, Map, <<>>),
@@ -508,12 +510,11 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		AllowedAddress_t = ems_util:parse_allowed_address_t(AllowedAddress),
 		MaxConnections = maps:get(<<"tcp_max_connections">>, Map, ?HTTP_MAX_CONNECTIONS),
 		Port = ems_util:parse_tcp_port(ems_config:getConfig(<<"tcp_port">>, Name, maps:get(<<"tcp_port">>, Map, undefined))),
-		Port = ems_util:parse_tcp_port(ems_config:getConfig(<<"tcp_port">>, Name, maps:get(<<"tcp_port">>, Map, undefined))),
 		HttpMaxContentLength = ems_util:parse_range(maps:get(<<"http_max_content_length">>, Map, HttpMaxContentLengthDefault), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
 		HttpHeaders0 = maps:get(<<"http_headers">>, Map, #{}),
 		HttpHeaders = maps:merge(HttpHeaders0, HttpHeadersDefault),
-		LogShowResponse = ems_util:parse_bool(maps:get(<<"log_show_response">>, Map, false)),
-		LogShowPayload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Map, false)),
+		LogShowResponse = ems_util:parse_bool(maps:get(<<"log_show_response">>, Map, LogShowResponseDefault)),
+		LogShowPayload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Map, LogShowPayloadDefault)),
 		Ssl = maps:get(<<"tcp_ssl">>, Map, undefined),
 		case Ssl of
 			undefined ->
