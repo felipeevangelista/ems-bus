@@ -105,8 +105,8 @@
 -define(LOG_ARCHIVE_CHECKPOINT, 1000 * 60 * 60 * 24).  % Por default são 24 horas
 
 % Define o tamanho máximo default que pode ser impresso no log do payload e response para depuração
--define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 16000).
--define(LOG_SHOW_RESPONSE_MAX_LENGTH, 16000).
+-define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 64000).
+-define(LOG_SHOW_RESPONSE_MAX_LENGTH, 64000).
 
 % Quantos workers HTTP instanciar se não especificado no arquivo de configuração
 -define(MIN_HTTP_WORKER, 1).
@@ -115,7 +115,7 @@
 -define(MAX_HTTP_WORKER, 1000).
 
 % Quantos workers HTTP são permitidos especificar no arquivo de configuração (1 até MAX_HTTP_WORKER_RANGE)
--define(MAX_HTTP_WORKER_RANGE, 1000).  % a cada 4 horas
+-define(MAX_HTTP_WORKER_RANGE, 1000). 
 
 % Quanto tempo o dispatcher aguardar um serviço
 -define(SERVICE_TIMEOUT, 60000). 		 % 1 minuto é o tempo padrão que o dispatcher aguarda um serviço executar
