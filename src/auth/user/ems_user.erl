@@ -156,7 +156,7 @@ find_by_login_and_password(Login, Password, Client)  ->
 			PassowrdBinUpperCrypto = ems_util:criptografia_sha1(PasswordStrUpper),
 			case Client of
 				undefined -> LoadersFind = [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
-				_ -> LoadersFind = ems_util:list_to_atomlist_with_trim(string:tokens(binary_to_list(Client#client.scope), ","))
+				_ -> LoadersFind = Client#client.scope
 			end,
 			find_index_by_login_and_password(LoadersFind, 
 											 LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper);

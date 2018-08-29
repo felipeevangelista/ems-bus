@@ -89,7 +89,7 @@ new_from_map(Map, _Conf) ->
 				secret = ?UTF8_STRING(maps:get(<<"secret">>, Map, <<"CPD">>)),
 				redirect_uri = ems_util:to_lower_and_remove_backslash(?UTF8_STRING(maps:get(<<"redirect_uri">>, Map, <<>>))),
 				description = ?UTF8_STRING(maps:get(<<"description">>, Map, <<>>)),
-				scope = ?UTF8_STRING(maps:get(<<"scope">>, Map, <<>>)),
+				scope =  ems_util:parse_oauth2_scope(maps:get(<<"scope">>, Map, <<>>)),
 				version = ?UTF8_STRING(maps:get(<<"version">>, Map, <<"1.0.0">>)),
 				active = ems_util:parse_bool(maps:get(<<"active">>, Map, true)),
 				group = ?UTF8_STRING(maps:get(<<"group">>, Map, <<>>)),

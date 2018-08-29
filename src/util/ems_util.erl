@@ -99,6 +99,7 @@
 		 is_letter_lower/1,
 		 posix_error_description/1,
 		 ldap_attribute_map_to_user_field/1,
+		 parse_oauth2_scope/1,
 		 parse_ldap_attributes/1,
 		 parse_ldap_filter/1,
 		 parse_querystring/1,
@@ -997,6 +998,18 @@ replace_all_vars(Subject, [{Key, Value}|VarTail]) ->
 
 
 replace_vars_with(Subject, Value) -> re:replace(Subject, "{{ .+ }}", Value, [global, {return, list}]).
+
+
+-spec parse_oauth2_scope(binary()) -> list(atom()).
+parse_oauth2_scope(<<>>) -> [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
+parse_oauth2_scope(undefined) -> [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
+parse_oauth2_scope(ScopeBin) ->
+	Result0 = list_to_atomlist_with_trim(string:tokens(binary_to_list(ScopeBin), ",")),
+	% Adiciona o user_fs no fim da lista pois é obrigatório
+	case lists:member(user_fs, Result0) of
+		true -> Result0;
+		false -> Result0 ++ [user_fs]
+	end.
 
 
 % Process the path "~" and "." wildcards and variable path. Return path
