@@ -13,6 +13,8 @@
 		"cache_control" : "max-age=86400, public",
 		"expires_minute" : 1440,
 		"result_cache" : 86400000,
+		"log_show_response" : false,
+		"log_show_payload" : false,
 		"lang" : "erlang"
 	},
 
@@ -30,6 +32,8 @@
 		"cache_control" : "max-age=86400, public",
 		"expires_minute" : 1440,
 		"result_cache" : 86400000,
+		"log_show_response" : false,
+		"log_show_payload" : false,
 		"lang" : "erlang"
 	}
 ]
