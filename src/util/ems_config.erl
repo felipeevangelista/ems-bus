@@ -419,7 +419,7 @@ get_default_config() ->
 			 tcp_listen_main_ip_t 		= TcpListenMainIp_t,
 			 tcp_listen_prefix_interface_names = ems_util:binlist_to_list(?TCP_LISTEN_PREFIX_INTERFACE_NAMES),
 			 tcp_allowed_address		= all,
-			 authorization				= oauth2,
+			 authorization				= ?OAUTH2_DEFAULT_AUTHORIZATION,
 			 oauth2_with_check_constraint = false,
 			 oauth2_refresh_token 		= ?OAUTH2_DEFAULT_TOKEN_EXPIRY,
 			 auth_allow_user_inative_credentials = true,

@@ -178,7 +178,8 @@
 		 invoque_service/3,
 		 url_mask/1,
 		 list_map_to_list_tuple/1,
-		 list_tuple_to_list_map/1
+		 list_tuple_to_list_map/1,
+		 format_rest_status/5
 		]).
 
 -spec version() -> string().
@@ -3430,3 +3431,22 @@ get_param_or_variable(ParamName, ParamsMap, DefaultValue) ->
 			end;
 		Result2 -> list_to_binary(Result2)
 	end.
+
+
+format_rest_status(Code, Reason, ReasonDetail, ReasonException, Latency) ->
+   iolist_to_binary([
+		integer_to_binary(Code), 
+		<<" <<">>, case is_atom(Reason) of
+						true -> 
+						   case ReasonDetail =/= undefined andalso is_atom(ReasonDetail) of
+								true ->
+								   case ReasonException =/= undefined andalso is_atom(ReasonException) of
+										true -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8), <<", ">>, atom_to_binary(ReasonException, utf8)];
+										false -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8)]
+								   end;
+								false -> atom_to_binary(Reason, utf8)
+						   end;
+						false -> <<"error">>
+				  end, <<">> (">>, integer_to_binary(Latency), 
+		<<"ms)\n}">>]).
+				  

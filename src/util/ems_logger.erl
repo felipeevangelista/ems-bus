@@ -607,9 +607,6 @@ do_log_request(Request = #request{rid = RID,
 								  querystring_map = Query,
 								  code = Code,
 								  reason = Reason,
-								  reason_detail = ReasonDetail,
-								  reason_exception = ReasonException,
-								  latency = Latency,
 								  result_cache = ResultCache,
 								  result_cache_rid = ResultCacheRid,
 								  response_data = ResponseData,
@@ -629,7 +626,8 @@ do_log_request(Request = #request{rid = RID,
 								  response_header = ResponseHeader,
 								  oauth2_grant_type = GrantType,
 								  oauth2_access_token = AccessToken,
-								  oauth2_refresh_token = RefreshToken
+								  oauth2_refresh_token = RefreshToken,
+								  status_text = StatusText
 			  }, 
 			  State = #state{log_show_response = ShowResponse, 
 							 log_show_response_max_length = ShowResponseMaxLength, 
@@ -818,19 +816,7 @@ do_log_request(Request = #request{rid = RID,
 							302 ->  [<<"\n\tRedirect-to: ">>, maps:get(<<"location">>, ResponseHeader, <<>>)];
 							_ -> <<>>
 						end,
-					   <<"\n\tStatus: ">>, integer_to_binary(Code), 
-					   <<" <<">>, case is_atom(Reason) of
-										true -> 
-										   case ReasonDetail =/= undefined andalso is_atom(ReasonDetail) of
-												true ->
-												   case ReasonException =/= undefined andalso is_atom(ReasonException) of
-														true -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8), <<", ">>, atom_to_binary(ReasonException, utf8)];
-														false -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8)]
-												   end;
-												false -> atom_to_binary(Reason, utf8)
-										   end;
-										false -> <<"error">>
-								  end, <<">> (">>, integer_to_binary(Latency), <<"ms)\n}">>],
+					   <<"\n\tStatus: ">>, StatusText],
 					   
 				TextBin = iolist_to_binary(TextData),
 				NewState = case Code >= 400 of
@@ -844,7 +830,7 @@ do_log_request(Request = #request{rid = RID,
 		end
 	catch 
 		_:ExceptionReason -> 
-			io:format("ems_logger do_log_request format invalid message. Reason: ~p.\n", [ExceptionReason]),
+			format_error("ems_logger do_log_request format invalid message. Reason: ~p.\n", [ExceptionReason]),
 			State#state{log_ult_reqhash = ReqHash}
 	end.
 	

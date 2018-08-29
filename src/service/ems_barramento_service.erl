@@ -13,11 +13,12 @@
 
 -export([execute/1]).
   
-execute(Request) -> 
+execute(Request = #request{response_header = ResponseHeader}) -> 
 	Conf = ems_config:getConfig(),
 	case ems_util:get_param_url(<<"name">>, undefined, Request) of
 		undefined ->
 			{error, Request#request{code = 400, 
+									response_header = ResponseHeader#{<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE},
 									response_data = ?ENOENT_JSON}
 			};
 		AppName ->
@@ -33,6 +34,7 @@ execute(Request) ->
 									case maps:is_key(<<"error">>, AuthParams) of
 										true -> 
 											{error, Request#request{code = 400, 
+																	response_header = ResponseHeader#{<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE},
 																	response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 											};
 										false ->
@@ -68,6 +70,7 @@ execute(Request) ->
 																		<<"\"erlangms_version\":\""/utf8>>, list_to_binary(ems_util:version()), <<"\""/utf8>>,
 																		<<"}"/utf8>>]),
 																	{ok, Request#request{code = 200,
+																						 response_header = ResponseHeader#{<<"cache-control">> => ?CACHE_CONTROL_1_DAYS},
 																						 response_data = ContentData}
 																	}
 															end;

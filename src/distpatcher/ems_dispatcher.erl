@@ -430,6 +430,8 @@ dispatch_middleware_function(Request = #request{reason = ok,
 												 				   result_cache = ResultCache,
 																   service_error_metric_name = ServiceErrorMetricName}},
 							 ShowDebugResponseHeaders) ->
+	T3 = ems_util:get_milliseconds(),
+	Latency = T3 - T1,
 	try
 		case Middleware of 
 			undefined -> Result = {ok, Request};
@@ -443,21 +445,27 @@ dispatch_middleware_function(Request = #request{reason = ok,
 					_ ->  Result = {error, einvalid_middleware}
 				end
 		end,
-		T3 = ems_util:get_milliseconds(),
 		case Result of
-			{ok, Request2 = #request{response_header = ResponseHeader}} ->
+			{ok, Request2 = #request{code = Code, 
+									 reason = Reason2,
+									 reason_detail = ReasonDetail,
+									 reason_exception = ReasonException,
+									 response_header = ResponseHeader}} ->
 				case Type =:= <<"GET">> of
 					true -> 
+						StatusText = ems_util:format_rest_status(Code, Reason2, ReasonDetail, ReasonException, Latency),
 						case ResultCache > 0 andalso ContentLength < ?RESULT_CACHE_MAX_SIZE_ENTRY of
 							true ->
 								case ShowDebugResponseHeaders of
 									false ->
 										Request3 = Request2#request{latency = ems_util:get_milliseconds() - T1,
-																	status = req_done};
+																	status = req_done,
+																	status_text = StatusText};
 									true ->
 										Request3 = Request2#request{response_header = ResponseHeader#{<<"ems-result-cache">> => integer_to_binary(ResultCache)},
 																	latency = T3 - T1,
-																	status = req_done}
+																	status = req_done,
+																	status_text = StatusText}
 								end,
 								notity_workers_waiting_result_cache(ReqHash, Request3),
 								{ok, request, Request3};
@@ -465,16 +473,18 @@ dispatch_middleware_function(Request = #request{reason = ok,
 								case ShowDebugResponseHeaders of
 									false ->
 										{ok, request, Request2#request{latency = T3 - T1,
-																		status = req_done}};
+																		status = req_done,
+																		status_text = StatusText}};
 									true ->
 										{ok, request, Request2#request{response_header = ResponseHeader#{<<"ems-result-cache">> => <<"0"/utf8>>},
 																		latency = T3 - T1,
-																		status = req_done}}
+																		status = req_done,
+																		status_text = StatusText}}
 								end
 						end;
 					false ->
 						ets:insert(ems_dispatcher_post_time, {post_time, T3}),
-						{ok, request, Request2#request{latency = T3 - T1}}
+						{ok, request, Request2#request{latency = Latency}}
 				end;
 			{error, Reason2} = Error ->
 				ems_db:inc_counter(ServiceErrorMetricName),	
@@ -482,7 +492,8 @@ dispatch_middleware_function(Request = #request{reason = ok,
 												 reason = Reason2,
 												 content_type_out = ?CONTENT_TYPE_JSON,
 												 response_data = ems_schema:to_json(Error),
-												 latency = T3 - T1}}
+												 latency = Latency,
+												 status_text = ems_util:format_rest_status(500, Reason2, eweb_service_failed, u, Latency)}}
 		end
 	catch 
 		_Exception:Error2 -> 
@@ -491,13 +502,20 @@ dispatch_middleware_function(Request = #request{reason = ok,
 											 reason = Error2,
 											 content_type_out = ?CONTENT_TYPE_JSON,
 											 response_data = ems_schema:to_json(Error2),
-											 latency = ems_util:get_milliseconds() - T1}}
+											 latency = Latency,
+											 status_text = ems_util:format_rest_status(500, Error2, edispatcher_exception, undefined, Latency)}}
 	end;
 dispatch_middleware_function(Request = #request{t1 = T1, 
+												code = Code, 
+												reason = Reason,
+												reason_detail = ReasonDetail,
+												reason_exception = ReasonException,
 											    service = #service{service_error_metric_name = ServiceErrorMetricName}},
 							_ShowDebugResponseHeaders) ->
 	ems_db:inc_counter(ServiceErrorMetricName),								
+	T3 = ems_util:get_milliseconds(),
+	Latency = T3 - T1,
 	{error, request, Request#request{content_type_out = ?CONTENT_TYPE_JSON,
-									 latency = ems_util:get_milliseconds() - T1}}.
+									 latency = Latency,
+									 status_text = ems_util:format_rest_status(Code, Reason, ReasonDetail, ReasonException, Latency)}}.
 
-									 	

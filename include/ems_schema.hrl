@@ -787,7 +787,8 @@
 					  scope :: binary(),						%% 54 - scope
 					  oauth2_grant_type :: binary(),			%% 55 - oauth2_grant_type
 					  oauth2_access_token :: binary(),			%% 56 - oauth2_access_token
-					  oauth2_refresh_token :: binary()			%% 57 - oauth2_refresh_token
+					  oauth2_refresh_token :: binary(),			%% 57 - oauth2_refresh_token
+					  status_text :: binary()					%% 58 - status_text				Status exibido no log 
 				  }).
 
 

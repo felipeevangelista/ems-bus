@@ -176,6 +176,7 @@
 % Mensagens de saída json comuns
 -define(CONTENT_TYPE_JSON, <<"application/json; charset=utf-8"/utf8>>).
 -define(CACHE_CONTROL_NO_CACHE, <<"max-age=31536000, private, no-cache, no-store, must-revalidate"/utf8>>).
+-define(CACHE_CONTROL_1_DAYS, <<"max-age=86400, public"/utf8>>).
 -define(CACHE_CONTROL_30_DAYS, <<"max-age=2592000, private"/utf8>>).
 -define(OK_JSON, <<"{\"ok\": true}"/utf8>>).
 -define(ENOENT_JSON, <<"{\"error\": \"enoent\"}"/utf8>>).
@@ -297,10 +298,10 @@
 				 sufixo_email_institucional :: binary(),
 				 http_headers :: map(),
 				 http_headers_options :: map(),
-				 log_show_response = false :: boolean(),	%% Se true, imprime o response no log
-				 log_show_payload = false :: boolean(),		%% Se true, imprime o payload no log
-				 log_show_response_max_length :: boolean(),	%% show response if content length < show_response_max_length
-				 log_show_payload_max_length :: boolean(),	%% show payload if content length < show_response_max_length
+				 log_show_response = false :: boolean(),			%% Se true, imprime o response no log
+				 log_show_payload = false :: boolean(),				%% Se true, imprime o payload no log
+				 log_show_response_max_length :: boolean(),			%% show response if content length < show_response_max_length
+				 log_show_payload_max_length :: boolean(),			%% show payload if content length < show_response_max_length
 				 log_file_checkpoint :: non_neg_integer(),
 				 log_file_max_size :: non_neg_integer()
 		 }). 	
