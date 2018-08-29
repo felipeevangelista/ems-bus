@@ -108,6 +108,9 @@
 -define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 64000).
 -define(LOG_SHOW_RESPONSE_MAX_LENGTH, 64000).
 
+% Mostra cabeçalhos de depuração
+-define(SHOW_DEBUG_RESPONSE_HEADERS, true).
+
 % Quantos workers HTTP instanciar se não especificado no arquivo de configuração
 -define(MIN_HTTP_WORKER, 1).
 

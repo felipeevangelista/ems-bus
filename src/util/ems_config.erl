@@ -297,7 +297,7 @@ parse_config(Json, NomeArqConfig) ->
 	TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
- 	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, false)),
+ 	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, ?SHOW_DEBUG_RESPONSE_HEADERS)),
 	HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers">>, Json, #{})),
 	HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers_options">>, Json, #{})),
 	HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
