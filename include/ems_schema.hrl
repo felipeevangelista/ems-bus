@@ -633,7 +633,8 @@
 					http_headers :: map(),									%% 83 - http_headers
 					restricted :: boolean(),								%% 84 - restricted								-> Serviço restrito aos admins
 					glyphicon :: binary(),									%% 85 - glyphicon								-> classe css do glyphicon
-					metadata :: binary()									%% 86 - metadata 								-> Representação em json do que será enviado para o web service /catalog
+					metadata :: binary(),									%% 86 - metadata 								-> Representação em json do que será enviado para o web service /catalog
+					show_debug_response_headers :: boolean()				%% 87 - show_debug_response_headers				-> Add debug headers in HTTP response headers
 				}).
 
 
@@ -724,7 +725,8 @@
 			   undefined, 									%% 83 - http_headers
 			   boolean_type,								%% 84 - restricted
 			   binary_type,									%% 85 - glyphicon
-			   binary_type									%% 86 - metadata
+			   binary_type,									%% 86 - metadata
+			   boolean_type									%% 87 - show_debug_response_headers
 		}).
 
 

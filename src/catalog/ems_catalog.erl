@@ -103,7 +103,8 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 			   ServiceResendMsg1, 
 			   AuthorizationPublicCheckCredential,
 			   HttpMaxContentLength, HttpHeaders, 
-			   LogShowResponse, LogShowPayload, Restricted) ->
+			   LogShowResponse, LogShowPayload, Restricted,
+			   ShowDebugResponseHeader) ->
 	PatternKey = ems_util:make_rowid_from_url(Url, Type),
 	{ok, Id_re_compiled} = re:compile(PatternKey),
 	Contract = #service{
@@ -185,7 +186,8 @@ new_service_re(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, F
 					http_headers = HttpHeaders,
 					log_show_response = LogShowResponse,
 					log_show_payload = LogShowPayload,
-					restricted = Restricted
+					restricted = Restricted,
+					show_debug_response_headers = ShowDebugResponseHeader
 				},
 	Contract#service{metadata = get_metadata_json(Contract)}.
 	
@@ -209,7 +211,8 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 		    ServiceResendMsg1, 
 			AuthorizationPublicCheckCredential,
 			HttpMaxContentLength, HttpHeaders, 
-			LogShowResponse, LogShowPayload, Restricted) ->
+			LogShowResponse, LogShowPayload, Restricted,
+			ShowDebugResponseHeader) ->
 	Contract = #service{
 				id = Id,
 				rowid = Rowid,
@@ -287,7 +290,8 @@ new_service(Rowid, Id, Name, Url, Service, ModuleName, ModuleNameCanonical, Func
 				http_headers = HttpHeaders,
 				log_show_response = LogShowResponse,
 				log_show_payload = LogShowPayload,
-				restricted = Restricted
+				restricted = Restricted,
+				show_debug_response_headers = ShowDebugResponseHeader
 			},
 	Contract#service{metadata = get_metadata_json(Contract)}.
 
@@ -396,7 +400,8 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 								 http_max_content_length = HttpMaxContentLengthDefault,
 								 http_headers = HttpHeadersDefault,
 								 rest_default_querystring = RestDefaultQuerystring,
-								 auth_allow_user_inative_credentials = AuthAllowUserInativeCredentialsDefault}) ->
+								 auth_allow_user_inative_credentials = AuthAllowUserInativeCredentialsDefault,
+								 show_debug_response_headers = ShowDebugResponseHeadersDefault}) ->
 	try
 		Name = ems_util:parse_name_service(maps:get(<<"name">>, Map)),
 		Owner = maps:get(<<"owner">>, Map, <<>>),
@@ -437,6 +442,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		Comment = ?UTF8_STRING(maps:get(<<"comment">>, Map, <<>>)),
 		Version = maps:get(<<"version">>, Map, <<"1.0.0">>),
 		Async = ems_util:parse_bool(maps:get(<<"async">>, Map, false)),
+		ShowDebugResponseHeader = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Map, ShowDebugResponseHeadersDefault)),
 		Rowid = ems_util:make_rowid(Url2),
 		Id = maps:get(<<"id">>, Map, Rowid), % catálogos internos vão usar rowid como chave primária
 		Lang = ems_util:parse_lang(maps:get(<<"lang">>, Map, <<>>)),
@@ -572,7 +578,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										   AuthorizationPublicCheckCredential,
 										   HttpMaxContentLength, HttpHeaders, 
 										   LogShowResponse, LogShowPayload,
-										   Restricted);
+										   Restricted, ShowDebugResponseHeader);
 			false -> 
 				Service = new_service(Rowid, Id, Name, Url2, 
 										ServiceImpl,
@@ -602,7 +608,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 										AuthorizationPublicCheckCredential,
 										HttpMaxContentLength, HttpHeaders, 
 										LogShowResponse, LogShowPayload,
-										Restricted)
+										Restricted, ShowDebugResponseHeader)
 		end,
 		{ok, Service}
 	catch

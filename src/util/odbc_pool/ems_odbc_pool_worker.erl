@@ -215,7 +215,7 @@ do_connect(Datasource = #service_datasource{connection = Connection, type = sqli
 	{ok, Datasource2};
 do_connect(Datasource = #service_datasource{connection = Connection}) -> 
 	try
-		case odbc:connect(Connection, [{scrollable_cursors, on}, {timeout, 12000}, {trace_driver, off}, {extended_errors, off}]) of
+		case odbc:connect(Connection, [{scrollable_cursors, on}, {timeout, 16000}, {trace_driver, off}, {extended_errors, off}]) of
 			{ok, ConnRef}	-> 
 				Datasource2 = Datasource#service_datasource{owner = self(), 
 															conn_ref = ConnRef},
@@ -233,7 +233,7 @@ do_disconnect(#state{datasource = #service_datasource{id =Id, conn_ref = ConnRef
 		esqlite3:close(ConnRef)
 	catch
 		_:Reason ->	
-			?DEBUG("ems_odbc_pool_worker do_disconnect datasource ~p exception: Reason: ~p.", [Id, Reason]),
+			?DEBUG("ems_odbc_pool_worker do_disconnect datasource id ~p exception: Reason: ~p.", [Id, Reason]),
 			ok
 	end;
 do_disconnect(#state{datasource = #service_datasource{id = Id, conn_ref = ConnRef}}) -> 
@@ -241,7 +241,7 @@ do_disconnect(#state{datasource = #service_datasource{id = Id, conn_ref = ConnRe
 		odbc:disconnect(ConnRef)
 	catch
 		_:Reason ->	
-			?DEBUG("ems_odbc_pool_worker do_disconnect datasource ~p exception: Reason: ~p.", [Id, Reason]),
+			?DEBUG("ems_odbc_pool_worker do_disconnect datasource id ~p exception: Reason: ~p.", [Id, Reason]),
 			ok
 	end.
 
@@ -265,7 +265,7 @@ do_param_query(Sql, Params, #state{datasource = Datasource = #service_datasource
 	try
 		case odbc:param_query(ConnRef, Sql, Params, Timeout) of
 			{error, Reason} ->
-				ems_logger:error("ems_odbc_pool_worker param_query error datasource ~p: \n\tSQL: ~s \n\t.Reason: ~p.", [Id, Sql, Reason]),
+				ems_logger:error("ems_odbc_pool_worker param_query error datasource id ~p: \n\tSQL: ~s \n\t.Reason: ~p.", [Id, Sql, Reason]),
 				{error, eodbc_connection_closed};
 			{selected, Fields1, Result1} -> 
 				%?DEBUG("Odbc resultset query: ~p.", [Result1]),
@@ -273,10 +273,10 @@ do_param_query(Sql, Params, #state{datasource = Datasource = #service_datasource
 		end
 	catch
 		_:timeout -> 
-			ems_logger:error("ems_odbc_pool_worker param_query catch connection timeout datasource ~p: \n\tSQL: ~s..", [Id, Sql]),
+			ems_logger:error("ems_odbc_pool_worker param_query catch connection timeout datasource id ~p: \n\tSQL: ~s..", [Id, Sql]),
 			{error, eodbc_connection_timeout};
 		_:Reason6 -> 
-			ems_logger:error("ems_odbc_pool_worker param_query catch exception datasource ~p: \n\tSQL: ~s.\n\tReason: ~p.", [Id, Sql, Reason6]),
+			ems_logger:error("ems_odbc_pool_worker param_query catch exception datasource id ~p: \n\tSQL: ~s.\n\tReason: ~p.", [Id, Sql, Reason6]),
 			{error, eodbc_invalid_connection}
 	end.
 

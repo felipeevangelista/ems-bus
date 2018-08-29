@@ -136,7 +136,7 @@ sync() ->
 	gen_server:call(?SERVER, sync_log_buffer). 		
 
 log_request(Request = #request{content_length = ContentLength}) -> 
-	case ContentLength > ?LOG_SHOW_PAYLOAD_MAX_LENGTH_LOG_REQUEST of
+	case ContentLength > ?LOG_SHOW_PAYLOAD_MAX_LENGTH of
 		true -> gen_server:cast(?SERVER, {log_request, Request#request{payload = <<>>, content_length = 0}});
 		false -> gen_server:cast(?SERVER, {log_request, Request})
 	end.

@@ -96,7 +96,7 @@
 -define(SSL_PATH, filename:join(?PRIV_PATH, "ssl")).
 
 % Armazena o buffer do log a cada LOG_FILE_CHECKPOINT ms (Aumente este valor se existir muita contenção na escrita em disco)
--define(LOG_FILE_CHECKPOINT, 6000).  
+-define(LOG_FILE_CHECKPOINT, 3000).  
 
 % Tamanho em KB máximo permitido para os arquivos de logs
 -define(LOG_FILE_MAX_SIZE, 51200000).  
@@ -104,9 +104,9 @@
 % Arquiva o log a cada LOG_ARCHIVE_CHECKPOINT ms
 -define(LOG_ARCHIVE_CHECKPOINT, 1000 * 60 * 60 * 24).  % Por default são 24 horas
 
--define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 4000).
--define(LOG_SHOW_PAYLOAD_MAX_LENGTH_LOG_REQUEST, 4000 * 4).
--define(LOG_SHOW_RESPONSE_MAX_LENGTH, 4000).
+% Define o tamanho máximo default que pode ser impresso no log do payload e response para depuração
+-define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 16000).
+-define(LOG_SHOW_RESPONSE_MAX_LENGTH, 16000).
 
 % Quantos workers HTTP instanciar se não especificado no arquivo de configuração
 -define(MIN_HTTP_WORKER, 1).
@@ -137,14 +137,14 @@
 -define(MAX_ID_RECORD_QUERY, 9999999999).  
 
 % Timeout in ms to expire cache of get request (ems_dispatcher_cache)
--define(TIMEOUT_DISPATCHER_CACHE, 16000).
+-define(TIMEOUT_DISPATCHER_CACHE, 23000).
 
 % Number of datasource entries by odbc connection pool
 -define(MAX_CONNECTION_BY_POOL, 300).
 
 
 % Timeout to check odbc connection
--define(CHECK_VALID_CONNECTION_TIMEOUT, 60000). % 22 segundos
+-define(CHECK_VALID_CONNECTION_TIMEOUT, 30000). % 60 segundos
 -define(MAX_CLOSE_IDLE_CONNECTION_TIMEOUT, 3600000). % 1h
 -define(CLOSE_IDLE_CONNECTION_TIMEOUT, 300000). % 5 minutos
 
@@ -206,7 +206,7 @@
 
 
 
-
+% HTTP
 -define(HTTP_SERVER_PORT, 2381).
 -define(HTTP_MAX_CONNECTIONS, 100000).
 -define(HTTP_MAX_CONTENT_LENGTH, 524288).  % Limite default do conteúdo do payload é de 512KB
@@ -250,7 +250,7 @@
 				 ems_debug :: boolean(),							%% Habilita o modo debug
 				 ems_result_cache  :: non_neg_integer(),
 				 ems_datasources :: map(),
-				 show_debug_response_headers :: boolean,			%% Add debug headers in HTTP response headers
+				 show_debug_response_headers :: boolean(),			%% Add debug headers in HTTP response headers
 				 tcp_listen_address :: list(),
 				 tcp_listen_address_t :: list(),
 				 tcp_listen_main_ip :: binary(),

@@ -1777,7 +1777,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 								 group = GroupService,
 								 version = ServiceVersion,
 								 path = PathService,
-								 filename = FilenameService,
 								 cache_control = CacheControlService,
 								 use_re = UseReService,
 								 lang = LangService,
@@ -1953,7 +1952,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 														HttpHeaderOptions#{<<"expires">> => Expires,
 																		   <<"cache-control">> => CacheControlService};
 													true ->
-														HttpHeaderOptions#{<<"ems-rowid">> => integer_to_binary(Rowid),
+														HttpHeaderOptions#{<<"ems-server">> => ?SERVER_NAME,
+																		   <<"ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"ems-hash">> => integer_to_binary(ReqHash),
 																		   <<"ems-catalog">> => ServiceName,
 																		   <<"ems-owner">> => OwnerService,
@@ -1961,7 +1961,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 																		   <<"ems-version">> => ServiceVersion,
 																		   <<"ems-url">> => ServiceUrl,
 																		   <<"ems-path">> => PathService,
-																		   <<"ems-filename">> => FilenameService,
 																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
 																		   <<"ems-cache_control">> => CacheControlService,
 																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
@@ -1974,7 +1973,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 													false ->
 														HttpHeaderDefault#{<<"cache_control">> => CacheControlService};
 													true ->
-														HttpHeaderDefault#{<<"cache-control">> => CacheControlService,
+														HttpHeaderDefault#{<<"ems-server">> => ?SERVER_NAME,
+																		   <<"cache-control">> => CacheControlService,
 																		   <<"ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"ems-hash">> => integer_to_binary(ReqHash),
 																		   <<"ems-catalog">> => ServiceName,
@@ -1983,7 +1983,6 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 																		   <<"ems-version">> => ServiceVersion,
 																		   <<"ems-url">> => ServiceUrl,
 																		   <<"ems-path">> => PathService,
-																		   <<"ems-filename">> => FilenameService,
 																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
 																		   <<"ems-cache_control">> => CacheControlService,
 																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
@@ -2507,7 +2506,8 @@ load_from_file_req(Request = #request{url = Url,
 									  timestamp = Timestamp,
 									  response_header = ResponseHeader,
 									  service = #service{expires = ExpiresMinute,
-														 path = Path}}) ->
+														 path = Path,
+														 show_debug_response_headers = ShowDebugResponseHeaders}}) ->
 	Filename = Path ++ string:substr(Url, string:len(hd(string:tokens(Url, "/")))+2),
 	case file:read_file_info(Filename, [{time, universal}]) of
 		{ok,{file_info, FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
@@ -2517,11 +2517,21 @@ load_from_file_req(Request = #request{url = Url,
 			LastModified = cowboy_clock:rfc1123(MTime),
 			ExpireDate = date_add_minute(Timestamp, ExpiresMinute + 120), % add +120min (2h) para ser horário GMT
 			Expires = cowboy_clock:rfc1123(ExpireDate),
-			ResponseHeader2 = ResponseHeader#{
-								<<"etag">> => ETag,
-								<<"last-modified">> => LastModified,
-								<<"expires">> => Expires
-							},
+			case ShowDebugResponseHeaders of
+				true ->
+					ResponseHeader2 = ResponseHeader#{
+										<<"etag">> => ETag,
+										<<"last-modified">> => LastModified,
+										<<"expires">> => Expires,
+										<<"ems-filename">> => list_to_binary(Filename)
+									};
+				false ->
+					ResponseHeader2 = ResponseHeader#{
+										<<"etag">> => ETag,
+										<<"last-modified">> => LastModified,
+										<<"expires">> => Expires
+									}
+			end,
 			case ETag == IfNoneMatchReq orelse LastModified == IfModifiedSinceReq of
 				true -> {ok, Request#request{code = 304, 
 											 reason = enot_modified,
@@ -2543,6 +2553,7 @@ load_from_file_req(Request = #request{url = Url,
 											      response_header = ResponseHeader2}
 							};
 						{error, Reason} = Error -> 
+							?DEBUG("ems_static_file_service read_file ~p failed. Reason: ~p.", [Filename, Reason]),
 							{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
 												     reason = Reason,
 												     content_type_out = ?CONTENT_TYPE_JSON,
@@ -2551,7 +2562,7 @@ load_from_file_req(Request = #request{url = Url,
 					end
 			end;
 		{error, Reason} = Error -> 
-			?DEBUG("ems_static_file_service file ~p does not exist.", [Filename]),
+			?DEBUG("ems_static_file_service read_file_info ~p failed. Reason: ~p.", [Filename, Reason]),
 			{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
 									 reason = Reason,	
 									 response_data = ems_schema:to_json(Error)}
