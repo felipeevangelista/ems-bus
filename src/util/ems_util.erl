@@ -1006,11 +1006,16 @@ replace_vars_with(Subject, Value) -> re:replace(Subject, "{{ .+ }}", Value, [glo
 parse_oauth2_scope(<<>>) -> [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
 parse_oauth2_scope(undefined) -> [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
 parse_oauth2_scope(ScopeBin) ->
-	Result0 = list_to_atomlist_with_trim(string:tokens(binary_to_list(ScopeBin), ",")),
-	% Adiciona o user_fs no fim da lista pois é obrigatório
-	case lists:member(user_fs, Result0) of
-		true -> Result0;
-		false -> Result0 ++ [user_fs]
+	try
+		Result0 = list_to_atomlist_with_trim(string:tokens(binary_to_list(ScopeBin), ",")),
+		Result1 = [ R || R <- Result0, whereis(R) =/= undefined ], % o loader deve existir
+		% Adiciona o user_fs no fim da lista pois é obrigatório
+		case lists:member(user_fs, Result1) of
+			true -> Result1;
+			false -> Result1 ++ [user_fs]
+		end
+	catch
+		_:_ -> throw({error, einvalid_oauth2_scope})
 	end.
 
 
