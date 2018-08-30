@@ -13,16 +13,9 @@
 
 -export([init/2]).
 
--record(state, {http_max_content_length,
-				http_header_default,
-				http_header_options,
-				show_debug_response_headers}).
-
-
-init(CowboyReq, State = #state{http_header_default = HttpHeaderDefault,
-							   http_header_options = HttpHeaderOptions, 
-							   show_debug_response_headers = ShowDebugResponseHeaders}) ->
-	case ems_util:encode_request_cowboy(CowboyReq, self(), HttpHeaderDefault, HttpHeaderOptions, ShowDebugResponseHeaders) of
+init(CowboyReq, State = #encode_request_state{http_header_default = HttpHeaderDefault,
+											  show_debug_response_headers = ShowDebugResponseHeaders}) ->
+	case ems_util:encode_request_cowboy(CowboyReq, self(), State) of
 		{ok, Request = #request{t1 = T1}, Service, CowboyReq2} -> 
 			case ems_dispatcher:dispatch_request(Request, Service, ShowDebugResponseHeaders) of
 				{ok, request, Request2 = #request{code = Code,

@@ -667,10 +667,11 @@ do_log_request(Request = #request{rid = RID,
 					   end,
 					   <<"\n\tAccept: ">>, Accept,
 					   <<"\n\tContent-Type in: ">>, ContentTypeIn, <<"   out: ">>, ContentTypeOut,
-						<<"\n\tHost: ">>, Host, <<"  Peer: ">>, IpBin, <<"  Referer: ">>, case Referer of
-																		undefined -> <<>>;
-																		_ -> Referer
-																	end,
+						<<"\n\tHost: ">>, Host, <<"  Peer: ">>, IpBin, 
+							<<"  Referer: ">>, case Referer of
+													undefined -> <<>>;
+													_ -> Referer
+												end,
 						<<"\n\tUser-Agent: ">>, ems_util:user_agent_atom_to_binary(UserAgent), <<"  Version: ">>, UserAgentVersion,	
 						<<"\n\tService: ">>, ServiceService,
 						<<"\n\tParams: ">>, list_to_binary(io_lib:format("~p", [Params])), 
@@ -830,7 +831,7 @@ do_log_request(Request = #request{rid = RID,
 		end
 	catch 
 		_:ExceptionReason -> 
-			format_error("ems_logger do_log_request format invalid message. Reason: ~p.\n", [ExceptionReason]),
+			format_error("ems_logger do_log_request format invalid message. Reason: ~p.\nRequest: \033[1;31m~p\033[0m\n.", [ExceptionReason, Request]),
 			State#state{log_ult_reqhash = ReqHash}
 	end.
 	

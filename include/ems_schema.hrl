@@ -6,6 +6,12 @@
 %% @copyright ErlangMS Team
 %%********************************************************************
 
+-record(encode_request_state, {http_max_content_length,
+							   http_header_default,
+							   http_header_options,
+							   show_debug_response_headers,
+							   current_node}).
+
 -record(sequence, {key :: atom(), 
 				   index :: non_neg_integer()}).
 

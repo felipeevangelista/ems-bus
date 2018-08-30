@@ -10,9 +10,9 @@
 
 -behavior(gen_server). 
 
--include("../include/ems_config.hrl").
--include("../include/ems_schema.hrl").
--include("../include/ems_http_messages.hrl").
+-include("include/ems_config.hrl").
+-include("include/ems_schema.hrl").
+-include("include/ems_http_messages.hrl").
 
 %% Server API
 -export([start/3, stop/0]).
@@ -21,12 +21,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/1, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
-
--record(state, {http_max_content_length,
-				http_header_default,
-				http_header_options,
-				show_debug_response_headers}).
-
 
 %%====================================================================
 %% Server API
@@ -56,10 +50,11 @@ init({IpAddress,
 	  ListenerName}) ->
     Conf = ems_config:getConfig(),
     EmsResponseHeaders = Conf#config.show_debug_response_headers,
-    State = #state{http_max_content_length = HttpMaxContentLength,
-				    http_header_default = Conf#config.http_headers,
-				    http_header_options = Conf#config.http_headers_options,
-				    show_debug_response_headers = EmsResponseHeaders},
+    State = #encode_request_state{http_max_content_length = HttpMaxContentLength,
+									http_header_default = Conf#config.http_headers,
+									http_header_options = Conf#config.http_headers_options,
+									show_debug_response_headers = EmsResponseHeaders,
+									current_node = ems_util:node_binary()},
 	Dispatch = cowboy_router:compile([
 		{'_', [
 			{"/websocket", ems_websocket_handler, State},

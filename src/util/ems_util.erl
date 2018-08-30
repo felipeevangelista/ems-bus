@@ -11,6 +11,7 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
+
 -export([version/0,
 		 server_name/0,
 		 sleep/1,
@@ -131,7 +132,7 @@
 		 match_ip_address/2,
  		 allow_ip_address/2,
 		 mask_ipaddress_to_tuple/1,
-		 encode_request_cowboy/5,
+		 encode_request_cowboy/3,
 		 msg_campo_obrigatorio/2, msg_email_invalido/2, mensagens/1,
 		 msg_registro_ja_existe/1, msg_registro_ja_existe/2,
 		 hashsym_and_params/1,
@@ -1623,8 +1624,11 @@ invoque_service(Type, Url, QuerystringBin, QuerystringMap, ContentTypeIn) ->
 -spec url_mask(string() | binary()) -> binary().
 url_mask(Url) -> iolist_to_binary([<<"/erl.ms/">>, base64:encode(Url)]). 
 
--spec encode_request_cowboy(tuple(), pid(), map(), map(), boolean()) -> {ok, #request{}} | {error, atom()}.
-encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOptions, ShowDebugResponseHeaders) ->
+-spec encode_request_cowboy(tuple(), pid(), #encode_request_state{}) -> {ok, #request{}} | {error, atom()}.
+encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_default = HttpHeaderDefault,
+																   http_header_options = HttpHeaderOptions, 
+																   show_debug_response_headers = ShowDebugResponseHeaders,
+																   current_node = CurrentNode}) ->
 	try
 		Uri = iolist_to_binary(cowboy_req:uri(CowboyReq)),
 		Url = binary_to_list(cowboy_req:path(CowboyReq)),
@@ -1764,11 +1768,12 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 			payload = <<>>, 
 			payload_map = #{},
 			response_data = <<>>,
-			node_exec = ems_util:node_binary(),
+			node_exec = CurrentNode,
 			code = 200,
 			reason = ok,
 			reason_detail = undefined,
-			operation = webservice
+			operation = webservice,
+			status_text = <<>>
 		},	
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,
@@ -1995,25 +2000,53 @@ encode_request_cowboy(CowboyReq, WorkerSend, HttpHeaderDefault, HttpHeaderOption
 				{ok, Request2, Service, CowboyReq2};
 			_ -> 
 				ReqHash = erlang:phash2([Url, QuerystringMap0, 0, ContentTypeIn]),
+				Latency = ems_util:get_milliseconds() - T1,
 				if 
 					Type =:= <<"OPTIONS">> orelse Type =:= <<"HEAD">> ->
-							Request2 = Request#request{req_hash = ReqHash,
-														code = 200, 
-													    reason = ok,
-													    type = Type,  % use original verb of request
-													    response_header = HttpHeaderOptions,
-													    response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
-													    latency = ems_util:get_milliseconds() - T1},
+							StatusText = ems_util:format_rest_status(200, enoent_service_contract, undefined, undefined, Latency),
+							case ShowDebugResponseHeaders of
+								true ->
+									Request2 = Request#request{req_hash = ReqHash,
+																code = 200, 
+																reason = enoent_service_contract,
+																type = Type,  % use original verb of request
+																response_header = HttpHeaderOptions#{<<"ems_status">> => StatusText},
+																response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
+																latency = Latency,
+																status_text = StatusText};
+								false ->
+									Request2 = Request#request{req_hash = ReqHash,
+																code = 200, 
+																reason = enoent_service_contract,
+																type = Type,  % use original verb of request
+																response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
+																latency = Latency,
+																status_text = StatusText}
+							end,
 							{ok, request, Request2, CowboyReq};
 					true ->
 						ems_db:inc_counter(ems_dispatcher_lookup_enoent),								
-						Request2 = Request#request{req_hash = ReqHash,
-													code = 404, 
-												    reason = enoent_service_contract,
-												    type = Type,  % use original verb of request
-												    response_header = HttpHeaderDefault,
-												    response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
-												    latency = ems_util:get_milliseconds() - T1},
+						StatusText = ems_util:format_rest_status(404, enoent_service_contract, undefined, undefined, Latency),
+						case ShowDebugResponseHeaders of
+							true ->
+								Request2 = Request#request{req_hash = ReqHash,
+															code = 404, 
+															reason = enoent_service_contract,
+															type = Type,  % use original verb of request
+															response_header = HttpHeaderDefault#{<<"ems_status">> => StatusText},
+															response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
+															latency = Latency,
+															status_text = StatusText};
+							false ->
+								Request2 = Request#request{req_hash = ReqHash,
+															code = 404, 
+															reason = enoent_service_contract,
+															type = Type,  % use original verb of request
+															response_header = HttpHeaderDefault,
+															response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
+															latency = Latency,
+															status_text = StatusText}
+						end,
 						{error, request, Request2, CowboyReq}
 				end			
 		end
