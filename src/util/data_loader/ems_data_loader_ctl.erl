@@ -52,23 +52,24 @@ permission_to_execute(DataLoader, _, Operation, 60) ->
 											"last_error", ""}),
 	true;
 permission_to_execute(DataLoader, [], Operation, WaitCount) -> 
-	?DEBUG("ems_data_loader_ctl ~s begin ~p now.", [DataLoader, Operation]),
-	ets:insert(ets_dataloader_working_ctl, {DataLoader, working, 
-											"timestamp", ems_util:timestamp_str(), 
-											"operation", Operation, 
-											"wait_count", WaitCount,
-											"insert_count", 0,
-											"update_count", 0,
-											"error_count", 0,
-											"disable_count", 0,
-											"skip_count", 0,
-											"last_error", ""}),
-	true;
-permission_to_execute(DataLoader, [DataLoaderGroup|T], Operation, WaitCount) ->
-	case ets:lookup(ets_dataloader_working_ctl, DataLoaderGroup) of
-		[] -> permission_to_execute(DataLoader, T, Operation, WaitCount);
-		[{_, working, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}] -> 
-			ets:insert(ets_dataloader_working_ctl, {DataLoader, waiting, 
+	{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
+	% Não vai executar a noite para evitar janelas de manutenção da rede ou banco de dados
+	case Hour >= 22 andalso Hour =< 6 of
+		true ->
+			ets:insert(ets_dataloader_working_ctl, {DataLoader, temporary_stoped, 
+													"timestamp", ems_util:timestamp_str(), 
+													"operation", Operation, 
+													"wait_count", 10,
+													"insert_count", 0,
+													"update_count", 0,
+													"error_count", 0,
+													"disable_count", 0,
+													"skip_count", 0,
+													"last_error", ""}),
+			false;
+		false ->
+			?DEBUG("ems_data_loader_ctl ~s begin ~p now.", [DataLoader, Operation]),
+			ets:insert(ets_dataloader_working_ctl, {DataLoader, working, 
 													"timestamp", ems_util:timestamp_str(), 
 													"operation", Operation, 
 													"wait_count", WaitCount,
@@ -78,8 +79,41 @@ permission_to_execute(DataLoader, [DataLoaderGroup|T], Operation, WaitCount) ->
 													"disable_count", 0,
 													"skip_count", 0,
 													"last_error", ""}),
+			true
+	end;
+permission_to_execute(DataLoader, [DataLoaderGroup|T], Operation, WaitCount) ->
+	{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
+	% Não vai executar a noite para evitar janelas de manutenção da rede ou banco de dados
+	case Hour >= 22 andalso Hour =< 6 of
+		true ->
+			ets:insert(ets_dataloader_working_ctl, {DataLoader, temporary_stoped, 
+													"timestamp", ems_util:timestamp_str(), 
+													"operation", Operation, 
+													"wait_count", 10,
+													"insert_count", 0,
+													"update_count", 0,
+													"error_count", 0,
+													"disable_count", 0,
+													"skip_count", 0,
+													"last_error", ""}),
 			false;
-		_ -> permission_to_execute(DataLoader, T, Operation, WaitCount)
+		false ->
+			case ets:lookup(ets_dataloader_working_ctl, DataLoaderGroup) of
+				[] -> permission_to_execute(DataLoader, T, Operation, WaitCount);
+				[{_, working, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}] -> 
+					ets:insert(ets_dataloader_working_ctl, {DataLoader, waiting, 
+															"timestamp", ems_util:timestamp_str(), 
+															"operation", Operation, 
+															"wait_count", WaitCount,
+															"insert_count", 0,
+															"update_count", 0,
+															"error_count", 0,
+															"disable_count", 0,
+															"skip_count", 0,
+															"last_error", ""}),
+					false;
+				_ -> permission_to_execute(DataLoader, T, Operation, WaitCount)
+			end
 	end.
  
 notify_finish_work(DataLoader, Operation, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, LastError) ->

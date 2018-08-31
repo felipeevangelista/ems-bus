@@ -1329,8 +1329,8 @@ create_datasource_from_map(Map, Rowid, GlobalDatasources) ->
 		ShowRemapFields = ems_util:parse_bool(maps:get(<<"show_remap_fields">>, M, true)),
 		Sql = parse_datasource_sql(Type, maps:get(<<"sql">>, M, undefined)),
 		Timeout0 = ems_util:parse_range(maps:get(<<"timeout">>, M, ?MAX_TIME_ODBC_QUERY), 1, ?MAX_TIME_ODBC_QUERY),
-		case Timeout0 < 360000 of
-			true -> Timeout = 360000;
+		case Timeout0 < 860000 of
+			true -> Timeout = 860000;
 			false -> Timeout = Timeout0
 		end,
 		MaxPoolSize = ems_util:parse_range(maps:get(<<"max_pool_size">>, M, ?MAX_CONNECTION_BY_POOL), 1, ?MAX_CONNECTION_BY_POOL),

@@ -120,8 +120,8 @@ init(#service{name = Name,
 	CheckRemoveRecords = ems_util:parse_bool(maps:get(<<"check_remove_records">>, Props, false)),
 	CheckRemoveRecordsCheckpoint0 = maps:get(<<"check_remove_records_checkpoint">>, Props, ?DATA_LOADER_UPDATE_CHECKPOINT),
 	case CheckRemoveRecordsCheckpoint0 < UpdateCheckpoint of
-		true -> CheckRemoveRecordsCheckpoint = UpdateCheckpoint + 5000 + rand:uniform(3000);
-		false -> CheckRemoveRecordsCheckpoint = CheckRemoveRecordsCheckpoint0 + rand:uniform(3000)
+		true -> CheckRemoveRecordsCheckpoint = UpdateCheckpoint + 5000 + rand:uniform(30000);
+		false -> CheckRemoveRecordsCheckpoint = CheckRemoveRecordsCheckpoint0 + rand:uniform(30000)
 	end,
 	SqlLoad = string:trim(binary_to_list(maps:get(<<"sql_load">>, Props, <<>>))),
 	SqlUpdate = string:trim(binary_to_list(maps:get(<<"sql_update">>, Props, <<>>))),
@@ -129,7 +129,7 @@ init(#service{name = Name,
 	SqlIds = re:replace(SqlLoad, "select ([^,]+),(.+)( from.+)( order by.+)?", "select \\1 \\3", [{return,list}]),
 	Fields = maps:get(<<"fields">>, Props, <<>>),
 	SourceType = binary_to_atom(maps:get(<<"source_type">>, Props, <<"db">>), utf8),
-	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 60000) + rand:uniform(30000),
+	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 20000) + rand:uniform(10000),
 	SyncFullCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_full_checkpoint">>]), utf8),
 	CheckCountCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_count_checkpoint">>]), utf8),
 	CheckRemoveCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_remove_checkpoint">>]), utf8),
