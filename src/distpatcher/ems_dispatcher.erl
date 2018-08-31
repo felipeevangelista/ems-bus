@@ -135,7 +135,9 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 																				   result_cache_rid = RequestCache#request.rid,
 																				   etag = RequestCache#request.etag,
 																				   filename = RequestCache#request.filename,
-																				   latency = Latency}};
+																				   latency = Latency,
+																				   status = req_done,
+																				   status_text = RequestCache#request.status_text}};
 												false ->
 													{ok, request, Request2#request{result_cache = true,
 																					code = RequestCache#request.code,
@@ -146,7 +148,9 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 																					result_cache_rid = RequestCache#request.rid,
 																					etag = RequestCache#request.etag,
 																					filename = RequestCache#request.filename,
-																					latency = Latency}}
+																					latency = Latency,
+																					status = req_done,
+																					status_text = RequestCache#request.status_text}}
 											end;
 										false ->
 											ems_cache:add(ets_result_cache_get, ResultCache, ReqHash, {T1, Request2, ResultCache, req_wait_result, []}),
