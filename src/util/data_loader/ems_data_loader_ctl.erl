@@ -56,6 +56,7 @@ permission_to_execute(DataLoader, [], Operation, WaitCount) ->
 	% Não vai executar a noite para evitar janelas de manutenção da rede ou banco de dados
 	case Hour >= 22 andalso Hour =< 6 of
 		true ->
+			?DEBUG("ems_data_loader_ctl ~s temporary stoped ~p due window time.", [DataLoader, Operation]),
 			ets:insert(ets_dataloader_working_ctl, {DataLoader, temporary_stoped, 
 													"timestamp", ems_util:timestamp_str(), 
 													"operation", Operation, 
@@ -86,6 +87,7 @@ permission_to_execute(DataLoader, [DataLoaderGroup|T], Operation, WaitCount) ->
 	% Não vai executar a noite para evitar janelas de manutenção da rede ou banco de dados
 	case Hour >= 22 andalso Hour =< 6 of
 		true ->
+			?DEBUG("ems_data_loader_ctl ~s temporary stoped ~p due window time.", [DataLoader, Operation]),
 			ets:insert(ets_dataloader_working_ctl, {DataLoader, temporary_stoped, 
 													"timestamp", ems_util:timestamp_str(), 
 													"operation", Operation, 
