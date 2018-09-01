@@ -1030,8 +1030,8 @@ parse_file_name_path(Path, StaticFilePathList, RootPath) ->
 	case Ch =:= "/" orelse (is_letter(Ch) andalso Ch2 =:= ":")   of
 		true -> remove_ult_backslash_url(Path);  
 		false ->
-			case Ch == "~" of
-				true -> replace(Path, "~", get_home_dir());
+			case Ch == "\~" of
+				true -> replace(Path, "\~", get_home_dir());
 				_ -> 
 					case Ch == "." of
 						true -> 
@@ -1042,8 +1042,8 @@ parse_file_name_path(Path, StaticFilePathList, RootPath) ->
 						false -> 
 							Path2 = replace_all_vars(Path, StaticFilePathList),
 							% after process variables, check ~ or . wildcards
-							case string:substr(Path2, 1, 1) == "~" of
-								true -> replace(Path2, "~", get_home_dir());
+							case string:substr(Path2, 1, 1) == "\~" of
+								true -> replace(Path2, "\~", get_home_dir());
 								_ -> 
 									case Ch == "." of
 										true -> 

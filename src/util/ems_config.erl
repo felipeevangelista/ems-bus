@@ -142,7 +142,7 @@ load_config() ->
 						Result
 					catch 
 						_Exception:Reason ->
-							ems_logger:format_warn("\nems_config parse invalid configuration file ~p. Reason: ~p. Running with default settings.\n", [Filename, Reason]),
+							ems_logger:format_warn("\nems_config cannot decode configuration file ~p as json. Reason: ~p. Running with default settings.\n", [Filename, Reason]),
 							get_default_config()
 					end;
 				_Error -> 

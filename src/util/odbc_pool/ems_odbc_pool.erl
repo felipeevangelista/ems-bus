@@ -274,7 +274,7 @@ do_release_connection(Datasource = #service_datasource{id = Id,
 																			   pid_module_ref = undefined}, Pool),
 								erlang:put(Id, Pool2),
 								ok;
-s							_ ->
+							_ ->
 								case erlang:is_process_alive(Owner) of
 									true -> gen_server:stop(Owner);
 									false -> ok
