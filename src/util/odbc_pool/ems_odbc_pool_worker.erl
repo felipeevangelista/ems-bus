@@ -127,7 +127,6 @@ handle_call(notify_return_pool, _From, State = #state{datasource = InternalDatas
 	case LastError of
 		undefined ->
 			?DEBUG("ems_odbc_pool_worker notify_return_pool (Ds: ~p Worker: ~p QueryCount: ~p).", [Id, ConnRef, QueryCount]),
-			erlang:garbage_collect(self()),
 			case SqlCheckValidConnection =/= undefined andalso SqlCheckValidConnection =/= "" of
 				true -> CheckValidConnectionRef = erlang:send_after(CheckValidConnectionTimeout, self(), {check_valid_connection, QueryCount});
 				false -> CheckValidConnectionRef = undefined
@@ -285,7 +284,7 @@ do_param_query(Sql, Params, #state{datasource = Datasource = #service_datasource
 	try
 		case odbc:param_query(ConnRef, Sql, Params, Timeout) of
 			{error, Reason} ->
-				ems_logger:error("ems_odbc_pool_worker param_query error datasource id ~p: \n\tSQL: ~s \n\t.Reason: ~p.", [Id, Sql, Reason]),
+				?DEBUG("ems_odbc_pool_worker param_query failed (Ds: ~p Worker: p Reason: p \n\tSQL: ~s \n\t.Reason: ~p.", [Id, ConnRef, Reason, Sql]),
 				{error, eodbc_connection_closed};
 			{selected, Fields1, Result1} -> 
 				%?DEBUG("Odbc resultset query: ~p.", [Result1]),
@@ -293,10 +292,10 @@ do_param_query(Sql, Params, #state{datasource = Datasource = #service_datasource
 		end
 	catch
 		_:timeout -> 
-			ems_logger:error("ems_odbc_pool_worker param_query catch connection timeout ~p datasource id ~p: \n\tSQL: ~s..", [Timeout, Id, Sql]),
+			?DEBUG("ems_odbc_pool_worker param_query timeout (Ds: ~p Worker: p Reason: p \n\tSQL: ~s \n\t.Reason: timeout.", [Id, ConnRef, Sql]),
 			{error, eodbc_connection_timeout};
-		_:Reason6 -> 
-			ems_logger:error("ems_odbc_pool_worker param_query catch exception datasource id ~p: \n\tSQL: ~s.\n\tReason: ~p.", [Id, Sql, Reason6]),
+		_:Reason2 -> 
+			?DEBUG("ems_odbc_pool_worker param_query exception (Ds: ~p Worker: p Reason: p \n\tSQL: ~s \n\t.Reason: ~p.", [Id, ConnRef, Reason2, Sql]),
 			{error, eodbc_invalid_connection}
 	end.
 

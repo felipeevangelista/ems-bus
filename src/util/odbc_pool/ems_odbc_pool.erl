@@ -200,15 +200,14 @@ do_create_connection(Datasource = #service_datasource{id = Id,
 					 PidModule) ->
 	try
 		Pool = find_pool(Id),
-		PoolCount = queue:len(Pool),
-		case PoolCount of
+		PoolSize = queue:len(Pool),
+		case PoolSize of
 			0 ->
 				ConnectionCount = ems_db:current_counter(ConnectionCountMetricName),
 				case ConnectionCount =< MaxPoolSize of
 					true ->
 						case ems_odbc_pool_worker:start_link(Datasource) of
 							{ok, WorkerPid} ->
-								?DEBUG("ems_odbc_pool start new worker from datasource id ~p (ConnectionCount ~p).", [Id, ConnectionCount]),
 								PidModuleRef = erlang:monitor(process, PidModule),
 								Datasource2 = ems_odbc_pool_worker:get_datasource(WorkerPid),
 								Datasource3 = Datasource2#service_datasource{owner = WorkerPid, 
@@ -219,6 +218,7 @@ do_create_connection(Datasource = #service_datasource{id = Id,
 								erlang:put(WorkerPid, Datasource3),
 								ems_db:inc_counter(ConnectionCountMetricName),								
 								ems_db:inc_counter(ConnectionCreatedMetricName),								
+								?DEBUG("ems_odbc_pool do_create_connection start new worker (Ds: ~p Worker: ~p PoolSize: ~p ConnectionCount: ~p).", [Id, Datasource3#service_datasource.conn_ref, PoolSize, ConnectionCount]),
 								{ok, Datasource3};
 							_ -> 
 								ems_db:inc_counter(ConnectionUnavailableMetricName),								
@@ -242,7 +242,8 @@ do_create_connection(Datasource = #service_datasource{id = Id,
 				erlang:put(PidModuleRef, Datasource3),
 				erlang:put(WorkerPid, Datasource3),
 				ems_db:inc_counter(ConnectionReuseMetricName),
-				?DEBUG("ems_odbc_pool reuse worker from datasource id ~p (ConnectionCount ~p).", [Id, PoolCount]),
+				ConnectionCount = ems_db:current_counter(ConnectionCountMetricName),
+				?DEBUG("ems_odbc_pool do_create_connection reuse worker (Ds: ~p Worker: ~p PoolSize: ~p ConnectionCount: ~p).", [Id, Datasource3#service_datasource.conn_ref, PoolSize, ConnectionCount]),
 				{ok, Datasource3}
 		end
 	catch
@@ -252,11 +253,12 @@ do_create_connection(Datasource = #service_datasource{id = Id,
 -spec do_release_connection(#service_datasource{}) -> ok.
 do_release_connection(Datasource = #service_datasource{id = Id,
 													   owner = Owner, 
+													   conn_ref = ConnRef,
 													   pid_module_ref = PidModuleRef,
 													   max_pool_size = MaxPoolSize,
 													   connection_count_metric_name = ConnectionCountMetricName}) ->
+	ConnectionCount = ems_db:dec_counter(ConnectionCountMetricName),								
 	try
-		ems_db:dec_counter(ConnectionCountMetricName),								
 		erlang:demonitor(PidModuleRef),
 		erlang:erase(PidModuleRef),
 		Pool = find_pool(Id),
@@ -272,19 +274,27 @@ do_release_connection(Datasource = #service_datasource{id = Id,
 																			   pid_module_ref = undefined}, Pool),
 								erlang:put(Id, Pool2),
 								ok;
-							_ ->
-								gen_server:stop(Owner),
+s							_ ->
+								case erlang:is_process_alive(Owner) of
+									true -> gen_server:stop(Owner);
+									false -> ok
+								end,
 								ok
 						end;
 					false -> 
-						?DEBUG("ems_odbc_pool shutdown worker datasource id ~p.", [Id]),
-						gen_server:stop(Owner),
+						?DEBUG("ems_odbc_pool do_release_connection shutdown worker due connection limit (Ds: ~p Worker: ~p PoolSize: ~p ConnectionCount: ~p).", [Id, ConnRef, PoolSize, ConnectionCount]),
+						case erlang:is_process_alive(Owner) of
+							true -> gen_server:stop(Owner);
+							false -> ok
+						end,
 						ok
 				end;
 			false -> ok
 		end
 	catch
-		_:_ -> ok	
+		_:Reason -> 
+			?DEBUG("ems_odbc_pool do_release_connection exception (Ds: ~p Worker: ~p ConnectionCount: ~p Reason: ~p).", [Id, ConnRef, ConnectionCount, Reason]),
+			ok
 	end.
 	
 
