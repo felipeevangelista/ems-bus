@@ -3460,9 +3460,10 @@ binary_to_integer_def(B, Default) ->
 -spec get_param_or_variable(binary(), list(map()), any()) -> any().
 get_param_or_variable(ParamName, ParamsMap, DefaultValue) ->
 	Result1 = maps:get(ParamName, ParamsMap, DefaultValue),				
-	case os:getenv(ParamName) of % variável de ambiente em minúsculo, igual ao parâmetro
+	ParanNameStr = binary_to_list(ParamName),
+	case os:getenv(ParanNameStr) of % variável de ambiente em minúsculo, igual ao parâmetro
 		false -> 
-			case os:getenv(string:uppercase(binary_to_list(ParamName))) of % variável de ambiente em maiúsculo, padrão Linux
+			case os:getenv(string:uppercase(ParanNameStr)) of % variável de ambiente em maiúsculo, padrão Linux
 				false -> Result1;
 				Result2 -> list_to_binary(Result2)
 			end;

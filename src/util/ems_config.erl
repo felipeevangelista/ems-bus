@@ -135,18 +135,17 @@ load_config() ->
 		{ok, ConfigData, Filename} ->
 			ems_logger:format_info("ems_config loading configuration file ~p...", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
-				{ok, Json} -> 
-					try
-						Result = parse_config(Json, Filename),
-						print_config_settings(Result),
-						Result
-					catch 
-						_Exception:Reason ->
-							ems_logger:format_warn("\nems_config cannot decode configuration file ~p as json. Reason: ~p. Running with default settings.\n", [Filename, Reason]),
+				{ok, Data} -> 
+					case parse_config(Data, Filename) of
+						{ok, Result} -> 
+							print_config_settings(Result),
+							Result;
+						{error, Reason} -> 
+							ems_logger:format_warn("\nems_config cannot parse configuration file ~p. Reason: ~p. Data; ~p.\nRunning with default settings.\n", [Filename, Reason, Data]),
 							get_default_config()
 					end;
-				_Error -> 
-					ems_logger:format_warn("\nems_config parse invalid configuration file ~p. Running with default settings.\n", [Filename]),
+				{error, Reason2} -> 
+					ems_logger:format_warn("\nems_config cannot decode configuration file ~p as json. Reason: ~p\n. Running with default settings.\n", [Filename, Reason2]),
 					get_default_config()
 			end;
 		{error, enofile_config} ->
@@ -281,109 +280,201 @@ parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Result) ->
 
 
 -spec parse_config(map(), string()) -> #config{}.
-parse_config(Json, NomeArqConfig) ->
-	Hostname0 = ems_util:get_param_or_variable(<<"hostname">>, Json, undefined),
-	% permite setar o hostname no arquivo de configuração ou obter o nome da máquina pelo inet
-	case Hostname0 of
-		undefined -> 
-			{ok, Hostname} = inet:gethostname(),
-			HostnameBin = list_to_binary(Hostname);
-		_ ->
-			Hostname = binary_to_list(Hostname0),
-			HostnameBin = Hostname0
-	end,
- 	TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
-	TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
-	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
- 	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
- 	ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, ?SHOW_DEBUG_RESPONSE_HEADERS)),
-	HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers">>, Json, #{})),
-	HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers_options">>, Json, #{})),
-	HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
-	HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders),
-	{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"rest_default_querystring">>, Json, []), []),
-	StaticFilePathProbing = ems_util:parse_bool(maps:get(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
-	StaticFilePath = parse_static_file_path(maps:get(<<"static_file_path">>, Json, #{})),
-	StaticFilePathMap = maps:from_list(StaticFilePath),
-	CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
-	Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
-	case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
-		<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
-		RestBaseUrlValue -> RestBaseUrl = ems_util:remove_ult_backslash_url_binary(RestBaseUrlValue)
-	end,
-	case ems_util:get_param_or_variable(<<"rest_auth_url">>, Json, <<>>) of
-	<<>> ->	
-			case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of		
-				<<>> -> RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
-				_ -> RestAuthUrl = iolist_to_binary([RestBaseUrl, <<"/authorize"/utf8>>])
-			end;
-		RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
-	end,
-	case ems_util:get_param_or_variable(<<"rest_login_url">>, Json, <<>>) of
-		<<>> ->	RestLoginUrl = iolist_to_binary([RestBaseUrl, <<"/login/index.html"/utf8>>]);
-		RestLoginUrlValue -> RestLoginUrl = ems_util:remove_ult_backslash_url_binary(RestLoginUrlValue)
-	end,
-	RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),
-	#config{ cat_host_alias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
-			 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
-			 cat_node_search = maps:get(<<"node_search">>, Json, <<>>),
-			 cat_path_search = CatPathSearch,
-			 static_file_path = StaticFilePath,
-			 static_file_path_map = StaticFilePathMap,
-			 static_file_path_probing = StaticFilePathProbing,
-			 cat_disable_services = maps:get(<<"disable_services">>, Json, []),
-			 cat_enable_services = maps:get(<<"enable_services">>, Json, []),
-			 cat_disable_services_owner = maps:get(<<"disable_services_owner">>, Json, []),
-			 cat_enable_services_owner = maps:get(<<"enable_services_owner">>, Json, []),
-			 cat_restricted_services_owner = maps:get(<<"restricted_services_owner">>, Json, []),
-			 cat_restricted_services_admin = maps:get(<<"restricted_services_admin">>, Json, []),
-			 ems_hostname = HostnameBin,
-			 ems_host = list_to_atom(Hostname),
-			 ems_file_dest = NomeArqConfig,
-			 ems_debug = ems_util:parse_bool(maps:get(<<"debug">>, Json, false)),
-			 ems_result_cache = ems_util:parse_result_cache(maps:get(<<"result_cache">>, Json, ?TIMEOUT_DISPATCHER_CACHE)),
-			 ems_datasources = Datasources,
-			 show_debug_response_headers = ShowDebugResponseHeaders,
-			 tcp_listen_address	= TcpListenAddress,
-			 tcp_listen_address_t = TcpListenAddress_t,
-			 tcp_listen_main_ip = TcpListenMainIp,
-			 tcp_listen_main_ip_t = TcpListenMainIp_t,
-			 tcp_listen_prefix_interface_names = TcpListenPrefixInterfaceNames,
-			 tcp_allowed_address = parse_tcp_allowed_address(maps:get(<<"tcp_allowed_address">>, Json, all)),
-			 http_max_content_length = ems_util:parse_range(maps:get(<<"http_max_content_length">>, Json, ?HTTP_MAX_CONTENT_LENGTH), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
-			 http_headers = HttpHeaders,
-			 http_headers_options = HttpHeadersOptions,
-			 authorization = ems_util:parse_authorization_type(maps:get(<<"authorization">>, Json, ?AUTHORIZATION_TYPE_DEFAULT)),
-			 oauth2_with_check_constraint = ems_util:parse_bool(maps:get(<<"oauth2_with_check_constraint">>, Json, false)),
-			 oauth2_refresh_token = ems_util:parse_range(maps:get(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
-			 auth_allow_user_inative_credentials = ems_util:parse_bool(maps:get(<<"auth_allow_user_inative_credentials">>, Json, true)),
-			 rest_base_url = RestBaseUrl, 
-			 rest_auth_url = RestAuthUrl,
-			 rest_login_url = RestLoginUrl,
-			 rest_url_mask = RestUrlMask,
-			 rest_environment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
-			 config_file = NomeArqConfig,
-			 params = Json,
-			 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
-			 user_path_search = select_config_file(<<"users.json">>, maps:get(<<"user_path_search">>, Json, ?USER_PATH)),
-			 user_dados_funcionais_path_search = select_config_file(<<"user_dados_funcionais.json">>, maps:get(<<"user_dados_funcionais_path">>, Json, ?USER_DADOS_FUNCIONAIS_PATH)),
-			 user_perfil_path_search = select_config_file(<<"user_perfil.json">>, maps:get(<<"user_perfil_path_search">>, Json, ?USER_PERFIL_PATH)),
-			 user_permission_path_search = select_config_file(<<"user_permission.json">>, maps:get(<<"user_permission_path_search">>, Json, ?USER_PERMISSION_PATH)),
-			 user_endereco_path_search = select_config_file(<<"user_endereco.json">>, maps:get(<<"user_endereco_path_search">>, Json, ?USER_ENDERECO_PATH)),
-			 user_telefone_path_search = select_config_file(<<"user_telefone.json">>, maps:get(<<"user_telefone_path_search">>, Json, ?USER_TELEFONE_PATH)),
-			 user_email_path_search	= select_config_file(<<"user_email.json">>, maps:get(<<"user_email_path_search">>, Json, ?USER_EMAIL_PATH)),
- 			 ssl_cacertfile = maps:get(<<"ssl_cacertfile">>, Json, undefined),
-			 ssl_certfile = maps:get(<<"ssl_certfile">>, Json, undefined),
-			 ssl_keyfile = maps:get(<<"ssl_keyfile">>, Json, undefined),
-			 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
-	 		 log_show_response = ems_util:parse_bool(maps:get(<<"log_show_response">>, Json, ?LOG_SHOW_RESPONSE)),
-			 log_show_payload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Json, ?LOG_SHOW_PAYLOAD)),
-	 		 log_show_response_max_length = maps:get(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH),
-			 log_show_payload_max_length = maps:get(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH),
-			 log_file_checkpoint = maps:get(<<"log_file_checkpoint">>, Json, ?LOG_FILE_CHECKPOINT),
-			 log_file_max_size = maps:get(<<"log_file_max_size">>, Json, ?LOG_FILE_MAX_SIZE),
-			 rest_default_querystring = Querystring
-		}.
+parse_config(Json, Filename) ->
+	try
+		put(parse_step, hostname),
+		Hostname0 = ems_util:get_param_or_variable(<<"hostname">>, Json, <<>>),
+		% permite setar o hostname no arquivo de configuração ou obter o nome da máquina pelo inet
+		case Hostname0 of
+			<<>> -> 
+				{ok, Hostname} = inet:gethostname(),
+				HostnameBin = list_to_binary(Hostname);
+			_ ->
+				Hostname = binary_to_list(Hostname0),
+				HostnameBin = Hostname0
+		end,
+
+		put(parse_step, tcp_listen_prefix_interface_names),
+		TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
+		
+		put(parse_step, tcp_listen_address),
+		TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
+
+		put(parse_step, parse_tcp_listen_address),
+		TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress, TcpListenPrefixInterfaceNames),
+
+		put(parse_step, get_tcp_listen_main_ip),
+		{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
+
+		put(parse_step, show_debug_response_headers),
+		ShowDebugResponseHeaders = ems_util:parse_bool(maps:get(<<"show_debug_response_headers">>, Json, ?SHOW_DEBUG_RESPONSE_HEADERS)),
+
+		put(parse_step, http_headers),
+		HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers">>, Json, #{})),
+
+		put(parse_step, http_headers_options),
+		HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers_options">>, Json, #{})),
+
+		put(parse_step, parse_http_headers),
+		HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
+
+		put(parse_step, parse_http_headers_options),
+		HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders),
+
+		put(parse_step, rest_default_querystring),
+		{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"rest_default_querystring">>, Json, []), []),
+
+		put(parse_step, static_file_path_probing),
+		StaticFilePathProbing = ems_util:parse_bool(maps:get(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
+
+		put(parse_step, static_file_path),
+		StaticFilePath = parse_static_file_path(maps:get(<<"static_file_path">>, Json, #{})),
+		StaticFilePathMap = maps:from_list(StaticFilePath),
+
+		put(parse_step, catalog_path),
+		CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
+
+		put(parse_step, datasources),
+		Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
+
+		put(parse_step, rest_base_url),
+		case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
+			<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
+			RestBaseUrlValue -> RestBaseUrl = ems_util:remove_ult_backslash_url_binary(RestBaseUrlValue)
+		end,
+
+		put(parse_step, rest_auth_url),
+		case ems_util:get_param_or_variable(<<"rest_auth_url">>, Json, <<>>) of
+		<<>> ->	
+				case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of		
+					<<>> -> RestAuthUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301/authorize"/utf8>>]);
+					_ -> RestAuthUrl = iolist_to_binary([RestBaseUrl, <<"/authorize"/utf8>>])
+				end;
+			RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
+		end,
+
+		put(parse_step, rest_login_url),
+		case ems_util:get_param_or_variable(<<"rest_login_url">>, Json, <<>>) of
+			<<>> ->	RestLoginUrl = iolist_to_binary([RestBaseUrl, <<"/login/index.html"/utf8>>]);
+			RestLoginUrlValue -> RestLoginUrl = ems_util:remove_ult_backslash_url_binary(RestLoginUrlValue)
+		end,
+ 		put(parse_step, rest_url_mask),
+		RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),
+
+		put(parse_step, host_alias),
+		HostAlias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
+		
+		put(parse_step, debug),
+		Debug = ems_util:parse_bool(maps:get(<<"debug">>, Json, false)),
+
+		put(parse_step, result_cache),
+		ResultCache = ems_util:parse_result_cache(maps:get(<<"result_cache">>, Json, ?TIMEOUT_DISPATCHER_CACHE)),
+
+		put(parse_step, tcp_allowed_address),
+		TcpAllowedAddress = parse_tcp_allowed_address(maps:get(<<"tcp_allowed_address">>, Json, all)),
+		
+		put(parse_step, http_max_content_length),
+		HttpMaxContentLength = ems_util:parse_range(maps:get(<<"http_max_content_length">>, Json, ?HTTP_MAX_CONTENT_LENGTH), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
+		
+		put(parse_step, authorization),
+		Authorization = ems_util:parse_authorization_type(maps:get(<<"authorization">>, Json, ?AUTHORIZATION_TYPE_DEFAULT)),
+
+		put(parse_step, oauth2_with_check_constraint),
+		OAuth2WithCheckConstraint = ems_util:parse_bool(maps:get(<<"oauth2_with_check_constraint">>, Json, false)),
+		
+		put(parse_step, oauth2_refresh_token),
+		OAuth2RefreshToken = ems_util:parse_range(maps:get(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
+
+		put(parse_step, auth_allow_user_inative_credentials),
+		AuthAllowUserInativeCredentials = ems_util:parse_bool(maps:get(<<"auth_allow_user_inative_credentials">>, Json, true)),
+
+		put(parse_step, log_show_response),
+		LogShowResponse = ems_util:parse_bool(maps:get(<<"log_show_response">>, Json, ?LOG_SHOW_RESPONSE)),
+		
+		put(parse_step, log_show_payload),
+		LogShowPayload = ems_util:parse_bool(maps:get(<<"log_show_payload">>, Json, ?LOG_SHOW_PAYLOAD)),
+		
+		put(parse_step, log_show_response_max_length),
+		LogShowResponseMaxLength = maps:get(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH),
+		
+		put(parse_step, log_show_payload_max_length),
+		LogShowPayloadMaxLength = maps:get(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH),
+		
+		put(parse_step, log_file_checkpoint),
+		LogFileCheckpoint = maps:get(<<"log_file_checkpoint">>, Json, ?LOG_FILE_CHECKPOINT),
+		
+		put(parse_step, log_file_max_size),
+		LogFileMaxSize = maps:get(<<"log_file_max_size">>, Json, ?LOG_FILE_MAX_SIZE),
+		
+		put(parse_step, rest_environment),
+		RestEnvironment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
+		
+		put(parse_step, config),
+		{ok, #config{ cat_host_alias = HostAlias,
+				 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
+				 cat_node_search = maps:get(<<"node_search">>, Json, <<>>),
+				 cat_path_search = CatPathSearch,
+				 static_file_path = StaticFilePath,
+				 static_file_path_map = StaticFilePathMap,
+				 static_file_path_probing = StaticFilePathProbing,
+				 cat_disable_services = maps:get(<<"disable_services">>, Json, []),
+				 cat_enable_services = maps:get(<<"enable_services">>, Json, []),
+				 cat_disable_services_owner = maps:get(<<"disable_services_owner">>, Json, []),
+				 cat_enable_services_owner = maps:get(<<"enable_services_owner">>, Json, []),
+				 cat_restricted_services_owner = maps:get(<<"restricted_services_owner">>, Json, []),
+				 cat_restricted_services_admin = maps:get(<<"restricted_services_admin">>, Json, []),
+				 ems_hostname = HostnameBin,
+				 ems_host = list_to_atom(Hostname),
+				 ems_file_dest = Filename,
+				 ems_debug = Debug,
+				 ems_result_cache = ResultCache,
+				 ems_datasources = Datasources,
+				 show_debug_response_headers = ShowDebugResponseHeaders,
+				 tcp_listen_address	= TcpListenAddress,
+				 tcp_listen_address_t = TcpListenAddress_t,
+				 tcp_listen_main_ip = TcpListenMainIp,
+				 tcp_listen_main_ip_t = TcpListenMainIp_t,
+				 tcp_listen_prefix_interface_names = TcpListenPrefixInterfaceNames,
+				 tcp_allowed_address = TcpAllowedAddress,
+				 http_max_content_length = HttpMaxContentLength,
+				 http_headers = HttpHeaders,
+				 http_headers_options = HttpHeadersOptions,
+				 authorization = Authorization,
+				 oauth2_with_check_constraint = OAuth2WithCheckConstraint,
+				 oauth2_refresh_token = OAuth2RefreshToken,
+				 auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials,
+				 rest_base_url = RestBaseUrl, 
+				 rest_auth_url = RestAuthUrl,
+				 rest_login_url = RestLoginUrl,
+				 rest_url_mask = RestUrlMask,
+				 rest_environment = RestEnvironment,
+				 config_file = Filename,
+				 params = Json,
+				 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
+				 user_path_search = select_config_file(<<"users.json">>, maps:get(<<"user_path_search">>, Json, ?USER_PATH)),
+				 user_dados_funcionais_path_search = select_config_file(<<"user_dados_funcionais.json">>, maps:get(<<"user_dados_funcionais_path">>, Json, ?USER_DADOS_FUNCIONAIS_PATH)),
+				 user_perfil_path_search = select_config_file(<<"user_perfil.json">>, maps:get(<<"user_perfil_path_search">>, Json, ?USER_PERFIL_PATH)),
+				 user_permission_path_search = select_config_file(<<"user_permission.json">>, maps:get(<<"user_permission_path_search">>, Json, ?USER_PERMISSION_PATH)),
+				 user_endereco_path_search = select_config_file(<<"user_endereco.json">>, maps:get(<<"user_endereco_path_search">>, Json, ?USER_ENDERECO_PATH)),
+				 user_telefone_path_search = select_config_file(<<"user_telefone.json">>, maps:get(<<"user_telefone_path_search">>, Json, ?USER_TELEFONE_PATH)),
+				 user_email_path_search	= select_config_file(<<"user_email.json">>, maps:get(<<"user_email_path_search">>, Json, ?USER_EMAIL_PATH)),
+				 ssl_cacertfile = maps:get(<<"ssl_cacertfile">>, Json, undefined),
+				 ssl_certfile = maps:get(<<"ssl_certfile">>, Json, undefined),
+				 ssl_keyfile = maps:get(<<"ssl_keyfile">>, Json, undefined),
+				 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
+				 log_show_response = LogShowResponse,
+				 log_show_payload = LogShowPayload,
+				 log_show_response_max_length = LogShowResponseMaxLength,
+				 log_show_payload_max_length = LogShowPayloadMaxLength,
+				 log_file_checkpoint = LogFileCheckpoint,
+				 log_file_max_size = LogFileMaxSize,
+				 rest_default_querystring = Querystring
+			}}
+	catch
+		_:Reason -> 
+			ems_logger:format_warn("\nems_config cannot parse ~p in configuration file ~p. Reason: ~p.\nRunning with default settings.\n", [get(parse_step), Filename, Reason]),
+			get_default_config()
+	end.
 
 % It generates a default configuration if there is no configuration file
 -spec get_default_config() -> #config{}.
@@ -393,7 +484,7 @@ get_default_config() ->
 	TcpListenAddress = [<<"0.0.0.0">>],
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
-	#config{ cat_host_alias				= #{<<"local">> => HostnameBin},
+	{ok, #config{ cat_host_alias		= #{<<"local">> => HostnameBin},
 			 cat_host_search			= <<>>,							
 			 cat_node_search			= <<>>,
 			 cat_path_search			= [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}],
@@ -446,7 +537,7 @@ get_default_config() ->
 			 log_file_checkpoint = ?LOG_FILE_CHECKPOINT,
 			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
 			 rest_default_querystring = []
-		}.
+		}}.
 
 -spec select_config_file(binary() | string(), binary() | string()) -> {ok, string()} | {error, enofile_config}.
 select_config_file(ConfigFile, ConfigFileDefault) ->
