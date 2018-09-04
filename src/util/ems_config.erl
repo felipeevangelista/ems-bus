@@ -252,27 +252,28 @@ parse_tcp_allowed_address(undefined) -> all;
 parse_tcp_allowed_address([<<"*.*.*.*">>]) -> all;
 parse_tcp_allowed_address(V) -> V.
 
-parse_http_headers(HttpHeaders, ShowDebugResponseHeaders) ->
-	parse_http_headers_(maps:to_list(HttpHeaders), ShowDebugResponseHeaders, []).
+parse_http_headers(HttpHeaders, ShowDebugResponseHeaders, Hostname) ->
+	parse_http_headers_(maps:to_list(HttpHeaders), ShowDebugResponseHeaders, Hostname, []).
 
-parse_http_headers_([], ShowDebugResponseHeaders, Result) ->
+parse_http_headers_([], ShowDebugResponseHeaders, Hostname, Result) ->
 	HttpHeaders = maps:from_list(Result),
 	HttpHeaders1 = maps:remove(<<"ems-node">>, HttpHeaders),
 	case ShowDebugResponseHeaders of
-		true -> HttpHeaders1#{<<"ems-node">> => ems_util:node_binary()};
+		true -> HttpHeaders1#{<<"ems-node">> => ems_util:node_binary(),
+							  <<"ems_hostname">> => Hostname};
 		false -> HttpHeaders1
 	end;
-parse_http_headers_([{Key, Value} = Item|T], ShowDebugResponseHeaders, Result) when is_binary(Value) ->
+parse_http_headers_([{Key, Value} = Item|T], ShowDebugResponseHeaders, Hostname, Result) when is_binary(Value) ->
 	case byte_size(Key) =< 100 andalso Value =/= undefined andalso Value =/= <<>> andalso byte_size(Value) =< 450 of
 		true -> 
-			parse_http_headers_(T, ShowDebugResponseHeaders, [Item | Result]);
+			parse_http_headers_(T, ShowDebugResponseHeaders, Hostname, [Item | Result]);
 		false -> 
 			erlang:error(einvalid_http_response_header)
 	end;
-parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Result) ->
+parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Hostname, Result) ->
 	case byte_size(Key) =< 100 of
 		true -> 
-			parse_http_headers_(T, ShowDebugResponseHeaders, [Item | Result]);
+			parse_http_headers_(T, ShowDebugResponseHeaders, Hostname, [Item | Result]);
 		false -> 
 			erlang:error(einvalid_http_response_header)
 	end.
@@ -316,10 +317,10 @@ parse_config(Json, Filename) ->
 		HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, maps:get(<<"http_headers_options">>, Json, #{})),
 
 		put(parse_step, parse_http_headers),
-		HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders),
+		HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders, HostnameBin),
 
 		put(parse_step, parse_http_headers_options),
-		HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders),
+		HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders, HostnameBin),
 
 		put(parse_step, rest_default_querystring),
 		{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(maps:get(<<"rest_default_querystring">>, Json, []), []),
@@ -409,6 +410,27 @@ parse_config(Json, Filename) ->
 		put(parse_step, rest_environment),
 		RestEnvironment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
 		
+		put(parse_step, sufixo_email_institucional),
+		SufixoEmailInstitucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
+		
+		put(parse_step, disable_services),
+		DisableServices = maps:get(<<"disable_services">>, Json, []),
+		
+		put(parse_step, enable_services),
+		EnableServices = maps:get(<<"enable_services">>, Json, []),
+		
+		put(parse_step, disable_services_owner),
+		DisableServicesOwner = maps:get(<<"disable_services_owner">>, Json, []),
+		
+		put(parse_step, enable_services_owner),
+		EnableServicesOwner = maps:get(<<"enable_services_owner">>, Json, []),
+		
+		put(parse_step, restricted_services_owner),
+		RestrictedServicesOwner = maps:get(<<"restricted_services_owner">>, Json, []),
+		
+		put(parse_step, restricted_services_admin),
+		RestrictedServicesAdmin = maps:get(<<"restricted_services_admin">>, Json, []),
+		
 		put(parse_step, config),
 		{ok, #config{ cat_host_alias = HostAlias,
 				 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
@@ -417,12 +439,12 @@ parse_config(Json, Filename) ->
 				 static_file_path = StaticFilePath,
 				 static_file_path_map = StaticFilePathMap,
 				 static_file_path_probing = StaticFilePathProbing,
-				 cat_disable_services = maps:get(<<"disable_services">>, Json, []),
-				 cat_enable_services = maps:get(<<"enable_services">>, Json, []),
-				 cat_disable_services_owner = maps:get(<<"disable_services_owner">>, Json, []),
-				 cat_enable_services_owner = maps:get(<<"enable_services_owner">>, Json, []),
-				 cat_restricted_services_owner = maps:get(<<"restricted_services_owner">>, Json, []),
-				 cat_restricted_services_admin = maps:get(<<"restricted_services_admin">>, Json, []),
+				 cat_disable_services = DisableServices,
+				 cat_enable_services = EnableServices,
+				 cat_disable_services_owner = DisableServicesOwner,
+				 cat_enable_services_owner = EnableServicesOwner,
+				 cat_restricted_services_owner = RestrictedServicesOwner,
+				 cat_restricted_services_admin = RestrictedServicesAdmin,
 				 ems_hostname = HostnameBin,
 				 ems_host = list_to_atom(Hostname),
 				 ems_file_dest = Filename,
@@ -461,7 +483,7 @@ parse_config(Json, Filename) ->
 				 ssl_cacertfile = maps:get(<<"ssl_cacertfile">>, Json, undefined),
 				 ssl_certfile = maps:get(<<"ssl_certfile">>, Json, undefined),
 				 ssl_keyfile = maps:get(<<"ssl_keyfile">>, Json, undefined),
-				 sufixo_email_institucional = binary_to_list(maps:get(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
+				 sufixo_email_institucional = SufixoEmailInstitucional,
 				 log_show_response = LogShowResponse,
 				 log_show_payload = LogShowPayload,
 				 log_show_response_max_length = LogShowResponseMaxLength,

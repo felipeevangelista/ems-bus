@@ -140,7 +140,7 @@
 % Limits of API query
 -define(MAX_LIMIT_API_QUERY, 99999999).
 -define(MAX_OFFSET_API_QUERY, 99999).
--define(MAX_TIME_ODBC_QUERY, 360000). % 6 minutos
+-define(MAX_TIME_ODBC_QUERY, 960000).
 -define(MAX_ID_RECORD_QUERY, 9999999999).  
 
 % Timeout in ms to expire cache of get request (ems_dispatcher_cache)
