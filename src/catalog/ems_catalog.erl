@@ -405,6 +405,12 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 								 log_show_response = LogShowResponseDefault,
 								 log_show_payload = LogShowPayloadDefault}) ->
 	try
+		put(parse_step, ctrl_path),
+		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
+		
+		put(parse_step, ctrl_file),
+		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
+
 		put(parse_step, name),
 		Name = ems_util:parse_name_service(maps:get(<<"name">>, Map)),
 		
@@ -464,7 +470,10 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		{ModuleName, ModuleNameCanonical, FunctionName} = ems_util:parse_service_service(ServiceImpl),
 		
 		put(parse_step, comment),
-		Comment = ?UTF8_STRING(maps:get(<<"comment">>, Map, <<>>)),
+		case CtrlFile =:= <<>> of
+			true ->  Comment = ?UTF8_STRING(maps:get(<<"comment">>, Map, <<>>));
+			false -> Comment = maps:get(<<"comment">>, Map, <<>>)
+		end,
 		
 		put(parse_step, version),
 		Version = maps:get(<<"version">>, Map, <<"1.0.0">>),
@@ -566,12 +575,6 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 							true ->  maps:get(<<"content_type">>, Map, ?CONTENT_TYPE_JSON);
 							false -> maps:get(<<"content-type">>, Map, ?CONTENT_TYPE_JSON)
 					  end,
-		
-		put(parse_step, ctrl_path),
-		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
-		
-		put(parse_step, ctrl_file),
-		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
 		
 		put(parse_step, path),
 		Path0 = ems_util:parse_file_name_path(maps:get(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),

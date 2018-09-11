@@ -910,11 +910,11 @@ utf8_string_win(Text) ->
 		case check_encoding_bin(Text) of
 			utf8 -> normalize_field_utf8(Text);
 			latin1 -> normalize_field_utf8(Text);
-			Other -> Other
+			_ -> Text
 		end
 	catch
 		_Exception:Reason -> 
-			?DEBUG("utf8_string_linux convert ~p error: ~p\n", [Text, Reason]),
+			?DEBUG("utf8_string_win convert ~p error: ~p\n", [Text, Reason]),
 			Text
 	end.
 
@@ -930,7 +930,7 @@ utf8_string_linux(Text) ->
 		case check_encoding_bin(Text) of
 			utf8 -> normalize_field_utf8(Text);
 			latin1 -> normalize_field_utf8(Text);
-			Other -> Other
+			_ -> Text
 		end
 	catch
 		_Exception:Reason -> 
