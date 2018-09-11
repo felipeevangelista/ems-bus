@@ -1792,7 +1792,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 								 lang = LangService,
 								 timeout = TimeoutService,
 								 http_max_content_length = HttpMaxContentLengthService,
-								 authorization = AuthorizationService}, 
+								 authorization = AuthorizationService,
+								 expires = ExpiresService}, 
 			 ParamsMap, 
 			 QuerystringMap} -> 
 				case cowboy_req:body_length(CowboyReq) of
@@ -1962,20 +1963,20 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 														HttpHeaderOptions#{<<"expires">> => Expires,
 																		   <<"cache-control">> => CacheControlService};
 													true ->
-														HttpHeaderOptions#{<<"ems-server">> => ?SERVER_NAME,
-																		   <<"ems-rowid">> => integer_to_binary(Rowid),
-																		   <<"ems-hash">> => integer_to_binary(ReqHash),
-																		   <<"ems-catalog">> => ServiceName,
-																		   <<"ems-owner">> => OwnerService,
-																		   <<"ems-group">> => GroupService,
-																		   <<"ems-version">> => ServiceVersion,
-																		   <<"ems-url">> => ServiceUrl,
-																		   <<"ems-path">> => PathService,
-																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
-																		   <<"ems-cache_control">> => CacheControlService,
-																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
-																		   <<"ems-lang">> => LangService,
-																		   <<"ems-authorization">> => atom_to_binary(AuthorizationService, utf8),
+														HttpHeaderOptions#{<<"X-ems-rowid">> => integer_to_binary(Rowid),
+																		   <<"X-ems-hash">> => integer_to_binary(ReqHash),
+																		   <<"X-ems-catalog">> => ServiceName,
+																		   <<"X-ems-owner">> => OwnerService,
+																		   <<"X-ems-group">> => GroupService,
+																		   <<"X-ems-version">> => ServiceVersion,
+																		   <<"X-ems-url">> => ServiceUrl,
+																		   <<"X-ems-path">> => PathService,
+																		   <<"X-ems-use_re">> => ems_util:boolean_to_binary(UseReService),
+																		   <<"X-ems-cache_control">> => CacheControlService,
+																		   <<"X-ems-timeout">> => integer_to_binary(TimeoutService),
+																		   <<"X-ems-expires">> => integer_to_binary(ExpiresService),
+																		   <<"X-ems-lang">> => LangService,
+																		   <<"x-ems-authorization">> => atom_to_binary(AuthorizationService, utf8),
 																		   <<"expires">> => Expires}
 												end;
 											_ -> 
@@ -1983,21 +1984,21 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 													false ->
 														HttpHeaderDefault#{<<"cache_control">> => CacheControlService};
 													true ->
-														HttpHeaderDefault#{<<"ems-server">> => ?SERVER_NAME,
-																		   <<"cache-control">> => CacheControlService,
-																		   <<"ems-rowid">> => integer_to_binary(Rowid),
-																		   <<"ems-hash">> => integer_to_binary(ReqHash),
-																		   <<"ems-catalog">> => ServiceName,
-																		   <<"ems-owner">> => OwnerService,
-																		   <<"ems-group">> => GroupService,
-																		   <<"ems-version">> => ServiceVersion,
-																		   <<"ems-url">> => ServiceUrl,
-																		   <<"ems-path">> => PathService,
-																		   <<"ems-use_re">> => ems_util:boolean_to_binary(UseReService),
-																		   <<"ems-cache_control">> => CacheControlService,
-																		   <<"ems-timeout">> => integer_to_binary(TimeoutService),
-																		   <<"ems-lang">> => LangService,
-																		   <<"ems-authorization">> => atom_to_binary(AuthorizationService, utf8)}
+														HttpHeaderDefault#{<<"X-ems-rowid">> => integer_to_binary(Rowid),
+																		   <<"X-ems-hash">> => integer_to_binary(ReqHash),
+																		   <<"X-ems-catalog">> => ServiceName,
+																		   <<"X-ems-owner">> => OwnerService,
+																		   <<"X-ems-group">> => GroupService,
+																		   <<"X-ems-version">> => ServiceVersion,
+																		   <<"X-ems-url">> => ServiceUrl,
+																		   <<"X-ems-path">> => PathService,
+																		   <<"X-ems-use_re">> => ems_util:boolean_to_binary(UseReService),
+																		   <<"X-ems-cache_control">> => CacheControlService,
+																		   <<"X-ems-timeout">> => integer_to_binary(TimeoutService),
+																		   <<"X-ems-expires">> => integer_to_binary(ExpiresService),
+																		   <<"X-ems-lang">> => LangService,
+																		   <<"X-ems-authorization">> => atom_to_binary(AuthorizationService, utf8),
+   																		   <<"cache-control">> => CacheControlService}
 												end
 									  end
 				},	
@@ -2014,7 +2015,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 																code = 200, 
 																reason = enoent_service_contract,
 																type = Type,  % use original verb of request
-																response_header = HttpHeaderOptions#{<<"ems_status">> => StatusText},
+																response_header = HttpHeaderOptions#{<<"X-ems-status">> => StatusText},
 																response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
 																latency = Latency,
 																status_text = StatusText};
@@ -2037,7 +2038,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 															code = 404, 
 															reason = enoent_service_contract,
 															type = Type,  % use original verb of request
-															response_header = HttpHeaderDefault#{<<"ems_status">> => StatusText},
+															response_header = HttpHeaderDefault#{<<"X-ems-status">> => StatusText},
 															response_data = ?ENOENT_SERVICE_CONTRACT_JSON,
 															latency = Latency,
 															status_text = StatusText};
@@ -2543,7 +2544,7 @@ load_from_file_req(Request = #request{url = Url,
 									  if_none_match = IfNoneMatchReq,
 									  timestamp = Timestamp,
 									  response_header = ResponseHeader,
-									  service = #service{expires = ExpiresMinute,
+									  service = #service{expires = ExpiresService,
 														 path = Path,
 														 show_debug_response_headers = ShowDebugResponseHeaders}}) ->
 	Filename = Path ++ string:substr(Url, string:len(hd(string:tokens(Url, "/")))+2),
@@ -2553,7 +2554,7 @@ load_from_file_req(Request = #request{url = Url,
 			MimeType = mime_type(filename:extension(Filename)),
 			ETag = integer_to_binary(erlang:phash2({FSize, MTime}, 16#ffffffff)),
 			LastModified = cowboy_clock:rfc1123(MTime),
-			ExpireDate = date_add_minute(Timestamp, ExpiresMinute + 120), % add +120min (2h) para ser horário GMT
+			ExpireDate = date_add_minute(Timestamp, ExpiresService + 180), 
 			Expires = cowboy_clock:rfc1123(ExpireDate),
 			case ShowDebugResponseHeaders of
 				true ->
@@ -2561,7 +2562,7 @@ load_from_file_req(Request = #request{url = Url,
 										<<"etag">> => ETag,
 										<<"last-modified">> => LastModified,
 										<<"expires">> => Expires,
-										<<"ems-filename">> => list_to_binary(Filename)
+										<<"X-ems-filename">> => list_to_binary(Filename)
 									};
 				false ->
 					ResponseHeader2 = ResponseHeader#{
@@ -3486,5 +3487,5 @@ format_rest_status(Code, Reason, ReasonDetail, ReasonException, Latency) ->
 						   end;
 						false -> <<"error">>
 				  end, <<">> (">>, integer_to_binary(Latency), 
-		<<"ms)\n}">>]).
+		<<"ms)">>]).
 				  

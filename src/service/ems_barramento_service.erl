@@ -13,7 +13,10 @@
 
 -export([execute/1]).
   
-execute(Request = #request{response_header = ResponseHeader}) -> 
+execute(Request = #request{timestamp = Timestamp,
+						   response_header = ResponseHeader,
+						   service = #service{cache_control = CacheControlService,
+											  expires = ExpiresMinute}}) -> 
 	Conf = ems_config:getConfig(),
 	case ems_util:get_param_url(<<"name">>, undefined, Request) of
 		undefined ->
@@ -34,7 +37,7 @@ execute(Request = #request{response_header = ResponseHeader}) ->
 									case maps:is_key(<<"error">>, AuthParams) of
 										true -> 
 											{error, Request#request{code = 400, 
-																	response_header = ResponseHeader#{<<"cache-control">> => ?CACHE_CONTROL_NO_CACHE},
+																	reason = eclient_payload_return_error,
 																	response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 											};
 										false ->
@@ -45,12 +48,14 @@ execute(Request = #request{response_header = ResponseHeader}) ->
 													case ems_util:json_decode_as_map(list_to_binary(ClientPayload)) of
 														{ok, []} ->
 															{error, Request#request{code = 400, 
+																					reason = eclient_payload_isempty,
 																					response_data = ?ENOENT_JSON}
 															};
 														{ok, [ClientParams]} -> 
 															case maps:is_key(<<"error">>, ClientParams) of
 																true -> 
 																	{error, Request#request{code = 400, 
+																							reason = eclient_payload_error,
 																							response_data = ?ENOENT_JSON}
 																	};
 																false ->
@@ -69,34 +74,42 @@ execute(Request = #request{response_header = ResponseHeader}) ->
 																		<<"\"url_mask\":"/utf8>>, ems_util:boolean_to_binary(Conf#config.rest_url_mask), <<","/utf8>>,
 																		<<"\"erlangms_version\":\""/utf8>>, list_to_binary(ems_util:version()), <<"\""/utf8>>,
 																		<<"}"/utf8>>]),
+																	ExpireDate = ems_util:date_add_minute(Timestamp, ExpiresMinute + 180),
+																	Expires = cowboy_clock:rfc1123(ExpireDate),
 																	{ok, Request#request{code = 200,
-																						 response_header = ResponseHeader#{<<"cache-control">> => ?CACHE_CONTROL_1_DAYS},
+																						 response_header = ResponseHeader#{<<"cache-control">> => CacheControlService,
+																														   <<"expires">> => Expires},
 																						 response_data = ContentData}
 																	}
 															end;
 														_ -> 						
 															{error, Request#request{code = 400, 
+																					reason = einvalid_decode_client_json,
 																					response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 															}
 													end;
 												_ ->
 													{error, Request#request{code = 400, 
+																			reason = einvalid_client_request,
 																			response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 													}
 											end
 									end;
 								_ ->
 									{error, Request#request{code = 400, 
+															reason = einvalid_decode_client_json,
 															response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 									}
 							end;
 						_ ->
 							{error, Request#request{code = 400, 
+													reason = einvalid_client_request_authorization,
 													response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 							}
 					end;
 				_ ->
 					{error, Request#request{code = 400, 
+											reason = enoent_user_admin,
 											response_data = <<"{\"error\": \"enoent_user_admin\"}"/utf8>>}
 					}
 			end

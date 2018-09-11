@@ -256,11 +256,11 @@ parse_http_headers(HttpHeaders, ShowDebugResponseHeaders, Hostname) ->
 	parse_http_headers_(maps:to_list(HttpHeaders), ShowDebugResponseHeaders, Hostname, []).
 
 parse_http_headers_([], ShowDebugResponseHeaders, Hostname, Result) ->
-	HttpHeaders = maps:from_list(Result),
-	HttpHeaders1 = maps:remove(<<"ems-node">>, HttpHeaders),
+	HttpHeaders1 = maps:from_list(Result),
 	case ShowDebugResponseHeaders of
-		true -> HttpHeaders1#{<<"ems-node">> => ems_util:node_binary(),
-							  <<"ems_hostname">> => Hostname};
+		true -> HttpHeaders1#{<<"X-ems-server">> => ?SERVER_NAME,
+							  <<"X-ems-node">> => ems_util:node_binary(),
+							  <<"X-ems-hostname">> => Hostname};
 		false -> HttpHeaders1
 	end;
 parse_http_headers_([{Key, Value} = Item|T], ShowDebugResponseHeaders, Hostname, Result) when is_binary(Value) ->

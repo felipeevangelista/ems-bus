@@ -44,28 +44,46 @@ stop() ->
 -spec get_connection(#service_datasource{}) -> {ok, #service_datasource{}} | {error, eunavailable_odbc_connection}.
 get_connection(Datasource = #service_datasource{id = Id}) ->
 	try
-		case gen_server:call(?SERVER, {create_connection, Datasource}, 60000) of
+		case gen_server:call(?SERVER, {create_connection, Datasource}, 8000) of
 			{ok, _Datasource2} = Result ->
 				?DEBUG("ems_odbc_pool get_connection from datasource id ~p.", [Id]),
 				Result;
-			{error, Reason} -> 
-				?DEBUG("ems_odbc_pool get_connection exception from datasource id ~p. Reason: ~p.", [Id, Reason]),
-				{error, eunavailable_odbc_connection}
+			_ -> 
+				case gen_server:call(?SERVER, {create_connection, Datasource}, 16000) of
+					{ok, _Datasource2} = Result2 ->
+						?DEBUG("ems_odbc_pool get_connection from datasource id ~p after the second attempt.", [Id]),
+						Result2;
+					{error, Reason2} -> 
+						?DEBUG("ems_odbc_pool get_connection eunavailable_odbc_connection from datasource id ~p. Reason: ~p.", [Id, Reason2]),
+						{error, eunavailable_odbc_connection}
+				end
 		end
 	catch
-		_ : Reason2 ->
-			?DEBUG("ems_odbc_pool get_connection catch exception from datasource id ~p. Reason: ~p.", [Id, Reason2]),
-			{error, eunavailable_odbc_connection}
+		_:_ -> %% provavelmente timeout
+			try
+				case gen_server:call(?SERVER, {create_connection, Datasource}, 16000) of
+					{ok, _Datasource3} = Result3 ->
+						?DEBUG("ems_odbc_pool get_connection from datasource id ~p after timeout.", [Id]),
+						Result3;
+					{error, Reason3} -> 
+						?DEBUG("ems_odbc_pool get_connection eunavailable_odbc_connection from datasource id ~p. Reason: ~p.", [Id, Reason3]),
+						{error, eunavailable_odbc_connection}
+				end
+			catch 
+				_:_ ->
+					?DEBUG("ems_odbc_pool get_connection eunavailable_odbc_connection from datasource id ~p. Reason: eodbc_connection_timeout.", [Id]),
+					{error, eunavailable_odbc_connection}
+			end
 	end.
 
 
 -spec release_connection(#service_datasource{}) -> ok.
 release_connection(Datasource = #service_datasource{id = Id}) ->
 	try
-		gen_server:call(?SERVER, {release_connection, Datasource}, 60000)
+		gen_server:call(?SERVER, {release_connection, Datasource}, 15000)
 	catch 
 		_: Reason -> 
-			?DEBUG("ems_odbc_pool release_connection catch exception from datasource id ~p. Reason: ~p.", [Id, Reason]),
+			?DEBUG("ems_odbc_pool release_connection exception from datasource id ~p. Reason: ~p.", [Id, Reason]),
 			ok
 	end.
 

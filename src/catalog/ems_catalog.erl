@@ -553,7 +553,10 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		end,
 		
 		put(parse_step, expires_minute),
-		ExpiresMinute = ems_util:parse_range(maps:get(<<"expires_minute">>, Map, 0), ?SERVICE_MIN_EXPIRE_MINUTE, ?SERVICE_MAX_EXPIRE_MINUTE, einvalid_expires_minute),
+		case maps:is_key(<<"expires_minute">>, Map) of
+			true -> ExpiresMinute = ems_util:parse_range(maps:get(<<"expires_minute">>, Map, 0), ?SERVICE_MIN_EXPIRE_MINUTE, ?SERVICE_MAX_EXPIRE_MINUTE, einvalid_expires_minute);
+			false -> ExpiresMinute = ems_util:parse_range(maps:get(<<"expires">>, Map, 0), ?SERVICE_MIN_EXPIRE_MINUTE, ?SERVICE_MAX_EXPIRE_MINUTE, einvalid_expires_minute)
+		end,
 		
 		put(parse_step, public),
 		Public = ems_util:parse_bool(maps:get(<<"public">>, Map, true)),

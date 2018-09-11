@@ -181,6 +181,7 @@
 -define(OK_JSON, <<"{\"ok\": true}"/utf8>>).
 -define(ENOENT_JSON, <<"{\"error\": \"enoent\"}"/utf8>>).
 -define(ENOENT_SERVICE_CONTRACT_JSON, <<"{\"error\": \"enoent_service_contract\"}"/utf8>>).
+-define(EUNAVAILABLE_SERVICE_JSON, <<"{\"error\": \"eunavailable_service\"}"/utf8>>).
 -define(EINVALID_HTTP_REQUEST, <<"{\"error\": \"einvalid_request\"}"/utf8>>).
 -define(ETIMEOUT_SERVICE, <<"{\"error\": \"etimeout_service\"}"/utf8>>).
 -define(EMPTY_LIST_JSON, <<"[]"/utf8>>).
