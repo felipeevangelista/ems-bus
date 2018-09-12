@@ -57,8 +57,9 @@ execute_script([H|T], Output) ->
 				ems_logger:warn("ems_cmd_service output is empty."),
 				execute_script(T, Output); 
 			Result -> 
-				ems_logger:info("ems_cmd_service output: ~p.", [Result]),
-				execute_script(T, [Result | Output])
+				Result2 = unicode:characters_to_binary(Result),
+				ems_logger:info("ems_cmd_service output: ~p.", [Result2]),
+				execute_script(T, [Result2 | Output])
 		end
 	catch
 		_:Reason -> 
