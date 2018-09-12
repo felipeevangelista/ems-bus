@@ -1781,6 +1781,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 		},	
 		case ems_catalog_lookup:lookup(Request) of
 			{Service = #service{name = ServiceName,
+								 service = ServiceService,	
 								 url = ServiceUrl,
 								 content_type = ContentTypeService,
 								 owner = OwnerService,
@@ -1966,6 +1967,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 														HttpHeaderOptions#{<<"X-ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"X-ems-hash">> => integer_to_binary(ReqHash),
 																		   <<"X-ems-catalog">> => ServiceName,
+																		   <<"X-ems-service">> => ServiceService,
 																		   <<"X-ems-owner">> => OwnerService,
 																		   <<"X-ems-group">> => GroupService,
 																		   <<"X-ems-version">> => ServiceVersion,
@@ -1987,6 +1989,7 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 														HttpHeaderDefault#{<<"X-ems-rowid">> => integer_to_binary(Rowid),
 																		   <<"X-ems-hash">> => integer_to_binary(ReqHash),
 																		   <<"X-ems-catalog">> => ServiceName,
+																		   <<"X-ems-service">> => ServiceService,
 																		   <<"X-ems-owner">> => OwnerService,
 																		   <<"X-ems-group">> => GroupService,
 																		   <<"X-ems-version">> => ServiceVersion,
