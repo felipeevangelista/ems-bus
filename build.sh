@@ -272,8 +272,11 @@ else
 		echo "Clearing the db folder before build..."
 		rm -Rf priv/db
 	fi	
-
+	
 	echo "Compiling the project erlangms..."
+
+	export CFLAGS='-std=c11 -O3'
+
 	if [ "$SKIP_DEPS" = "false" ]; then
 		clean_deps
 		if [ "$SKIP_CLEAN" = "false" ]; then	
