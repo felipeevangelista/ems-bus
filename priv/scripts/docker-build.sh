@@ -129,7 +129,7 @@ ERLANGMS_DOCKER_GIT_URL="https://github.com/erlangMS/docker"
 # deixa em branço para pedir na execução do build
 MODE_BUILD=""
 BUILD_FROM_MASTER="false"
-
+SOURCE_PATH=""
 
 # Registry server daemon to catalog images
 REGISTRY_IP=""
@@ -282,12 +282,17 @@ prepare_project_to_build(){
 		echo "Preparing $APP_NAME to build in production mode, please wait..."
 	fi
 
+	# Entra na pasta onde será feito o clone do projeto
+	cd $STAGE_AREA/docker/build
+
 	# Clone git project app if it does not emsbus
 	echo "Git clone $APP_URL_GIT $APP_NAME"
 	if ! git clone $APP_URL_GIT $APP_NAME 2> /dev/null ; then
 		die "Fatal: Could not access project repository $APP_URL_GIT, check your network connection or password!"
 	fi
 	 
+	
+	# Entra no projeto
 	cd $APP_NAME
 	
 	# Faz clone da última tag gerada do projeto se não foi informado o parâmetro --tag
@@ -305,6 +310,13 @@ prepare_project_to_build(){
 		fi
 	fi
 	
+	# Se existe um diretório frontend, move para lá pois é onde está o código fonte em projetos Kubernetes
+	if [ -d frontend ]; then
+		cd frontend
+	fi
+	SOURCE_PATH=`pwd`
+	echo "Source path: $SOURCE_PATH"
+	
 	# Get expose http and https ports from Dockerfile
 	if [ -z "$HTTP_PORT" ]; then
 		HTTP_PORT=$(grep ems_http_server.tcp_port emsbus.conf  | sed -r 's/[^0-9]//g')
@@ -318,9 +330,9 @@ prepare_project_to_build(){
 	[ -z "$HTTPS_PORT" ] && die "HTTPS port of project not informed, build canceled. Enter the parameter --https_port!"
 
 	# Copia o arquivo emsbus.conf para a pasta conf do docker template
-	mkdir -p ../../conf/
-	cp emsbus.conf ../../conf/
-	cd ../../
+	mkdir -p $STAGE_AREA/conf  #mkdir -p ../../conf/
+	cp emsbus.conf  $STAGE_AREA/conf  #cp emsbus.conf ../../conf/
+	cd $STAGE_AREA/docker   #cd ../../ 
 	
 	# Atualiza o arquivo Dockerfile com as portas expostas
 	sed -i "s/{{ HTTP_PORT }}/$HTTP_PORT/"  Dockerfile
@@ -338,7 +350,7 @@ prepare_project_to_build(){
 	sed -i "s/{{ APP_NAME }}/$APP_NAME/g"  docker-compose.yml
 	sed -i "s/{{ APP_NAME }}/$APP_NAME/g"  docker-compose.yml
 	
-	cd build/$APP_NAME
+	cd $SOURCE_PATH  	#cd build/$APP_NAME
 }
 
 # Build app (if necessary)
@@ -381,9 +393,9 @@ build_app(){
 			die "An error occurred in the npm run build command. Build canceled."
 		fi
 
-		echo "Copy sources files to ../../app/$APP_NAME..."
-		mv dist/ ../../app/$APP_NAME/
-		cd ../../
+		echo "Copy sources files to $STAGE_AREA/docker/app/$APP_NAME/..."
+		mv $SOURCE_PATH/dist/ $STAGE_AREA/docker/app/$APP_NAME/   #mv dist/ ../../app/$APP_NAME/
+		cd $STAGE_AREA/docker/build  	#cd ../../
 	else
 		#  ##################### BUILD STATIC FILE PROJECT ######################
 	
@@ -398,6 +410,9 @@ build_app(){
 # Build docker image
 build_image(){
 	echo "Start build docker image $APP_NAME, please wait (Root credentials necessary)..."
+
+	# Entra na pasta onde será feito o build da imagem
+	cd $STAGE_AREA/docker/build/$APP_NAME
 
 	# Format app version do docker
 	if [ "$BUILD_FROM_MASTER" = "true" ]; then
@@ -639,7 +654,7 @@ push_registry(){
 # O build não altera nenhum arquivo do projeto no git pois tudo é realizado na stage.
 make_stage_area(){
 	echo "Preparing state area for build temporary files, please wait..."
-	STAGE_AREA=/tmp/erlangms/docker/build_$$/
+	STAGE_AREA=/tmp/erlangms/docker/build_$$
 	mkdir -p $STAGE_AREA
 	cd $STAGE_AREA
 	echo "Stage area is $STAGE_AREA"

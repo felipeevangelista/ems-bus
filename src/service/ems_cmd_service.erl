@@ -41,16 +41,29 @@ execute_script([], Output) ->
 	try
 		iolist_to_binary(lists:reverse(Output))
 	catch
-		Exception:Reason -> 
-			ems_logger:error("ems_cmd_service exception ~p. Reason: ~p.", [Exception, Reason]),
+		_:Reason -> 
+			ems_logger:error("ems_cmd_service exception on convert output to binary. Reason: ~p.", [Reason]),
 			<<"">>
 	end;
 execute_script([H|T], Output) ->
-	case os:cmd(binary_to_list(H), #{ max_size => 8000000 }) of
-		"sudo: no tty present and no askpass program specified\n" -> execute_script(T, Output);
-		undefined -> execute_script(T, Output); 
-		Result -> execute_script(T, [Result | Output])
-	end.
+	try
+		case os:cmd(binary_to_list(H), #{ max_size => 12000000 }) of
+			"sudo: no tty present and no askpass program specified\n" -> 
+				ems_logger:warn("ems_cmd_service cannot capture output."),
+				execute_script(T, Output);
+			undefined -> 
+				ems_logger:warn("ems_cmd_service output empty.", []),
+				execute_script(T, Output); 
+			Result -> 
+				ems_logger:info("ems_cmd_service output: ~p.", [Output]),
+				execute_script(T, [Result | Output])
+		end
+	catch
+		_:Reason -> 
+			ems_logger:error("ems_cmd_service exception on execute script. Reason: ~p.", [Reason]),
+			<<"">>
+	end;
+	
 	
 	
     
