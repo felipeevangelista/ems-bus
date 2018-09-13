@@ -371,6 +371,9 @@ parse_config(Json, Filename) ->
 		put(parse_step, result_cache),
 		ResultCache = ems_util:parse_result_cache(maps:get(<<"result_cache">>, Json, ?TIMEOUT_DISPATCHER_CACHE)),
 
+		put(parse_step, result_cache_shared),
+		ResultCacheShared = ems_util:parse_bool(maps:get(<<"result_cache_shared">>, Json, ?RESULT_CACHE_SHARED)),
+
 		put(parse_step, tcp_allowed_address),
 		TcpAllowedAddress = parse_tcp_allowed_address(maps:get(<<"tcp_allowed_address">>, Json, all)),
 		
@@ -450,6 +453,7 @@ parse_config(Json, Filename) ->
 				 ems_file_dest = Filename,
 				 ems_debug = Debug,
 				 ems_result_cache = ResultCache,
+				 ems_result_cache_shared = ResultCacheShared,
 				 ems_datasources = Datasources,
 				 show_debug_response_headers = ShowDebugResponseHeaders,
 				 tcp_listen_address	= TcpListenAddress,
@@ -523,6 +527,7 @@ get_default_config() ->
 			 ems_file_dest				= "",
 			 ems_debug					= false,
 			 ems_result_cache			= ?TIMEOUT_DISPATCHER_CACHE,
+			 ems_result_cache_shared	= ?RESULT_CACHE_SHARED,
 			 ems_datasources			= #{},
 			 show_debug_response_headers		= false,
 			 tcp_listen_address			= TcpListenAddress,

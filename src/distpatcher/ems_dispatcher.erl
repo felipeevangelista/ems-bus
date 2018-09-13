@@ -534,6 +534,7 @@ dispatch_middleware_function(Request = #request{reason = ok,
 												content_length = ContentLength,
 												service = #service{middleware = Middleware,
 												 				   result_cache = ResultCache,
+												 				   result_cache_shared = ResultCacheShared,
 																   service_error_metric_name = ServiceErrorMetricName}},
 							 ShowDebugResponseHeaders) ->
 	T3 = ems_util:get_milliseconds(),
@@ -569,6 +570,7 @@ dispatch_middleware_function(Request = #request{reason = ok,
 																	status_text = StatusText};
 									true ->
 										Request3 = Request2#request{response_header = ResponseHeader#{<<"X-ems-result-cache">> => integer_to_binary(ResultCache),
+																									  <<"X-ems-result-cache-shared">> => ems_util:boolean_to_binary(ResultCacheShared),
 																									  <<"X-ems-status">> => StatusText},
 																	latency = T3 - T1,
 																	status = req_done,
@@ -583,11 +585,10 @@ dispatch_middleware_function(Request = #request{reason = ok,
 																		status = req_done,
 																		status_text = StatusText}};
 									true ->
-										{ok, request, Request2#request{response_header = ResponseHeader#{<<"X-ems-result-cache">> => <<"0"/utf8>>,
-																										 <<"X-ems-status">> => StatusText},
-																		latency = T3 - T1,
-																		status = req_done,
-																		status_text = StatusText}}
+										{ok, request, Request2#request{response_header = ResponseHeader#{<<"X-ems-status">> => StatusText},
+																	   latency = T3 - T1,
+																	   status = req_done,
+																	   status_text = StatusText}}
 								end
 						end;
 					false ->

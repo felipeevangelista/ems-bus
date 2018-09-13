@@ -144,7 +144,7 @@
 -define(MAX_ID_RECORD_QUERY, 9999999999).  
 
 % Timeout in ms to expire cache of get request (ems_dispatcher_cache)
--define(TIMEOUT_DISPATCHER_CACHE, 23000).
+-define(TIMEOUT_DISPATCHER_CACHE, 30000).
 
 % Number of datasource entries by odbc connection pool
 -define(MAX_CONNECTION_BY_POOL, 300).
@@ -238,6 +238,7 @@
 -define(SUFIXO_EMAIL_INSTITUCIONAL, "@unb.br").
 
 -define(RESULT_CACHE_MAX_SIZE_ENTRY, 524288). % 512KB
+-define(RESULT_CACHE_SHARED, true). 
 
 
 
@@ -260,6 +261,7 @@
 				 ems_file_dest :: string(),							%% Nome do arquivo de configuração (útil para saber o local do arquivo)
 				 ems_debug :: boolean(),							%% Habilita o modo debug
 				 ems_result_cache  :: non_neg_integer(),
+				 ems_result_cache_shared :: non_neg_integer(),
 				 ems_datasources :: map(),
 				 show_debug_response_headers :: boolean(),			%% Add debug headers in HTTP response headers
 				 tcp_listen_address :: list(),

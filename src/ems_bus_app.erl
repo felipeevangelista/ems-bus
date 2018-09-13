@@ -54,7 +54,8 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  log_file_max_size: ~p bytes.", [Conf#config.log_file_max_size]),
 			ems_logger:info("  www_path: ~p.", [maps:get(<<"www_path">>, Conf#config.static_file_path_map, <<>>)]),
 			ems_logger:info("  show_debug_response_headers: ~p.", [Conf#config.show_debug_response_headers]),
-			ems_logger:info("  ems_result_cache: ~pms.", [Conf#config.ems_result_cache]),
+			ems_logger:info("  result_cache: ~pms.", [Conf#config.ems_result_cache]),
+			ems_logger:info("  result_cache_shared: ~p.", [Conf#config.ems_result_cache_shared]),
 			ems_logger:info("  http_max_content_length: ~p bytes.", [Conf#config.http_max_content_length]),
 			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;

@@ -1794,7 +1794,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 								 timeout = TimeoutService,
 								 http_max_content_length = HttpMaxContentLengthService,
 								 authorization = AuthorizationService,
-								 expires = ExpiresService}, 
+								 expires = ExpiresService,
+								 result_cache_shared = ResultCacheSharedService}, 
 			 ParamsMap, 
 			 QuerystringMap} -> 
 				case cowboy_req:body_length(CowboyReq) of
@@ -1940,7 +1941,10 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 						QuerystringMap2 = QuerystringMap,
 						CowboyReq2 = CowboyReq
 				end,
-				ReqHash = erlang:phash2([Url, QuerystringMap2, ContentLength, ContentTypeIn2, AuthorizationService, IpBin, UserAgent, Payload]),
+				case ResultCacheSharedService of
+					true ->	ReqHash = erlang:phash2([Url, QuerystringMap2, ContentTypeIn2, Payload]);
+					false -> ReqHash = erlang:phash2([Url, QuerystringMap2, ContentTypeIn2, AuthorizationService, IpBin, UserAgent, Payload])
+				end,
 				Request2 = Request#request{
 					type = Type, % use original verb of request
 					querystring_map = QuerystringMap2,
@@ -1973,8 +1977,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 																		   <<"X-ems-version">> => ServiceVersion,
 																		   <<"X-ems-url">> => ServiceUrl,
 																		   <<"X-ems-path">> => PathService,
-																		   <<"X-ems-use_re">> => ems_util:boolean_to_binary(UseReService),
-																		   <<"X-ems-cache_control">> => CacheControlService,
+																		   <<"X-ems-use-re">> => ems_util:boolean_to_binary(UseReService),
+																		   <<"X-ems-cache-control">> => CacheControlService,
 																		   <<"X-ems-timeout">> => integer_to_binary(TimeoutService),
 																		   <<"X-ems-expires">> => integer_to_binary(ExpiresService),
 																		   <<"X-ems-lang">> => LangService,
@@ -1995,8 +1999,8 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 																		   <<"X-ems-version">> => ServiceVersion,
 																		   <<"X-ems-url">> => ServiceUrl,
 																		   <<"X-ems-path">> => PathService,
-																		   <<"X-ems-use_re">> => ems_util:boolean_to_binary(UseReService),
-																		   <<"X-ems-cache_control">> => CacheControlService,
+																		   <<"X-ems-use-re">> => ems_util:boolean_to_binary(UseReService),
+																		   <<"X-ems-cache-control">> => CacheControlService,
 																		   <<"X-ems-timeout">> => integer_to_binary(TimeoutService),
 																		   <<"X-ems-expires">> => integer_to_binary(ExpiresService),
 																		   <<"X-ems-lang">> => LangService,
