@@ -131,6 +131,11 @@
 -define(SERVICE_MIN_EXPIRE_MINUTE, 0).
 -define(SERVICE_MAX_EXPIRE_MINUTE, 525601). % 1 ano
 
+% Range de tempo para iniciar processos kernel
+-define(START_TIMEOUT, 1000).
+-define(START_TIMEOUT_MIN, 0).
+-define(START_TIMEOUT_MAX, 86400000).
+
 % Caminho do utilitário que importa dados csv para um banco sqlite
 -define(CSV2SQLITE_PATH, filename:join([?PRIV_PATH, "scripts", "csv2sqlite.py"])). 
 

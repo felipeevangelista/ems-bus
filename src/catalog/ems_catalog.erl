@@ -674,8 +674,8 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		CtrlHash = erlang:phash2(Map),
 		
 		put(parse_step, start_timeout),
-		StartTimeout = maps:get(<<"start_timeout">>, Map, undefined),
-		
+		StartTimeout = ems_util:parse_range(maps:get(<<"start_timeout">>, Map, ?START_TIMEOUT), ?START_TIMEOUT_MIN, ?START_TIMEOUT_MAX, einvalid_start_timeout),
+	
 		put(parse_step, metrics),
 		ServiceExecMetricName = list_to_atom("service_" ++ integer_to_list(Rowid) ++ "_exec"),
 		ServiceResultCacheHitMetricName = list_to_atom("service_" ++ integer_to_list(Rowid) ++ "_result_cache_hit"),
