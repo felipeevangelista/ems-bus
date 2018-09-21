@@ -61,7 +61,6 @@
 % Sonda a lista static_file_path para localizar contratos de serviços
 -define(STATIC_FILE_PATH_PROBING, false).
 
-
 % Caminho do arquivo de clientes
 -define(CLIENT_PATH, filename:join(?CONF_PATH, "clients.json")).
 

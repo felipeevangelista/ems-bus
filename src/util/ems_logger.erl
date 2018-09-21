@@ -393,7 +393,7 @@ checkpoint_arquive_log(State = #state{log_file_handle = CurrentIODevice,
 	close_filename_device(CurrentIODevice, CurrentLogFilename),
 	case open_filename_device() of
 		{ok, LogFilename, IODevice2} ->
-			ems_logger:info("ems_logger open ~p.", [LogFilename]),
+			ems_logger:info("ems_logger open \033[01;34m~p\033[0m.", [LogFilename]),
 			State2 = State#state{log_file_name = LogFilename, 
 								 log_file_handle = IODevice2};
 		{error, Reason} ->
@@ -450,7 +450,7 @@ log_file_tail(#state{log_file_name = LogFilename}, N) ->
 
 close_filename_device(undefined, _) -> ok;
 close_filename_device(IODevice, LogFilename) -> 
-	?DEBUG("ems_logger close log file ~p.", [LogFilename]),
+	?DEBUG("ems_logger close log file \033[01;34m~p\033[0m.", [LogFilename]),
 	file:close(IODevice).
 
 set_timeout_for_sync_log_buffer(#state{flag_checkpoint_sync_log_buffer = false, log_file_checkpoint=Timeout}) ->    
@@ -656,26 +656,26 @@ do_log_request(Request = #request{rid = RID,
 				end,
 				TextData = 
 					[
-					   Type, <<" ">>,
+					   <<"\033[01;34m">>, Type, <<"\033[0m ">>,
 					   Uri, <<" ">>,
 					   atom_to_binary(Version, utf8), <<" ">>,
-					   <<" {\n\tRID: ">>,  integer_to_binary(RID),
-					   <<"  (ReqHash: ">>, integer_to_binary(ReqHash), <<")">>, 
+					   <<" {\n\t\033[0;32mRID\033[0m: ">>, integer_to_binary(RID), 
+					   <<"  (\033[0;32mReqHash\033[0m: ">>, integer_to_binary(ReqHash), <<")">>, 
 					   case UrlMasked of
-							true -> [<<"\n\tUrl: ">>, Url];
+							true -> [<<"\n\t\033[0;32mUrl\033[0m: ">>, Url];
 							false -> <<>>
 					   end,
-					   <<"\n\tAccept: ">>, Accept,
-					   <<"\n\tContent-Type in: ">>, ContentTypeIn, <<"   out: ">>, ContentTypeOut,
-						<<"\n\tHost: ">>, Host, <<"  Peer: ">>, IpBin, 
-							<<"  Referer: ">>, case Referer of
+					   <<"\n\t\033[0;32mAccept\033[0m: ">>, Accept,
+					   <<"\n\t\033[0;32mContent-Type in\033[0m: ">>, ContentTypeIn, <<"   \033[0;32mout\033[0m: ">>, ContentTypeOut,
+						<<"\n\t\033[0;32mRID\033[0mHost: ">>, Host, <<"  \033[0;32mPeer\033[0m: ">>, IpBin, 
+							<<"  \033[0;32mReferer\033[0m: ">>, case Referer of
 													undefined -> <<>>;
 													_ -> Referer
 												end,
-						<<"\n\tUser-Agent: ">>, ems_util:user_agent_atom_to_binary(UserAgent), <<"  Version: ">>, UserAgentVersion,	
-						<<"\n\tService: ">>, ServiceService,
-						<<"\n\tParams: ">>, list_to_binary(io_lib:format("~p", [Params])), 
-						<<"\n\tQuery: ">>, list_to_binary(io_lib:format("~p", [Query])), 
+						<<"\n\t\033[0;32mUser-Agent\033[0m: ">>, ems_util:user_agent_atom_to_binary(UserAgent), <<"  \033[0;32mVersion\033[0m: ">>, UserAgentVersion,	
+						<<"\n\t\033[0;32mService\033[0m: ">>, ServiceService,
+						<<"\n\t\033[0;32mParams\033[0m: ">>, list_to_binary(io_lib:format("~p", [Params])), 
+						<<"\n\t\033[0;32mQuery\033[0m: ">>, list_to_binary(io_lib:format("~p", [Query])), 
 						case (ShowPayload orelse 
 							   Reason =/= ok orelse 
 							   ShowPayloadService orelse 
@@ -688,13 +688,13 @@ do_log_request(Request = #request{rid = RID,
 														true -> Payload;
 														false -> iolist_to_binary(io_lib:format("~p",[Payload]))
 										  		    end,
-									     [<<"\n\tPayload: ">>, integer_to_list(ContentLength), 
-									      <<" bytes  Content: \033[1;34m">>, Payload2, <<"\033[0m">>,
+									     [<<"\n\t\033[0;32mPayload\033[0m: ">>, integer_to_list(ContentLength), 
+									      <<" bytes  \033[0;32mContent\033[0m: \033[1;34m">>, Payload2, <<"\033[0m">>,
 											 case Reason =/= ok of
 												true -> <<"\033[0;31m">>;
 												false -> <<>>
 											 end]; 
-									false -> [<<"\n\tPayload: ">>, integer_to_list(ContentLength), <<" bytes  Content: large content">>]
+									false -> [<<"\n\t\033[0;32mPayload\033[0m: ">>, integer_to_list(ContentLength), <<" bytes  \033[0;32mContent\033[0m: large content">>]
 								end;
 							false -> <<>>
 						end,
@@ -712,13 +712,13 @@ do_log_request(Request = #request{rid = RID,
 							     case ContentLengthResponse > 0 of
 									true ->
 										case ContentLengthResponse =< ShowResponseMaxLength of
-											true -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), 
-													 <<" bytes  Content: \033[1;34m">>, ResponseData2, <<"\033[0m">>,
+											true -> [<<"\n\t\033[0;32mResponse\033[0m: ">>, integer_to_list(ContentLengthResponse), 
+													 <<" bytes  \033[0;32mContent\033[0m: \033[1;34m">>, ResponseData2, <<"\033[0m">>,
 													 case Reason =/= ok of
 														true -> <<"\033[0;31m">>;
 														false -> <<>>
 													 end]; 
-											false -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), <<" bytes  Content: Large content">>]
+											false -> [<<"\n\t\033[0;32mResponse\033[0m: ">>, integer_to_list(ContentLengthResponse), <<" bytes  \033[0;32mContent\033[0m: Large content">>]
 										end;
 									false -> <<>>
 								end;
@@ -734,39 +734,39 @@ do_log_request(Request = #request{rid = RID,
 							   case ResultCacheMin > 0 of
 									true -> 
 									   case ResultCache of 
-											true ->  [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
-											false -> [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)">>] 
+											true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
+											false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)">>] 
 										end;
 									false ->
 									   case ResultCacheSec > 0 of
 											true -> 
 											   case ResultCache of 
-													true ->  [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
-													false -> [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)">>] 
+													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
+													false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)">>] 
 												end;
 											false ->
 											   case ResultCache of 
-													true ->  [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
-													false -> [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms">>]
+													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
+													false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms">>]
 												end
 										end
 								end;
 							false -> <<>>
 						end,
-					    <<"\n\tCache-Control In: ">>, CacheControl,
-						<<"  ETag: ">>, case Etag of
+					    <<"\n\t\033[0;32mCache-Control In\033[0m: ">>, CacheControl,
+						<<"  \033[0;32mETag\033[0m: ">>, case Etag of
 											undefined -> <<>>;
 											_ -> Etag
 										end,
-						<<"\n\tIf-Modified-Since: ">>, case IfModifiedSince of
+						<<"\n\t\033[0;32mIf-Modified-Since\033[0m: ">>, case IfModifiedSince of
 															undefined -> <<>>;
 															_ -> IfModifiedSince
 												   end,
-					   <<"  If-None-Match: ">>, case IfNoneMatch of
+					   <<"  \033[0;32mIf-None-Match\033[0m: ">>, case IfNoneMatch of
 													undefined -> <<>>;
 													_ -> IfNoneMatch
 										   end,
-					   <<"\n\tAuthorization type: ">>, case AuthorizationService of
+					   <<"\n\t\033[0;32mAuthorization type\033[0m: ">>, case AuthorizationService of
 															basic -> 
 																case Authorization of
 																	<<>> -> <<"basic, oauth2">>;
@@ -781,43 +781,43 @@ do_log_request(Request = #request{rid = RID,
 					   end,
 					   case GrantType of
 									undefined -> <<>>;
-									_ -> [<<"\n\tOAuth2  grant-type: ">>, GrantType]
+									_ -> [<<"\n\t\033[0;32mOAuth2\033[0m  \033[0;32mgrant-type\033[0m: ">>, GrantType]
 					   end,
 					   case AccessToken of
 							undefined -> <<>>;
-							_ ->  [<<"  token: ">>, AccessToken]
+							_ ->  [<<"  \033[0;32mtoken\033[0m: ">>, AccessToken]
 					   end,
 					   case RefreshToken of
 							undefined -> <<>>;
-							_ ->  [<<"  refresh token: ">>, RefreshToken]
+							_ ->  [<<"  \033[0;32mrefresh token\033[0m: ">>, RefreshToken]
 					   end,
 					   case Scope of
 							undefined -> <<>>;
-							_ -> [<<"  scope: ">>, Scope]
+							_ -> [<<"  \033[0;32mscope\033[0m: ">>, Scope]
 					   end,
-					  <<"\n\tClient: ">>, case Client of
+					  <<"\n\t\033[0;32mClient\033[0m: ">>, case Client of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ -> [integer_to_binary(Client#client.id), <<" ">>, Client#client.name]
 									   end,
-					   <<"   User: ">>, case User of
+					   <<"   \033[0;32mUser\033[0m: ">>, case User of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
 										 end,
-					   <<"\n\tNode: ">>, case Node of
+					   <<"\n\t\033[0;32mNode\033[0m: ">>, case Node of
 											undefined -> <<>>;
 											_ -> Node
 										 end,
 					   case Filename of
 							undefined -> <<>>;
-							_ -> [<<"\n\tFilename: ">>, Filename]
+							_ -> [<<"\n\t\033[0;32mFilename\033[0m: ">>, Filename]
 						end,
 						case Code of
-							302 ->  [<<"\n\tRedirect-to: ">>, maps:get(<<"location">>, ResponseHeader, <<>>)];
+							302 ->  [<<"\n\t\033[0;32mRedirect-to\033[0m: ">>, maps:get(<<"location">>, ResponseHeader, <<>>)];
 							_ -> <<>>
 						end,
-					   <<"\n\tStatus: ">>, StatusText],
+					   <<"\n\t\033[0;32mStatus\033[0m: ">>, StatusText],
 					   
 				TextBin = iolist_to_binary(TextData),
 				NewState = case Code >= 400 of

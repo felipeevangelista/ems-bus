@@ -134,7 +134,7 @@ do_start_daemon(State = #state{start = CmdStart,
 			os:cmd(CmdStart2, #{ max_size => 0 }),
 			case fica_em_loop_ate_obter_pid(Port, 15) of
 				{ok, Pid} -> 
-					ems_logger:info("ems_daemon_service ~s started new daemon (Pid: ~p Port: ~p, DaemonId: ~s). OS Command: \033[0;33m~p\033[0m.", [Name, Pid, Port, DaemonId, CmdStart2]),
+					ems_logger:info("ems_daemon_service ~s started new daemon (Pid: ~p Port: ~p, DaemonId: ~s). \033[0;32mOS Command\033[0m: ~s.", [Name, Pid, Port, DaemonId, CmdStart2]),
 					State#state{pid = Pid, state = monitoring, daemon_id = DaemonId};
 				{error, einvalid_port} -> 
 					ems_logger:error("ems_daemon_service ~s start new daemon failed. Reason: einvalid_port"),
@@ -152,7 +152,7 @@ do_stop_daemon(State = #state{stop = Cmd,
 	Cmd2 = ems_util:replace_all_vars(Cmd, [{<<"PORT">>, integer_to_list(Port)},
 										   {<<"DAEMON_PID">>, integer_to_list(Pid)}]),
     os:cmd(Cmd2, #{ max_size => 0 }),
-	ems_logger:info("ems_daemon_service ~s stopped daemon (Pid: ~p Port: ~p, DaemonId: ~s). OS Command: \033[0;33m~p\033[0m.", [Name, Pid, Port, DaemonId, Cmd2]),
+	ems_logger:info("ems_daemon_service ~s stopped daemon (Pid: ~p Port: ~p, DaemonId: ~s). \033[0;32mOS Command\033[0m: ~s.", [Name, Pid, Port, DaemonId, Cmd2]),
     State#state{state = stopped}.
 
 
