@@ -475,16 +475,16 @@ write_msg(Tipo, Msg, State = #state{log_level = Level, log_ult_msg = UltMsg})  -
 			case Tipo of
 				info  -> 
 					ems_db:inc_counter(ems_logger_write_info),
-					Msg1 = iolist_to_binary([<<"INFO ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\n">>]);
+					Msg1 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, Msg, <<"\n">>]);
 				error -> 
 					ems_db:inc_counter(ems_logger_write_error),
-					Msg1 = iolist_to_binary([<<"\033[0;31mERROR ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\033[0m\n">>]);
+					Msg1 = iolist_to_binary([<<"\033[01;33mERROR \033[0m">>, <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, <<"\033[0;31m">>, Msg, <<"\033[0m\n">>]);
 				warn  -> 
 					ems_db:inc_counter(ems_logger_write_warn),
-					Msg1 = iolist_to_binary([<<"\033[0;33mWARN ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\033[0m\n">>]);
+					Msg1 = iolist_to_binary([<<"\033[01;33mWARN  \033[0m">>,  <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, <<"\033[00;33m">>, Msg, <<"\033[0m\n">>]);
 				debug -> 
 					ems_db:inc_counter(ems_logger_write_debug),
-					Msg1 = iolist_to_binary([<<"\033[1;34mDEBUG ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\033[0m\n">>])
+					Msg1 = iolist_to_binary([<<"\033[01;33mDEBUG \033[0m">>, <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, <<"\033[0;36m">>, Msg, <<"\033[0m\n">>])
 			end,
 			case (Level == error andalso Tipo /= error) andalso (Tipo /= debug) of
 				true ->

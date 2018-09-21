@@ -1,0 +1,20 @@
+{
+    "name": "ems_unb_servicos",
+	"comment": "Catalog for ems_unb_servicos",
+	"owner": "emsbus",
+	"version": "1.0.0",
+	"service" : "ems_daemon_service:start",
+	"url": "/emsbus/ems_unb_servicos",
+	"port" : 5555,
+	"start" : "{{JAVA_HOME}}/bin/java -jar /home/agilar/desenvolvimento/erlangms/ems-bus/priv/jar/unb_sevicos-1.0.0-SNAPSHOT-exec.jar -Dems_daemon_id={{DAEMON_ID}} -Dems_daemon_service={{DAEMON_SERVICE}} --server.port={{PORT}} >> /home/agilar/desenvolvimento/erlangms/ems-bus/priv/jar/server.log",
+	"stop" : "kill {{DAEMON_PID}}",
+	"pid_file" : "/home/agilar/desenvolvimento/erlangms/ems-bus/unb_servicos.{{DAEMON_ID}}.pid",
+	"pid_file_watchdog_timeout" : 60,
+	"type": "KERNEL",
+	"timeout" : 10000,
+	"start_timeout" : 3000,
+	"lang" : "erlang",
+	"pool_size" : 1,
+	"pool_max" : 1
+}
+

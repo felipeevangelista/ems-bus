@@ -26,37 +26,39 @@ start(_StartType, StartArgs) ->
 			ems_logger:set_level(info),
 			ems_dispatcher:start(),
 			Ret = ems_bus_sup:start_link(StartArgs),
-			ems_logger:info("Hosts in the cluster: ~p.", [ems_util:get_host_list()]),
 			AuthorizationMode = case Conf#config.authorization of
 									basic -> <<"basic, oauth2">>;
 									oauth2 -> <<"oauth2">>;
 									public -> <<"public">>
 								end,
 			ems_logger:info("Parameters:"),
-			ems_logger:info("  hostname: ~p.", [Conf#config.ems_hostname]),
-			ems_logger:info("  rest_base_url: ~p.", [Conf#config.rest_base_url]),
-			ems_logger:info("  rest_auth_url: ~p.", [Conf#config.rest_auth_url]),
-			ems_logger:info("  rest_login_url: ~p.", [Conf#config.rest_login_url]),
+			ems_logger:info("  \033[0;32mhost_search\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_host_search]),
+			ems_logger:info("  \033[0;32mnode_search\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_node_search]),
+			ems_logger:info("  \033[0;32mhostname\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_hostname]),
+			ems_logger:info("  \033[0;32mrest_base_url\033[0m: \033[01;34m~p\033[0m.", [Conf#config.rest_base_url]),
+			ems_logger:info("  \033[0;32mrest_auth_url\033[0m: \033[01;34m~p\033[0m.", [Conf#config.rest_auth_url]),
+			ems_logger:info("  \033[0;32mrest_login_url\033[0m: \033[01;34m~p\033[0m.", [Conf#config.rest_login_url]),
 			case Conf#config.oauth2_with_check_constraint of
-				true -> ems_logger:info("  rest_authorization: ~p <<with check constraint>>.", [AuthorizationMode]);
-				false -> ems_logger:info("  rest_authorization: ~p.", [AuthorizationMode])
+				true -> ems_logger:info("  \033[0;32mrest_authorization\033[0m: \033[01;34m~p\033[0m <<with check constraint>>.", [AuthorizationMode]);
+				false -> ems_logger:info("  \033[0;32mrest_authorization\033[0m: \033[01;34m~p\033[0m.", [AuthorizationMode])
 			end,
-			ems_logger:info("  rest_environment: ~p.", [Conf#config.rest_environment]),
-			ems_logger:info("  oauth2_refresh_token: ~p.", [Conf#config.oauth2_refresh_token]),
-			ems_logger:info("  auth_allow_user_inative_credentials: ~p.", [Conf#config.auth_allow_user_inative_credentials]),
-			ems_logger:info("  tcp_listen_address: ~p.", [Conf#config.tcp_listen_address]),
-			ems_logger:info("  tcp_allowed_address: ~p.", [Conf#config.tcp_allowed_address]),
-			ems_logger:info("  log_show_response: ~p.", [Conf#config.log_show_response]),
-			ems_logger:info("  log_show_payload: ~p.", [Conf#config.log_show_payload]),
-			ems_logger:info("  log_show_response_max_length: ~p bytes.", [Conf#config.log_show_response_max_length]),
-			ems_logger:info("  log_show_payload_max_length: ~p bytes.", [Conf#config.log_show_payload_max_length]),
-			ems_logger:info("  log_file_checkpoint: ~pms.", [Conf#config.log_file_checkpoint]),
-			ems_logger:info("  log_file_max_size: ~p bytes.", [Conf#config.log_file_max_size]),
-			ems_logger:info("  www_path: ~p.", [maps:get(<<"www_path">>, Conf#config.static_file_path_map, <<>>)]),
-			ems_logger:info("  show_debug_response_headers: ~p.", [Conf#config.show_debug_response_headers]),
-			ems_logger:info("  result_cache: ~pms.", [Conf#config.ems_result_cache]),
-			ems_logger:info("  result_cache_shared: ~p.", [Conf#config.ems_result_cache_shared]),
-			ems_logger:info("  http_max_content_length: ~p bytes.", [Conf#config.http_max_content_length]),
+			ems_logger:info("  \033[0;32mrest_environment\033[0m: \033[01;34m~p\033[0m.", [Conf#config.rest_environment]),
+			ems_logger:info("  \033[0;32moauth2_refresh_token\033[0m: \033[01;34m~p\033[0m.", [Conf#config.oauth2_refresh_token]),
+			ems_logger:info("  \033[0;32mauth_allow_user_inative_credentials\033[0m: \033[01;34m~p\033[0m.", [Conf#config.auth_allow_user_inative_credentials]),
+			ems_logger:info("  \033[0;32mtcp_listen_address\033[0m: \033[01;34m~p\033[0m.", [Conf#config.tcp_listen_address]),
+			ems_logger:info("  \033[0;32mtcp_allowed_address\033[0m: \033[01;34m~p\033[0m.", [Conf#config.tcp_allowed_address]),
+			ems_logger:info("  \033[0;32mlog_show_response\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_show_response]),
+			ems_logger:info("  \033[0;32mlog_show_payload\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_show_payload]),
+			ems_logger:info("  \033[0;32mlog_show_response_max_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_response_max_length]),
+			ems_logger:info("  \033[0;32mlog_show_payload_max_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_payload_max_length]),
+			ems_logger:info("  \033[0;32mlog_file_checkpoint\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.log_file_checkpoint]),
+			ems_logger:info("  \033[0;32mlog_file_max_size\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_file_max_size]),
+			ems_logger:info("  \033[0;32mwww_path\033[0m: \033[01;34m~p\033[0m.", [maps:get(<<"www_path">>, Conf#config.static_file_path_map, <<>>)]),
+			ems_logger:info("  \033[0;32mshow_debug_response_headers\033[0m: \033[01;34m~p\033[0m.", [Conf#config.show_debug_response_headers]),
+			ems_logger:info("  \033[0;32mresult_cache\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.ems_result_cache]),
+			ems_logger:info("  \033[0;32mresult_cache_shared\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_result_cache_shared]),
+			ems_logger:info("  \033[0;32mhttp_max_content_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.http_max_content_length]),
+			ems_logger:info("  \033[0;32mjava_home\033[0m: \033[01;34m~s\033[0m.", [binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))]),
 			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;
 		{error, Reason} ->

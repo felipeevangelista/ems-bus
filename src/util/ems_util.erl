@@ -44,6 +44,10 @@
 		 save_from_file_req/1,
 		 node_is_live/1,
  		 node_binary/0,
+ 		 get_environment_variable/1,
+ 		 get_environment_variable/2,
+		 get_pid_from_port/1,
+ 		 get_free_tcp_port/0,
  		 get_host_list/0,
 		 get_node_name/0,
 		 get_params_from_url/1,
@@ -995,11 +999,11 @@ replace_all(Subject, [{Key, Value}|VarTail]) ->
 -spec replace_all_vars(string(), list(tuple())) -> string().
 replace_all_vars(Subject, []) -> Subject;
 replace_all_vars(Subject, [{Key, Value}|VarTail]) -> 
-	NewSubject = replace(Subject, "{{ "++ binary_to_list(Key) ++ " }}", Value),
+	NewSubject = replace(Subject, "{{.?"++ binary_to_list(Key) ++ ".?}}", Value),
 	replace_all_vars(NewSubject, VarTail).
 
 
-replace_vars_with(Subject, Value) -> re:replace(Subject, "{{ .+ }}", Value, [global, {return, list}]).
+replace_vars_with(Subject, Value) -> re:replace(Subject, "{{.+}}", Value, [global, {return, list}]).
 
 
 -spec parse_oauth2_scope(binary()) -> list(atom()).
@@ -3478,6 +3482,26 @@ get_param_or_variable(ParamName, ParamsMap, DefaultValue) ->
 		Result2 -> list_to_binary(Result2)
 	end.
 
+-spec get_environment_variable(binary() | string()) -> binary().
+get_environment_variable(ParamName) -> get_environment_variable(ParamName, <<>>).
+
+-spec get_environment_variable(binary() | string(), any()) -> binary().
+get_environment_variable(ParamNameBin, DefaultValue) when is_binary(ParamNameBin) ->
+	get_environment_variable(binary_to_list(ParamNameBin), DefaultValue);
+get_environment_variable(ParanNameStr, DefaultValue) ->
+	case os:getenv(ParanNameStr) of % variável de ambiente em minúsculo, igual ao parâmetro
+		false -> 
+			case os:getenv(string:uppercase(ParanNameStr)) of % variável de ambiente em maiúsculo, padrão Linux
+				false -> 
+					case is_binary(DefaultValue) of
+						true -> DefaultValue;
+						false -> list_to_binary(DefaultValue)
+					end;
+				Result2 -> list_to_binary(Result2)
+			end;
+		Result -> list_to_binary(Result)
+	end.
+
 
 format_rest_status(Code, Reason, ReasonDetail, ReasonException, Latency) ->
    iolist_to_binary([
@@ -3496,3 +3520,23 @@ format_rest_status(Code, Reason, ReasonDetail, ReasonException, Latency) ->
 				  end, <<">> (">>, integer_to_binary(Latency), 
 		<<"ms)">>]).
 				  
+
+get_free_tcp_port() ->
+	{ok, Listen} = gen_tcp:listen(0, [{keepalive, false}, {exit_on_close, true}]),
+	Port = inet:port(Listen),
+	gen_tcp:close(Listen),
+	Port.
+
+
+-spec get_pid_from_port(non_neg_integer()) -> {ok, non_neg_integer()} | {error, einvalid_port}.
+get_pid_from_port(Port) ->
+	try
+		case lists:reverse(os:cmd(io_lib:format("lsof -i:~p -t", [Port]))) of
+			"\n" ++ PidStr -> {ok, list_to_integer(lists:reverse(PidStr))};
+			_ -> {error, einvalid_port}
+		end
+	catch
+		_:_ -> {error, einvalid_port}
+	end.
+	
+	
