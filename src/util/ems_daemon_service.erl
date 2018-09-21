@@ -32,8 +32,9 @@
 				start,
 				restart,
 				stop,
-				pid_file,
-				pid_file_watchdog_timeout,
+				pidfile,
+				pidfile_watchdog_timer,
+				filename,
 				state}). 
 
 
@@ -60,21 +61,23 @@ stop_daemon() ->
 init(#service{name = Name,
 			  timeout = Timeout,
 			  start_timeout = StartTimeout,
+			  filename = Filename,
 			  properties = Props}) ->
     NameStr = binary_to_list(Name),
     Port = maps:get(<<"port">>, Props, 0),
     StartCmd = binary_to_list(maps:get(<<"start">>, Props, <<>>)) ++ " &",
     StopCmd = maps:get(<<"stop">>, Props, <<>>),
-	PidFileWatchDogTimeOut = ems_util:parse_range(maps:get(<<"pid_file_watchdog_timeout">>, Props, 60), 0, 99999),
-    PidFile = maps:get(<<"pid_file">>, Props, <<>>),
+	PidFileWatchDogTimeOut = ems_util:parse_range(maps:get(<<"pidfile_watchdog_timer">>, Props, 60), 0, 86400000),
+    PidFile = maps:get(<<"pidfile">>, Props, <<>>),
     State = #state{name = NameStr,
 				   timeout = Timeout,
 				   port = Port,
 				   start = StartCmd,
 				   stop = StopCmd,
-				   pid_file = PidFile,
-				   pid_file_watchdog_timeout = PidFileWatchDogTimeOut,
+				   pidfile = PidFile,
+				   pidfile_watchdog_timer = PidFileWatchDogTimeOut,
 				   daemon_id = "undefined",
+				   filename = Filename,
 				   state = start},
     {ok, State, StartTimeout}.
     
@@ -128,19 +131,26 @@ do_start_daemon(State = #state{start = CmdStart,
 		_ ->
 			ems_logger:info("ems_daemon_service ~s starting new daemon, please wait...", [Name]),
 			DaemonId = integer_to_list(ems_util:get_milliseconds()),	
-			CmdStart2 = ems_util:replace_all_vars(CmdStart, [{<<"PORT">>, integer_to_list(Port)},
+			CmdStart2 = string:trim(ems_util:replace_all_vars(CmdStart, 
+															[{<<"PORT">>, integer_to_list(Port)},
 															 {<<"DAEMON_ID">>, DaemonId},
 															 {<<"DAEMON_SERVICE">>, Name},
 															 {<<"FILENAME">>, Filename},
-															 {<<"JAVA_HOME">>, binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))}]),
-			os:cmd(CmdStart2, #{ max_size => 0 }),
-			case fica_em_loop_ate_obter_pid(Port, 15) of
-				{ok, Pid} -> 
-					ems_logger:info("ems_daemon_service ~s started new daemon (Pid: ~p Port: ~p, DaemonId: ~s). \033[0;32mOS Command\033[0m: ~s.", [Name, Pid, Port, DaemonId, CmdStart2]),
-					State#state{pid = Pid, state = monitoring, daemon_id = DaemonId};
-				{error, einvalid_port} -> 
-					ems_logger:error("ems_daemon_service ~s start new daemon failed. Reason: einvalid_port"),
-					State#state{state = start}
+															 {<<"JAVA_HOME">>, binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))}])),
+			case CmdStart2 =/= "" of
+				true ->
+					os:cmd(CmdStart2, #{ max_size => 0 }),
+					case fica_em_loop_ate_obter_pid(Port, 15) of
+						{ok, Pid} -> 
+							ems_logger:info("ems_daemon_service ~s started new daemon (Pid: ~p Port: ~p, DaemonId: ~s). \033[0;32mOS Command\033[0m: ~s.", [Name, Pid, Port, DaemonId, CmdStart2]),
+							State#state{pid = Pid, state = monitoring, daemon_id = DaemonId};
+						{error, enoent} -> 
+							ems_logger:error("ems_daemon_service ~s start new daemon failed. Reason: enoent"),
+							State#state{state = start, daemon_id = "undefined"}
+					end;
+				false ->
+					ems_logger:error("ems_daemon_service ~s failed to start daemon because start parameter is empty."),
+					State#state{state = stopped, daemon_id = "undefined"}
 			end
 	end.
 	
@@ -149,13 +159,24 @@ do_stop_daemon(State = #state{stop = Cmd,
 							  name = Name,
 							  port = Port,
 							  pid = Pid,
+							  filename = Filename,
 							  daemon_id = DaemonId}) ->
     ems_logger:info("ems_daemon_service ~s stopping daemon (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
-	Cmd2 = ems_util:replace_all_vars(Cmd, [{<<"PORT">>, integer_to_list(Port)},
-										   {<<"DAEMON_PID">>, integer_to_list(Pid)}]),
-    os:cmd(Cmd2, #{ max_size => 0 }),
-	ems_logger:info("ems_daemon_service ~s stopped daemon (Pid: ~p Port: ~p, DaemonId: ~s). \033[0;32mOS Command\033[0m: ~s.", [Name, Pid, Port, DaemonId, Cmd2]),
-    State#state{state = stopped}.
+	Cmd2 = string:trim(ems_util:replace_all_vars(Cmd, [{<<"PORT">>, integer_to_list(Port)},
+													   {<<"DAEMON_PID">>, integer_to_list(Pid)},
+													   {<<"DAEMON_ID">>, DaemonId},
+													   {<<"DAEMON_SERVICE">>, Name},
+													   {<<"FILENAME">>, Filename},
+													   {<<"JAVA_HOME">>, binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))}])),
+    case Cmd2 =/= "" of
+		true ->
+			os:cmd(Cmd2, #{ max_size => 0 }),
+			ems_logger:info("ems_daemon_service ~s stopped daemon (Pid: ~p Port: ~p, DaemonId: ~s). \033[0;32mOS Command\033[0m: ~s.", [Name, Pid, Port, DaemonId, Cmd2]),
+			State#state{state = stopped};
+		false ->
+			ems_logger:error("ems_daemon_service ~s failed to stop daemon because stop parameter is empty."),
+			State#state{pid = Pid, state = monitoring}
+	end.
 
 
 do_watchdog_reset(Message, State = #state{port = Port}) ->
@@ -168,8 +189,8 @@ do_watchdog_reset(Message, State = #state{port = Port}) ->
 do_monitoring(State = #state{name = Name,
 							 port = Port,
 							 pid = Pid,
-							 pid_file = PidFile,
-						     pid_file_watchdog_timeout = PidFileWatchdogTimeout,
+							 pidfile = PidFile,
+						     pidfile_watchdog_timer = PidFileWatchdogTimeout,
 							 daemon_id = DaemonId}) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, CurrentPid} -> 
@@ -187,14 +208,14 @@ do_monitoring(State = #state{name = Name,
 								{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
 									case erlang:abs(calendar:datetime_to_gregorian_seconds(calendar:local_time()) - calendar:datetime_to_gregorian_seconds(MTime)) > PidFileWatchdogTimeout of
 										true -> 
-											do_watchdog_reset(io_lib:format("ems_daemon_service ~s pidfile ~s is outdated for ~pms, resetting the process to return to normal (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, PidFileWatchdogTimeout, Pid, Port, DaemonId]), State);
+											do_watchdog_reset(io_lib:format("ems_daemon_service ~s pidfile \033[01;34m~s\033[0m is outdated for ~pms, resetting the process to return to normal (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, PidFileWatchdogTimeout, Pid, Port, DaemonId]), State);
 										false -> 
 											State#state{pid = Pid, state = monitoring}
 									end;
 								{error, enoent} -> 
-									do_watchdog_reset(io_lib:format("ems_daemon_service ~s pidfile ~s was deleted, resetting the process to return to normal (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, Pid, Port, DaemonId]), State);
+									do_watchdog_reset(io_lib:format("ems_daemon_service ~s pidfile \033[01;34m~s\033[0m was deleted, resetting the process to return to normal (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, Pid, Port, DaemonId]), State);
 								{error, Reason} -> 
-									ems_logger:error("ems_daemon_service ~s pidfile ~s is not accessible by the ErlangMS. Reason: ~p (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, Reason, Pid, Port, DaemonId]),
+									ems_logger:error("ems_daemon_service ~s pidfile \033[01;34m~s\033[0m is not accessible by the ErlangMS. Reason: ~p (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, Reason, Pid, Port, DaemonId]),
 									State#state{pid = Pid, state = monitoring}
 							end;
 						false ->
@@ -216,12 +237,12 @@ do_monitoring(State = #state{name = Name,
 
 
 % Fica em um loop até conseguir obter o pid por meio da porta utilizada pelo processo externo
-fica_em_loop_ate_obter_pid(_, 0) -> {error, einvalid_port};
+fica_em_loop_ate_obter_pid(_, 0) -> {error, enoent};
 fica_em_loop_ate_obter_pid(Port, Tentativas) ->
 	ems_util:sleep(3000),
 	case ems_util:get_pid_from_port(Port) of
 		{ok, Pid} -> {ok, Pid};
-		{error, einvalid_port} -> fica_em_loop_ate_obter_pid(Port, Tentativas - 1)
+		{error, enoent} -> fica_em_loop_ate_obter_pid(Port, Tentativas - 1)
 	end.
 
 				

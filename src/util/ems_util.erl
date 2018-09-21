@@ -3533,10 +3533,10 @@ get_pid_from_port(Port) ->
 	try
 		case lists:reverse(os:cmd(io_lib:format("lsof -i:~p -t", [Port]))) of
 			"\n" ++ PidStr -> {ok, list_to_integer(lists:reverse(PidStr))};
-			_ -> {error, einvalid_port}
+			_ -> {error, enoent}
 		end
 	catch
-		_:_ -> {error, einvalid_port}
+		_:_ -> {error, enoent}
 	end.
 	
 	
