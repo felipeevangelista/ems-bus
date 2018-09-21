@@ -117,7 +117,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 do_start_daemon(State = #state{start = CmdStart, 
 							   port = Port,
-							   name = Name}) ->
+							   name = Name,
+							   filename = Filename}) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, CurrentPid} -> 
 			ems_logger:error("ems_daemon_service ~s daemon already exist with pid ~p, stopping before start new...", [Name, CurrentPid]),
@@ -130,6 +131,7 @@ do_start_daemon(State = #state{start = CmdStart,
 			CmdStart2 = ems_util:replace_all_vars(CmdStart, [{<<"PORT">>, integer_to_list(Port)},
 															 {<<"DAEMON_ID">>, DaemonId},
 															 {<<"DAEMON_SERVICE">>, Name},
+															 {<<"FILENAME">>, Filename},
 															 {<<"JAVA_HOME">>, binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))}]),
 			os:cmd(CmdStart2, #{ max_size => 0 }),
 			case fica_em_loop_ate_obter_pid(Port, 15) of
