@@ -492,7 +492,7 @@ create_sqlite_from_csv(#service_datasource{connection = Filename,
 																	  TableName, 
 																	  FilenamePath, 
 																	  Delimiter])),
-						ems_logger:info("ems_db execute OS command: ~p.", [Csv2SqliteCmd]),
+						ems_logger:info("ems_db execute \033[0;32mOS Command\033[0m: ~p.", [Csv2SqliteCmd]),
 						os:cmd(Csv2SqliteCmd),
 						mnesia:write(#ctrl_sqlite_table{file_name = Filename, last_modified = LastModified});
 					false -> 

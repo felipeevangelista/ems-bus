@@ -48,7 +48,7 @@ execute_script([], Output) ->
 execute_script([H|T], Output) ->
 	try
 		Cmd = binary_to_list(H),
-		ems_logger:info("ems_cmd_service execute OS command: ~p.", [Cmd]),
+		ems_logger:info("ems_cmd_service \033[0;32mOS Command\033[0m: ~p.", [Cmd]),
 		case os:cmd(Cmd, #{ max_size => 8000000 }) of
 			"sudo: no tty present and no askpass program specified\n" -> 
 				ems_logger:warn("ems_cmd_service cannot capture output."),
