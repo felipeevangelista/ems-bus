@@ -308,7 +308,7 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 			TimeAtual = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
 			TimePidfile = calendar:datetime_to_gregorian_seconds(MTime),
 			DiffTime = erlang:abs((TimeAtual - TimePidfile) * 1000),
-			case DiffTime > (PidFileWatchdogTimeout + 6000) of % 6 segundos a mais para eventuais delays
+			case DiffTime > (PidFileWatchdogTimeout + 15000) of % 15 segundos a mais para eventuais delays
 				true -> 
 					case Tentativa == 3 of
 						true ->

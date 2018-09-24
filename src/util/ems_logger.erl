@@ -667,7 +667,7 @@ do_log_request(Request = #request{rid = RID,
 					   end,
 					   <<"\n\t\033[0;32mAccept\033[0m: ">>, Accept,
 					   <<"\n\t\033[0;32mContent-Type in\033[0m: ">>, ContentTypeIn, <<"   \033[0;32mout\033[0m: ">>, ContentTypeOut,
-						<<"\n\t\033[0;32mRID\033[0mHost: ">>, Host, <<"  \033[0;32mPeer\033[0m: ">>, IpBin, 
+						<<"\n\t\033[0;32mHost\033[0m: ">>, Host, <<"  \033[0;32mPeer\033[0m: ">>, IpBin, 
 							<<"  \033[0;32mReferer\033[0m: ">>, case Referer of
 													undefined -> <<>>;
 													_ -> Referer
