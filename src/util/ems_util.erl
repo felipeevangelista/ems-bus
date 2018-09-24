@@ -66,6 +66,7 @@
          get_user_request_by_login_and_password/2,
          get_user_request_by_login/1,
          get_param_or_variable/3,
+         get_java_home/0,
          date_add_minute/2,
          date_dec_minute/2,
          date_add_second/2,
@@ -184,7 +185,8 @@
 		 url_mask/1,
 		 list_map_to_list_tuple/1,
 		 list_tuple_to_list_map/1,
-		 format_rest_status/5
+		 format_rest_status/5,
+		 os_command/2
 		]).
 
 -spec version() -> string().
@@ -3528,7 +3530,7 @@ get_free_tcp_port() ->
 	Port.
 
 
--spec get_pid_from_port(non_neg_integer()) -> {ok, non_neg_integer()} | {error, einvalid_port}.
+-spec get_pid_from_port(non_neg_integer()) -> {ok, non_neg_integer()} | {error, enoent}.
 get_pid_from_port(Port) ->
 	try
 		case lists:reverse(os:cmd(io_lib:format("lsof -i:~p -t", [Port]))) of
@@ -3540,3 +3542,14 @@ get_pid_from_port(Port) ->
 	end.
 	
 	
+-spec os_command(string(), list()) -> {ok, any()} | {error, einvalid_command}.
+os_command(Cmd, Options) ->
+	try
+		Result = os:cmd(Cmd, Options),
+		{ok, Result}
+	catch
+		_:_ -> {error, einvaid_command}
+	end.
+
+-spec get_java_home() -> string().
+get_java_home() -> remove_ult_backslash_url(binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))).

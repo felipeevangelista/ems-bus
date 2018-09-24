@@ -58,7 +58,7 @@ scan_file(JsonFilename, Result, RootPath, Conf, FilterKey, FilterValue) ->
 				{ok, FileMap} -> 
 					scan_file_entry([FileMap], CurrentDir, Filename, Result, RootPath, Conf, FilterKey, FilterValue);
 				{error, enoent} ->
-					ems_logger:warn("ems_json_scan file \033[01;34m~p\033[0m does not exist.", [Filename]),
+					ems_logger:warn("ems_json_scan scan inexistent file \033[01;34m~p\033[0m.", [Filename]),
 					Result;
 				_ -> 
 					ems_logger:warn("ems_json_scan scan invalid file \033[01;34m~p\033[0m.", [Filename]),

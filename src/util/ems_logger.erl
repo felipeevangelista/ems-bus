@@ -734,19 +734,19 @@ do_log_request(Request = #request{rid = RID,
 							   case ResultCacheMin > 0 of
 									true -> 
 									   case ResultCache of 
-											true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
+											true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  \033[0;33m<<RID: ">>, integer_to_binary(ResultCacheRid), <<">>\033[0m">>];
 											false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)">>] 
 										end;
 									false ->
 									   case ResultCacheSec > 0 of
 											true -> 
 											   case ResultCache of 
-													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
+													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  \033[0;33m<<RID: ">>, integer_to_binary(ResultCacheRid), <<">>\033[0m">>];
 													false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)">>] 
 												end;
 											false ->
 											   case ResultCache of 
-													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
+													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms \033[0;33m<<RID: ">>, integer_to_binary(ResultCacheRid), <<">>\033[0m">>];
 													false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms">>]
 												end
 										end
@@ -817,7 +817,7 @@ do_log_request(Request = #request{rid = RID,
 							302 ->  [<<"\n\t\033[0;32mRedirect-to\033[0m: ">>, maps:get(<<"location">>, ResponseHeader, <<>>)];
 							_ -> <<>>
 						end,
-					   <<"\n\t\033[0;32mStatus\033[0m: ">>, StatusText],
+					   <<"\n\t\033[0;32mStatus\033[0m: ">>, StatusText, <<"\n}">>],
 					   
 				TextBin = iolist_to_binary(TextData),
 				NewState = case Code >= 400 of
