@@ -107,7 +107,7 @@ handle_cast(kill_daemon, State) ->
     {noreply, State2};
 
 handle_cast(restart_daemon, State = #state{name = Name, pid = Pid, timeout = Timeout}) ->
-	Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, stopping before start new...", [Name, Pid]),
+	Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p.", [Name, Pid]),
 	State2 = do_restart_daemon(Msg, State),
     {noreply, State2, Timeout};
 
@@ -152,7 +152,7 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 							   filename = Filename}) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, CurrentPid} -> 
-			Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, stopping before start new...", [Name, CurrentPid]),
+			Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p.", [Name, CurrentPid]),
 			do_restart_daemon(Msg, State#state{pid = CurrentPid});
 		_ ->
 			DaemonId = integer_to_list(ems_util:get_milliseconds()),	
@@ -318,11 +318,12 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 		{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
 			TimeAtual = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
 			TimePidfile = calendar:datetime_to_gregorian_seconds(MTime),
-			case erlang:abs((TimeAtual - TimePidfile) * 1000) > PidFileWatchdogTimeout of
+			DiffTime = erlang:abs((TimeAtual - TimePidfile) * 1000),
+			case DiffTime > PidFileWatchdogTimeout of
 				true -> 
 					case Tentativa == 3 of
 						true ->
-							Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m~s\033[0m is outdated for ~pms, restart the process to return to normal (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, PidFileWatchdogTimeout, Pid, Port, DaemonId]),
+							Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m~s\033[0m is outdated for ~pms (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, DiffTime, Pid, Port, DaemonId]),
 							do_restart_daemon(Msg, State);
 						false -> 
 							ems_util:sleep(1000),
@@ -333,7 +334,7 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 			end;
 		{error, enoent} -> 
 			case Tentativa == 3 of
-				true -> do_restart_daemon(io_lib:format("ems_daemon_service ~s pidfile \033[01;34m~s\033[0m was deleted, restart the process to return to normal (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, Pid, Port, DaemonId]), State);
+				true -> do_restart_daemon(io_lib:format("ems_daemon_service ~s pidfile \033[01;34m~s\033[0m was deleted (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, PidFile2, Pid, Port, DaemonId]), State);
 				false -> do_pidfile_watchdog_check(State, Tentativa + 1)
 			end;
 		{error, Reason} -> 
