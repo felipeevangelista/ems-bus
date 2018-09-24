@@ -153,7 +153,7 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 							   pidfile = Pidfile}) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, CurrentPid} -> 
-			Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p.", [Name, CurrentPid]),
+			Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p. restart in progress.", [Name, CurrentPid]),
 			do_restart_daemon(Msg, State#state{pid = CurrentPid, daemon_id = "unknow"}, error);
 		_ ->
 			DaemonId = integer_to_list(ems_util:get_milliseconds()),
@@ -296,21 +296,26 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 								 pidfile = PidFile,
 								 pidfile_watchdog_timer = PidFileWatchdogTimeout,
 								 daemon_id = DaemonId}, Tentativa) ->
-	ems_logger:info("ems_daemon_service ~s check pidfile daemon (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
+	% mostra mensagem apenas na primeira tentativa
+	case Tentativa == 1 of
+		true -> ems_logger:info("ems_daemon_service ~s check pidfile daemon (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]);
+		false -> ok
+	end,
 	Pidfile2 = parse_variables(PidFile, State),
+	% verifica o timestamp do arquivo de pid, se ficar desatualizado, será reiniciado
 	case file:read_file_info(Pidfile2, []) of
 		{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
 			TimeAtual = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
 			TimePidfile = calendar:datetime_to_gregorian_seconds(MTime),
 			DiffTime = erlang:abs((TimeAtual - TimePidfile) * 1000),
-			case DiffTime > PidFileWatchdogTimeout of
+			case DiffTime > (PidFileWatchdogTimeout + 6000) of % 6 segundos a mais para eventuais delays
 				true -> 
 					case Tentativa == 3 of
 						true ->
-							Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is outdated for ~pms (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId]),
+							Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is ~pms outdated, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId]),
 							do_restart_daemon(Msg, State, error);
 						false -> 
-							ems_util:sleep(1000),
+							ems_util:sleep(500),
 							do_pidfile_watchdog_check(State, Tentativa + 1)
 					end;
 				false -> 
@@ -387,7 +392,7 @@ delete_pidfile(State = #state{name = Name,
 		true ->
 			case file:delete(Pidfile2) of
 				ok -> 
-					ems_logger:warn("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;33m was deleted.", [Name, Pidfile2]),
+					ems_logger:warn("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;33m manually deleted because it was not deleted by the daemon.", [Name, Pidfile2]),
 					ok;
 				{error, enoent} -> ok;  % ok, pid não existe
 				Error -> Error
