@@ -186,7 +186,8 @@
 		 list_map_to_list_tuple/1,
 		 list_tuple_to_list_map/1,
 		 format_rest_status/5,
-		 os_command/2
+		 os_command/2,
+		 integer_to_list_def/2
 		]).
 
 -spec version() -> string().
@@ -3553,3 +3554,12 @@ os_command(Cmd, Options) ->
 
 -spec get_java_home() -> string().
 get_java_home() -> remove_ult_backslash_url(binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))).
+
+-spec integer_to_list_def(string(), string()) -> string().
+integer_to_list_def(Value, Default) ->
+	try
+		integer_to_list(Value)
+	catch
+		_:_ ->	Default
+	end.
+	

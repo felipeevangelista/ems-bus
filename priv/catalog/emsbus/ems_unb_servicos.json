@@ -10,7 +10,7 @@
 	"start_cmd" : "{{JAVA_HOME}}/bin/java -jar  {{FILENAME}} -Dems_daemon_id={{DAEMON_ID}} -Dems_daemon_service={{DAEMON_SERVICE}} -Dems_pidfile={{PIDFILE}} -Dems_pidfile_watchdog_timer={{PIDFILE_WATCHDOG_TIMER}} --server.port={{PORT}} >> /home/agilar/desenvolvimento/erlangms/ems-bus/priv/jar/server.log",
 	"stop_cmd" : "kill {{DAEMON_PID}}",
 	"kill_cmd" : "kill -9 {{DAEMON_PID}}",
-	"pidfile" : "/home/agilar/desenvolvimento/erlangms/ems-bus/unb_servicos.5555.pid",
+	"pidfile" : "/home/agilar/desenvolvimento/erlangms/ems-bus/priv/jar/unb_servicos_daemon_id_{{DAEMON_ID}}_port_{{PORT}}.pid",
 	"pidfile_watchdog_timer" : 30000,
 	"type": "KERNEL",
 	"timeout" : 15000,
