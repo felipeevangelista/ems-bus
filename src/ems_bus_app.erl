@@ -32,6 +32,7 @@ start(_StartType, StartArgs) ->
 									public -> <<"public">>
 								end,
 			ems_logger:info("Parameters:"),
+			ems_logger:info("  \033[0;32mconfig_file\033[0m: \033[01;34m~p\033[0m.", [Conf#config.config_file]),
 			ems_logger:info("  \033[0;32mhost_search\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_host_search]),
 			ems_logger:info("  \033[0;32mnode_search\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_node_search]),
 			ems_logger:info("  \033[0;32mhostname\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_hostname]),
@@ -58,6 +59,11 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mresult_cache\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.ems_result_cache]),
 			ems_logger:info("  \033[0;32mresult_cache_shared\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_result_cache_shared]),
 			ems_logger:info("  \033[0;32mjava_home\033[0m: \033[01;34m~s\033[0m.", [binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))]),
+			
+			
+			ems_logger:info("  \033[0;32mdisable_services\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_disable_services]),
+			ems_logger:info("  \033[0;32mdisable_services_owner\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_disable_services_owner]),
+			ems_logger:info("  \033[0;32menable_services\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_enable_services]),
 			ems_logger:info("  \033[0;32mcatalog_path\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_path_search]),
 			ems_logger:info("  \033[0;32msufixo_email_institucional\033[0m: \033[01;34m~p\033[0m.", [Conf#config.sufixo_email_institucional]),
 			ems_logger:info("  \033[0;32mstatic_file_path\033[0m: \033[01;34m~p\033[0m.", [Conf#config.static_file_path]),
