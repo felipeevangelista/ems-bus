@@ -36,8 +36,11 @@
 				pidfile,
 				pidfile_watchdog_timer,
 				filename,
+				filename_lastmodified_time,
 				logfile,
 				config_cmd,
+				auto_deploy,
+				verify_daemon,
 				state}). 
 
 
@@ -85,6 +88,9 @@ init(#service{name = Name,
     PidFile = maps:get(<<"pidfile">>, Props, <<>>),
     Logfile = maps:get(<<"logfile">>, Props, <<>>),
     ConfigCmd  = list_to_binary("\"" ++ binary_to_list(ems_util:json_encode(maps:get(<<"config_cmd">>, Props, <<"{}">>))) ++ "\""),
+    AutoDeploy = ems_util:parse_bool(maps:get(<<"auto_deploy">>, Props, false)),
+    VerifyDaemon = ems_util:parse_bool(maps:get(<<"verify_daemon">>, Props, false)),
+	LastModifiedTime = get_modified_time_filename(Name, Filename),
     State = #state{name = NameStr,
 				   timeout = Timeout,
 				   port = Port,
@@ -97,6 +103,9 @@ init(#service{name = Name,
 				   filename = Filename,
 				   logfile = Logfile,
 				   config_cmd = ConfigCmd,
+				   auto_deploy = AutoDeploy,
+				   verify_daemon = VerifyDaemon,
+				   filename_lastmodified_time = LastModifiedTime,
 				   state = start},
     {ok, State, StartTimeout}.
     
@@ -156,6 +165,7 @@ code_change(_OldVsn, State, _Extra) ->
 do_start_daemon(State = #state{start_cmd = CmdStart, 
 							   port = Port,
 							   name = Name,
+							   filename = Filename,
 							   pidfile = Pidfile}) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, CurrentPid} -> 
@@ -168,6 +178,7 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 			ems_logger:info("ems_daemon_service ~s starting new daemon. \033[0;32mOS Command\033[0m: \033[01;34m~s\033[0m.", [Name, CmdStart2]),
 			case CmdStart2 =/= "" of
 				true ->
+					% antes de subir o daemon é preciso excluir o pid (na verdade o pid não deveria existir)
 					case delete_pidfile(State#state{daemon_id = DaemonId}) of
 						ok ->
 							case ems_util:os_command(CmdStart2, #{ max_size => 0 }) of
@@ -175,7 +186,10 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 									case fica_em_loop_ate_obter_pid(Port, 30) of
 										{ok, Pid} -> 
 											ems_logger:info("ems_daemon_service ~s new daemon started (Pid: ~p Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
-											State#state{state = monitoring, pid = Pid, daemon_id = DaemonId};
+											State#state{state = monitoring, 
+														pid = Pid, 
+														daemon_id = DaemonId, 
+														filename_lastmodified_time = get_modified_time_filename(Name, Filename)};
 										_ -> 
 											ems_logger:error("ems_daemon_service ~s start new daemon failed because does not adquire pid of current daemon.", [Name]),
 											State#state{state = start, pid = undefined, daemon_id = "unknow"}
@@ -262,34 +276,55 @@ do_restart_daemon(Message, State, MsgType) ->
 % Monitora o processo externo executado por start_cmd
 % Se o processo morrer outro será reiniciado
 % Além disso, se pidfile_watchdog_timer > 0, testa se o pid está atualizado
+% nós verificamos também se uma nova versão do cmd deve ser executado quando o executável for mais novo
 do_verify_daemon(State = #state{name = Name,
 							 port = Port,
 							 pid = Pid,
 						     pidfile_watchdog_timer = PidFileWatchdogTimeout,
-							 daemon_id = DaemonId}) ->
-	ems_logger:info("ems_daemon_service ~s if exist daemon (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
-	case ems_util:get_pid_from_port(Port) of
-		{ok, CurrentPid} -> 
-			case CurrentPid == Pid of
+							 daemon_id = DaemonId,
+							 auto_deploy = AutoDeploy,
+							 filename = Filename,
+							 verify_daemon = VerifyDaemon}) ->
+	
+	% Quando auto deploy é true e existe uma nova versão do executável
+	% então reinicia o daemon
+	% caso contrário apenas verifica se o daemon atual está vivo e saudável
+	case AutoDeploy andalso exist_new_version(State) of
+		true -> 
+			% o pid não é o mesmo então outro processo foi iniciado pelo sistema operacional
+			% não podemos permitir isso pois é o ems_daemon_service o responsável pelo processo
+			Msg = io_lib:format("ems_daemon_service ~s auto deploy daemon \033[01;34m\"~s\"\033[0m\033[00;31m...", [Name, Filename]),
+			do_restart_daemon(Msg, State, info);
+		false ->
+			% para verificar o daemon atual, o flag VerifyDaemon deve estar true
+			case VerifyDaemon of
 				true ->
-					case PidFileWatchdogTimeout > 0 of
-						true -> 
-							do_pidfile_watchdog_check(State, 1);
-						false ->
-							ems_logger:info("ems_daemon_service ~s daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
-							State#state{state = monitoring}
+					ems_logger:info("ems_daemon_service ~s if daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
+					case ems_util:get_pid_from_port(Port) of
+						{ok, CurrentPid} -> 
+							case CurrentPid == Pid of
+								true ->
+									case PidFileWatchdogTimeout > 0 of
+										true -> 
+											do_pidfile_watchdog_check(State, 1);
+										false ->
+											ems_logger:info("ems_daemon_service ~s daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
+											State#state{state = monitoring}
+									end;
+								false ->
+									% o pid não é o mesmo então outro processo foi iniciado pelo sistema operacional
+									% não podemos permitir isso pois é o ems_daemon_service o responsável pelo processo
+									Msg = io_lib:format("ems_daemon_service ~s will be restarted because unknow pid detected (Pid: ~p, OtherPid: ~p).", [Name, Pid, CurrentPid]),
+									do_restart_daemon(Msg, State, error)
+							end;	
+						_ ->
+							% O pid não existe mais, inicia um novo processo
+							ems_logger:error("ems_daemon_service ~s will start again because the current daemon ~p was killed in the operating system.", [Name, Pid]),
+							delete_pidfile(State),  % o processo foi morto mas pode ter deixado um arquivo de pid, vamos fazer a limpeza
+							do_start_daemon(State)
 					end;
-				false ->
-					% o pid não é o mesmo então outro processo foi iniciado pelo sistema operacional
-					% não podemos permitir isso pois é o ems_daemon_service o responsável pelo processo
-					Msg = io_lib:format("ems_daemon_service ~s will be restarted because unknow pid detected (Pid: ~p, OtherPid: ~p).", [Name, Pid, CurrentPid]),
-					do_restart_daemon(Msg, State, error)
-			end;	
-		_ ->
-			% O pid não existe mais, inicia um novo processo
-			ems_logger:error("ems_daemon_service ~s will start again because the current daemon ~p was killed in the operating system.", [Name, Pid]),
-			delete_pidfile(State),  % o processo foi morto mas pode ter deixado um arquivo de pid, vamos fazer a limpeza
-			do_start_daemon(State)
+				false -> State#state{state = monitor}
+			end
 	end.
 
 
@@ -308,35 +343,39 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 		false -> ok
 	end,
 	Pidfile2 = parse_variables(PidFile, State),
-	% verifica o timestamp do arquivo de pid, se ficar desatualizado, será reiniciado
-	case file:read_file_info(Pidfile2, []) of
-		{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
-			TimeAtual = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
-			TimePidfile = calendar:datetime_to_gregorian_seconds(MTime),
-			DiffTime = erlang:abs((TimeAtual - TimePidfile) * 1000),
-			case DiffTime > (PidFileWatchdogTimeout + 15000) of % 15 segundos a mais para eventuais delays
-				true -> 
-					case Tentativa == 3 of
-						true ->
-							Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is ~pms outdated, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId]),
-							do_restart_daemon(Msg, State, error);
+	case Pidfile2 =/= "" of
+		true ->
+			% verifica o timestamp do arquivo de pid, se ficar desatualizado, será reiniciado
+			case file:read_file_info(Pidfile2, []) of
+				{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
+					TimeAtual = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
+					TimePidfile = calendar:datetime_to_gregorian_seconds(MTime),
+					DiffTime = erlang:abs((TimeAtual - TimePidfile) * 1000),
+					case DiffTime > (PidFileWatchdogTimeout + 15000) of % 15 segundos a mais para eventuais delays
+						true -> 
+							case Tentativa == 3 of
+								true ->
+									Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is ~pms outdated, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId]),
+									do_restart_daemon(Msg, State, error);
+								false -> 
+									ems_util:sleep(500),
+									do_pidfile_watchdog_check(State, Tentativa + 1)
+							end;
 						false -> 
-							ems_util:sleep(500),
-							do_pidfile_watchdog_check(State, Tentativa + 1)
+							State#state{pid = Pid, state = monitoring}
 					end;
-				false -> 
-					State#state{pid = Pid, state = monitoring}
+				{error, enoent} -> 
+					case Tentativa == 3 of
+						true -> 
+							Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m does not exist, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, Pid, Port, DaemonId]),
+							do_restart_daemon(Msg, State, error);
+						false -> do_pidfile_watchdog_check(State, Tentativa + 1)
+					end;
+				{error, Reason} -> 
+					ems_logger:error("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is not accessible by the ErlangMS. Reason: ~p (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, Reason, Pid, Port, DaemonId]),
+					State#state{state = monitoring}
 			end;
-		{error, enoent} -> 
-			case Tentativa == 3 of
-				true -> 
-					Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m does not exist, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, Pid, Port, DaemonId]),
-					do_restart_daemon(Msg, State, error);
-				false -> do_pidfile_watchdog_check(State, Tentativa + 1)
-			end;
-		{error, Reason} -> 
-			ems_logger:error("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is not accessible by the ErlangMS. Reason: ~p (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, Reason, Pid, Port, DaemonId]),
-			State#state{pid = Pid, state = monitoring}
+		false -> State#state{state = monitoring}
 	end.
 
 
@@ -410,3 +449,24 @@ delete_pidfile(State = #state{name = Name,
 		false -> ok
 	end.
 
+exist_new_version(#state{auto_deploy = false}) -> false;
+exist_new_version(#state{name = Name, 
+						 filename = Filename,
+						 filename_lastmodified_time = LastModifiedTime,
+						 auto_deploy = true}) ->
+	CurrentModifiedTime = get_modified_time_filename(Name, Filename),
+	CurrentModifiedTime =/= undefined andalso LastModifiedTime =/= undefined andalso LastModifiedTime =/= CurrentModifiedTime.
+								 
+get_modified_time_filename(Name, Filename) ->
+	case Filename =/= "" of
+		true ->
+			case file:read_file_info(Filename, []) of
+				{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
+					calendar:datetime_to_gregorian_seconds(MTime);
+				{error, Reason} -> 
+					ems_logger:warn("ems_daemon_service ~s get_modified_time_filename failed. Reason: ~p.", [Name, Reason]),
+					undefined
+			end;
+		false ->
+			undefined
+	end.

@@ -7,6 +7,8 @@
 	"url": "/emsbus/ems_unb_servicos",
 	"port" : 5555,
 	"filename" : "/home/agilar/desenvolvimento/erlangms/ems-bus/priv/jar/unb_sevicos-1.0.0-SNAPSHOT-exec.jar",
+	"auto_deploy" : true,
+	"verify_daemon" : true,
 	"logfile" : "/home/agilar/desenvolvimento/erlangms/ems-bus/priv/jar/server.log",
 	"start_cmd" : "{{JAVA_HOME}}/bin/java -jar  {{FILENAME}} -Dems_daemon_id={{DAEMON_ID}} -Dems_daemon_service={{DAEMON_SERVICE}} -Dems_pidfile={{PIDFILE}} -Dems_pidfile_watchdog_timer={{PIDFILE_WATCHDOG_TIMER}}  --server.port={{PORT}} --ems_config_cmd={{CONFIG}} >> {{LOGFILE}}",
 	"stop_cmd" : "kill {{DAEMON_PID}}",
