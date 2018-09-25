@@ -36,6 +36,8 @@
 				pidfile,
 				pidfile_watchdog_timer,
 				filename,
+				logfile,
+				config_cmd,
 				state}). 
 
 
@@ -81,6 +83,8 @@ init(#service{name = Name,
     KillCmd = maps:get(<<"kill_cmd">>, Props, <<>>),
 	PidFileWatchDogTimeOut = ems_util:parse_range(maps:get(<<"pidfile_watchdog_timer">>, Props, 30000), 0, 86400000),
     PidFile = maps:get(<<"pidfile">>, Props, <<>>),
+    Logfile = maps:get(<<"logfile">>, Props, <<>>),
+    ConfigCmd  = list_to_binary("\"" ++ binary_to_list(ems_util:json_encode(maps:get(<<"config_cmd">>, Props, <<"{}">>))) ++ "\""),
     State = #state{name = NameStr,
 				   timeout = Timeout,
 				   port = Port,
@@ -91,6 +95,8 @@ init(#service{name = Name,
 				   pidfile_watchdog_timer = PidFileWatchDogTimeOut,
 				   daemon_id = "unknow",
 				   filename = Filename,
+				   logfile = Logfile,
+				   config_cmd = ConfigCmd,
 				   state = start},
     {ok, State, StartTimeout}.
     
@@ -372,7 +378,9 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 						    name = Name,
 						    pidfile = Pidfile,
 						    pidfile_watchdog_timer = PidfileWatchdogTimer,
-						    filename = Filename}) ->
+						    filename = Filename,
+						    logfile = Logfile,
+						    config_cmd = ConfigCmd}) ->
 	Result = string:trim(ems_util:replace_all_vars(Str, 
 		[{<<"PORT">>, integer_to_list(Port)},
 		 {<<"DAEMON_ID">>, DaemonId},
@@ -380,6 +388,8 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		 {<<"DAEMON_SERVICE">>, Name},
 		 {<<"FILENAME">>, Filename},
 		 {<<"PIDFILE">>, Pidfile},
+		 {<<"LOGFILE">>, Logfile},
+		 {<<"CONFIG">>, ConfigCmd},
 		 {<<"PIDFILE_WATCHDOG_TIMER">>, integer_to_list(PidfileWatchdogTimer)},
 		 {<<"JAVA_HOME">>, ems_util:get_java_home()}])),
 	Result.
