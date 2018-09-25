@@ -291,9 +291,7 @@ do_verify_daemon(State = #state{name = Name,
 	% caso contrário apenas verifica se o daemon atual está vivo e saudável
 	case AutoDeploy andalso exist_new_version(State) of
 		true -> 
-			% o pid não é o mesmo então outro processo foi iniciado pelo sistema operacional
-			% não podemos permitir isso pois é o ems_daemon_service o responsável pelo processo
-			Msg = io_lib:format("ems_daemon_service ~s auto deploy daemon \033[01;34m\"~s\"\033[0m\033[00;31m...", [Name, Filename]),
+			Msg = io_lib:format("ems_daemon_service ~s auto deploy daemon \033[01;34m\"~s\"\033[0m...", [Name, Filename]),
 			do_restart_daemon(Msg, State, info);
 		false ->
 			% para verificar o daemon atual, o flag VerifyDaemon deve estar true
