@@ -17,13 +17,12 @@
 start(_StartType, StartArgs) ->
 	erlang:system_flag(min_heap_size, 22000),
 	io:format("\n"),
-	T1 = ems_util:get_milliseconds(),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->
 			Conf = ems_config:getConfig(),
-			ems_logger:format_alert("Loading ~s instance ( Hostname: ~s  Erlang/OTP Version: ~s )", [?SERVER_NAME, Conf#config.ems_hostname, erlang:system_info(otp_release)]),
 			ems_logger:set_level(info),
+			ems_logger:format_info("Loading ~s instance ( Hostname: ~s  PID: ~s  Erlang/OTP Version: ~s )", [?SERVER_NAME, Conf#config.ems_hostname, os:getpid(), erlang:system_info(otp_release)]),
 			ems_dispatcher:start(),
 			Ret = ems_bus_sup:start_link(StartArgs),
 			AuthorizationMode = case Conf#config.authorization of
@@ -63,8 +62,6 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mresult_cache\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.ems_result_cache]),
 			ems_logger:info("  \033[0;32mresult_cache_shared\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_result_cache_shared]),
 			ems_logger:info("  \033[0;32mjava_home\033[0m: \033[01;34m~s\033[0m.", [binary_to_list(ems_util:get_environment_variable(<<"JAVA_HOME">>))]),
-			
-			
 			ems_logger:info("  \033[0;32mdisable_services\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_disable_services]),
 			ems_logger:info("  \033[0;32mdisable_services_owner\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_disable_services_owner]),
 			ems_logger:info("  \033[0;32menable_services\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_enable_services]),
@@ -79,7 +76,6 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mssl_cacertfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_cacertfile]),
 			ems_logger:info("  \033[0;32mssl_certfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_certfile]),
 			ems_logger:info("  \033[0;32mssl_keyfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_keyfile]),
-			ems_logger:info("Server ~s (PID ~s) started in ~pms.", [?SERVER_NAME, os:getpid(), ems_util:get_milliseconds() - T1]),
 			Ret;
 		{error, Reason} ->
 			io:format("Error processing configuration file. Reason: ~p.", [Reason]),

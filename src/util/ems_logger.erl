@@ -226,30 +226,58 @@ checkpoint() ->
 format_info(Message) when is_list(Message) ->	
 	format_info(list_to_binary(Message));
 format_info(Message) ->	
-	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\n">>])).
+	Message2 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message, <<"\n">>]),
+	io:format(Message2).
 
 format_info(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\n">>])).
+	Message3 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message2, <<"\n">>]),
+	io:format(Message3).
 
+format_warn(Message) when is_list(Message) ->	
+	format_warn(list_to_binary(Message));
+format_warn(Message) ->	
+	Message2 = iolist_to_binary([<<"\033[01;33mWARN  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;33m">>, Message, <<"\033[0m\n">>]),
+	io:format(Message2).
 
-format_warn(Message) ->	io:format("\033[0;33m~s\033[0m", [Message]).
-format_warn(Message, Params) ->	io:format("\033[0;33m~s\033[0m", [io_lib:format(Message, Params)]).
+format_warn(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	Message3 = iolist_to_binary([<<"\033[01;33mWARN  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;33m">>, Message2, <<"\033[0m\n">>]),
+	io:format(Message3).
 
-format_error(Message) -> io:format("\033[0;31m~s\033[0m\n", [Message]).
-format_error(Message, Params) -> io:format("\033[0;31m~s\033[0m\n", [io_lib:format(Message, Params)]).
+format_error(Message) when is_list(Message) ->	
+	format_error(list_to_binary(Message));
+format_error(Message) ->	
+	Message2 = iolist_to_binary([<<"\033[01;33mERROR  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;31m">>, Message, <<"\033[0m\n">>]),
+	io:format(Message2).
 
-format_debug(Message) -> io:format("\033[0;34m~s\033[0m", [Message]).
-format_debug(Message, Params) -> io:format("\033[1;34m~s\033[0m", [io_lib:format(Message, Params)]).
+format_error(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	Message3 = iolist_to_binary([<<"\033[01;33mERROR  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;31m">>, Message2, <<"\033[0m\n">>]),
+	io:format(Message3).
+
+format_debug(Message) when is_list(Message) ->	
+	format_debug(list_to_binary(Message));
+format_debug(Message) ->	
+	Message2 = iolist_to_binary([<<"\033[01;33mDEBUG  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;36m">>, Message, <<"\033[0m\n">>]),
+	io:format(Message2).
+
+format_debug(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	Message3 = iolist_to_binary([<<"\033[01;33mDEBUG  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;36m">>, Message2, <<"\033[0m\n">>]),
+	io:format(Message3).
 
 format_alert(Message) when is_list(Message) ->	
 	format_alert(list_to_binary(Message));
-format_alert(Message) ->
-	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\033[0m\n">>])).
+format_alert(Message) ->	
+	Message2 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message, <<"\n">>]),
+	io:format(Message2).
 
-format_alert(Message, Params) ->
+format_alert(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\033[0m\n">>])).
+	Message3 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message2, <<"\n">>]),
+	io:format(Message3).
+
 
 
 

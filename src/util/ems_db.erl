@@ -38,7 +38,7 @@ start() ->
 	
 -spec create_database(list()) -> ok.	
 create_database(Nodes) ->
-	ems_logger:format_info("ems_db initializing ErlangMS database, please wait."),
+	ems_logger:format_info("ems_db initializing ErlangMS database, please wait..."),
 
 	% Define a pasta de armazenamento dos databases
 	filelib:ensure_dir(?DATABASE_PATH),
