@@ -41,6 +41,8 @@
 				config_cmd,
 				auto_deploy,
 				verify_daemon,
+				scan_catalogs_jarfile,
+				scan_catalogs_path,
 				state}). 
 
 
@@ -91,6 +93,8 @@ init(#service{name = Name,
     AutoDeploy = ems_util:parse_bool(maps:get(<<"auto_deploy">>, Props, false)),
     VerifyDaemon = ems_util:parse_bool(maps:get(<<"verify_daemon">>, Props, false)),
 	LastModifiedTime = get_modified_time_filename(Name, Filename),
+	ScanCatalogsJarfile = ems_util:parse_bool(maps:get(<<"scan_catalogs_jarfile">>, Props, false)),
+	ScanCatalogsPath = binary_to_list(maps:get(<<"scan_catalogs_path">>, Props, <<>>)),
     State = #state{name = NameStr,
 				   timeout = Timeout,
 				   port = Port,
@@ -106,6 +110,8 @@ init(#service{name = Name,
 				   auto_deploy = AutoDeploy,
 				   verify_daemon = VerifyDaemon,
 				   filename_lastmodified_time = LastModifiedTime,
+				   scan_catalogs_jarfile = ScanCatalogsJarfile,
+				   scan_catalogs_path = ScanCatalogsPath,
 				   state = start},
     {ok, State, StartTimeout}.
     
@@ -121,8 +127,8 @@ handle_cast(kill_daemon, State) ->
 	State2 = do_kill_daemon(State),
     {noreply, State2};
 
-handle_cast(restart_daemon, State = #state{name = Name, pid = Pid, timeout = Timeout}) ->
-	Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p.", [Name, Pid]),
+handle_cast(restart_daemon, State = #state{name = Name, timeout = Timeout}) ->
+	Msg = io_lib:format("ems_daemon_service ~s daemon restarting...", [Name]),
 	State2 = do_restart_daemon(Msg, State, info),
     {noreply, State2, Timeout};
 
@@ -169,7 +175,7 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 							   pidfile = Pidfile}) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, CurrentPid} -> 
-			Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p. restart in progress.", [Name, CurrentPid]),
+			Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, restart in progress.", [Name, CurrentPid]),
 			do_restart_daemon(Msg, State#state{pid = CurrentPid, daemon_id = "unknow"}, error);
 		_ ->
 			DaemonId = integer_to_list(ems_util:get_milliseconds()),
@@ -183,13 +189,14 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 						ok ->
 							case ems_util:os_command(CmdStart2, #{ max_size => 0 }) of
 								{ok, _Result} ->
-									case fica_em_loop_ate_obter_pid(Port, 30) of
+									case fica_em_loop_ate_obter_pid(Port, 60) of
 										{ok, Pid} -> 
 											ems_logger:info("ems_daemon_service ~s new daemon started (Pid: ~p Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
-											State#state{state = monitoring, 
-														pid = Pid, 
-														daemon_id = DaemonId, 
-														filename_lastmodified_time = get_modified_time_filename(Name, Filename)};
+											State2 = State#state{state = monitoring, 
+																 pid = Pid, 
+																 daemon_id = DaemonId, 
+																 filename_lastmodified_time = get_modified_time_filename(Name, Filename)},
+											do_scan_catalogs(State2);
 										_ -> 
 											ems_logger:error("ems_daemon_service ~s start new daemon failed because does not adquire pid of current daemon.", [Name]),
 											State#state{state = start, pid = undefined, daemon_id = "unknow"}
@@ -297,7 +304,7 @@ do_verify_daemon(State = #state{name = Name,
 			% para verificar o daemon atual, o flag VerifyDaemon deve estar true
 			case VerifyDaemon of
 				true ->
-					ems_logger:info("ems_daemon_service ~s if daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
+					?DEBUG("ems_daemon_service ~s if daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
 					case ems_util:get_pid_from_port(Port) of
 						{ok, CurrentPid} -> 
 							case CurrentPid == Pid of
@@ -306,7 +313,7 @@ do_verify_daemon(State = #state{name = Name,
 										true -> 
 											do_pidfile_watchdog_check(State, 1);
 										false ->
-											ems_logger:info("ems_daemon_service ~s daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
+											?DEBUG("ems_daemon_service ~s daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
 											State#state{state = monitoring}
 									end;
 								false ->
@@ -337,7 +344,7 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 								 daemon_id = DaemonId}, Tentativa) ->
 	% mostra mensagem apenas na primeira tentativa
 	case Tentativa == 1 of
-		true -> ems_logger:info("ems_daemon_service ~s check pidfile daemon (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]);
+		true -> ?DEBUG("ems_daemon_service ~s check pidfile daemon (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]);
 		false -> ok
 	end,
 	Pidfile2 = parse_variables(PidFile, State),
@@ -356,7 +363,7 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 									Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is ~pms outdated, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId]),
 									do_restart_daemon(Msg, State, error);
 								false -> 
-									ems_util:sleep(500),
+									ems_util:sleep(1),
 									do_pidfile_watchdog_check(State, Tentativa + 1)
 							end;
 						false -> 
@@ -377,6 +384,41 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 	end.
 
 
+do_scan_catalogs(State = #state{scan_catalogs_path = <<>>}) -> State;
+do_scan_catalogs(State = #state{name = Name, 
+								scan_catalogs_jarfile = ScanCatalogsJarFile,
+								scan_catalogs_path = ScanCatalogsPath,
+							    filename = Filename}) ->
+	% Para scanear catálogos a propriedade ScanCatalogsPath deve ter um path definido
+	% Note que pode ser um path relativo pois pode ser em relação ao que está dentro do jar quando ScanCatalogsJarFile = true
+	CatName = list_to_binary(Name),
+	case ScanCatalogsJarFile == true of
+		true -> 
+			case do_scan_catalogs_jarfile(State) of
+				{ok, CatFilename} ->
+					ems_logger:info("ems_daemon_service ~s scan catalogs on ~s of jarfile ~s.", [Name, ScanCatalogsPath, Filename]),
+					ems_config:add_catalog(CatName, CatFilename),
+					ems_json_loader:sync_full(ems_catalog_loader_fs);
+				{error, Reason} ->
+					ems_logger:error("ems_daemon_service ~s scan catalogs failed on ~s of jarfile ~s. Reason: ~p", [Name, ScanCatalogsPath, Filename, Reason])
+			end;
+		false -> 
+			ems_logger:info("ems_daemon_service ~s scan catalogs on ~s.", [Name, ScanCatalogsPath]),
+			ems_config:add_catalog(CatName, ScanCatalogsPath),
+			ems_json_loader:sync_full(ems_catalog_loader_fs)
+	end,
+	State.
+		
+do_scan_catalogs_jarfile(#state{filename = Filename,	
+								scan_catalogs_path = ScanCatalogsPath}) ->
+	try
+		CatTempDir = filename:join([?TEMP_PATH, "catalogs", "jarfile", filename:basename(Filename)]),
+		zip:unzip(Filename, [{cwd, CatTempDir}]),
+		{ok, filename:join([CatTempDir, ScanCatalogsPath])}
+	catch
+		_:_ -> {error, eno_jarfile}
+	end.
+
 
 % Fica em um loop até conseguir obter o pid por meio da porta utilizada pelo processo externo
 fica_em_loop_ate_obter_pid(_, 0) -> {error, enoent};
@@ -384,7 +426,7 @@ fica_em_loop_ate_obter_pid(Port, Tentativas) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, Pid} -> {ok, Pid};
 		_ -> 
-			ems_util:sleep(500),
+			ems_util:sleep(1000),
 			fica_em_loop_ate_obter_pid(Port, Tentativas - 1)
 	end.
 
@@ -394,7 +436,7 @@ fica_em_loop_ate_encerrar_pid(_, _, 0) -> ok;
 fica_em_loop_ate_encerrar_pid(Port, Pid, Tentativas) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, Pid2} when Pid2 =:= Pid -> 
-			ems_util:sleep(500),
+			ems_util:sleep(1000),
 			fica_em_loop_ate_encerrar_pid(Port, Pid, Tentativas - 1);
 		_ -> ok
 	end.

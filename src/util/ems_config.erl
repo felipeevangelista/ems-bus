@@ -19,7 +19,7 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/1, handle_info/2, terminate/2, code_change/3]).
 
--export([getConfig/0, getConfig/3, get_port_offset/1, select_config_file/2]).
+-export([getConfig/0, getConfig/3, get_port_offset/1, select_config_file/2, add_catalog/2, remove_catalog/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -48,6 +48,13 @@ get_port_offset(S = #service{tcp_port = Port, name = ServiceName}) ->
 	Port2 = gen_server:call(?SERVER, {use_port_offset, ServiceName, Port}),
  	S#service{tcp_port = Port2}.
 
+add_catalog(CatName, CatFilename) ->
+	gen_server:call(?SERVER, {add_catalog, CatName, CatFilename}),
+	ok.
+
+remove_catalog(CatName) ->
+	gen_server:call(?SERVER, {remove_catalog, CatName}),
+	ok.
 
 
 %%====================================================================
@@ -86,7 +93,18 @@ handle_call({use_port_offset, ServiceName, DefaultPort}, _From, State = #config{
 	Port = maps:get(ParamName, Params, DefaultPort) ,
 	Params2 = maps:put(ParamName, Port + 1, Params),
 	State2 = State#config{params = Params2},
-	{reply, Port, State2}.
+	{reply, Port, State2};
+
+handle_call({add_catalog, CatName, CatFilename}, _From, State = #config{cat_path_search = CatPathSearch}) ->
+	CatPathSearch2 = lists:keydelete(CatName, 1, CatPathSearch),
+	State2 = State#config{cat_path_search = CatPathSearch2 ++ [{CatName, CatFilename}]},
+	{reply, undefined, State2};
+
+handle_call({remove_catalog, CatName}, _From, State = #config{cat_path_search = CatPathSearch}) ->
+	CatPathSearch2 = lists:keydelete(CatName, 1, CatPathSearch),
+	State2 = State#config{cat_path_search = CatPathSearch2},
+	{reply, undefined, State2}.
+
 
 handle_info(_Msg, State) ->
    {noreply, State}.
