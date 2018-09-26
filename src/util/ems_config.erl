@@ -296,6 +296,11 @@ parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Hostname, Res
 			erlang:error(einvalid_http_response_header)
 	end.
 	
+parse_jar_path(Path) ->
+	case filelib:is_dir(Path) of
+		true -> Path;
+		false -> erlang:error(einvalid_jar_path)
+	end.
 
 
 -spec parse_config(map(), string()) -> #config{}.
@@ -452,6 +457,9 @@ parse_config(Json, Filename) ->
 		put(parse_step, restricted_services_admin),
 		RestrictedServicesAdmin = maps:get(<<"restricted_services_admin">>, Json, []),
 		
+		put(parse_step, jar_path),
+		JarPath = parse_jar_path(maps:get(<<"jar_path">>, Json, ?JAR_PATH)),
+
 		put(parse_step, config),
 		{ok, #config{ cat_host_alias = HostAlias,
 				 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
@@ -512,7 +520,8 @@ parse_config(Json, Filename) ->
 				 log_show_payload_max_length = LogShowPayloadMaxLength,
 				 log_file_checkpoint = LogFileCheckpoint,
 				 log_file_max_size = LogFileMaxSize,
-				 rest_default_querystring = Querystring
+				 rest_default_querystring = Querystring,
+				 jar_path = JarPath
 			}}
 	catch
 		_:Reason -> 
@@ -581,7 +590,8 @@ get_default_config() ->
 			 log_show_payload_max_length = ?LOG_SHOW_PAYLOAD_MAX_LENGTH,
 			 log_file_checkpoint = ?LOG_FILE_CHECKPOINT,
 			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
-			 rest_default_querystring = []
+			 rest_default_querystring = [],
+			 jar_path = ?JAR_PATH
 		}}.
 
 -spec select_config_file(binary() | string(), binary() | string()) -> {ok, string()} | {error, enofile_config}.

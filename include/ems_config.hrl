@@ -52,6 +52,9 @@
 % Caminho da pasta de databases
 -define(DATABASE_PATH, filename:join(?PRIV_PATH, "db")).
 
+% Caminho da pasta de databases
+-define(JAR_PATH, filename:join(?PRIV_PATH, "jar")).
+
 % Caminho do arquivo de configuração padrão (Pode ser incluído também na pasta ~/.erlangms do usuário)
 -define(CONF_FILE_PATH, filename:join(?CONF_PATH, "emsbus.conf")).
 
@@ -299,6 +302,7 @@
 				 user_email_path_search :: string(),
 				 user_endereco_path_search :: string(),
 				 user_telefone_path_search :: string(),
+				 jar_path :: string(),
 				 ssl_cacertfile :: binary(),
 				 ssl_certfile :: binary(),
 				 ssl_keyfile :: binary(),

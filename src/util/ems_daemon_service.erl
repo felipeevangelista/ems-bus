@@ -79,7 +79,7 @@ verify_daemon() ->
 init(#service{name = Name,
 			  timeout = Timeout,
 			  start_timeout = StartTimeout,
-			  filename = Filename,
+			  filename = FilenameService,
 			  properties = Props}) ->
     NameStr = binary_to_list(Name),
     Port = maps:get(<<"port">>, Props, 0),
@@ -87,9 +87,10 @@ init(#service{name = Name,
     StopCmd = maps:get(<<"stop_cmd">>, Props, <<>>),
     KillCmd = maps:get(<<"kill_cmd">>, Props, <<>>),
 	PidFileWatchDogTimeOut = ems_util:parse_range(maps:get(<<"pidfile_watchdog_timer">>, Props, 30000), 0, 86400000),
-    PidFile = maps:get(<<"pidfile">>, Props, <<>>),
-    Logfile = maps:get(<<"logfile">>, Props, <<>>),
-    ConfigCmd  = list_to_binary("\"" ++ binary_to_list(ems_util:json_encode(maps:get(<<"config_cmd">>, Props, <<"{}">>))) ++ "\""),
+    Filename = parse_enviroment_variables(FilenameService),
+    PidFile = parse_enviroment_variables(maps:get(<<"pidfile">>, Props, <<>>)),
+    Logfile = parse_enviroment_variables(maps:get(<<"logfile">>, Props, <<>>)),
+    ConfigCmd  = list_to_binary("'" ++ binary_to_list(ems_util:json_encode(maps:get(<<"config_cmd">>, Props, <<"{}">>))) ++ "'"),
     AutoDeploy = ems_util:parse_bool(maps:get(<<"auto_deploy">>, Props, false)),
     VerifyDaemon = ems_util:parse_bool(maps:get(<<"verify_daemon">>, Props, false)),
 	LastModifiedTime = get_modified_time_filename(Name, Filename),
@@ -189,7 +190,7 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 						ok ->
 							case ems_util:os_command(CmdStart2, #{ max_size => 0 }) of
 								{ok, _Result} ->
-									case fica_em_loop_ate_obter_pid(Port, 60) of
+									case fica_em_loop_ate_obter_pid(Name, Port, 60) of
 										{ok, Pid} -> 
 											ems_logger:info("ems_daemon_service ~s new daemon started (Pid: ~p Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
 											State2 = State#state{state = monitoring, 
@@ -421,13 +422,14 @@ do_scan_catalogs_jarfile(#state{filename = Filename,
 
 
 % Fica em um loop até conseguir obter o pid por meio da porta utilizada pelo processo externo
-fica_em_loop_ate_obter_pid(_, 0) -> {error, enoent};
-fica_em_loop_ate_obter_pid(Port, Tentativas) ->
+fica_em_loop_ate_obter_pid(_,_, 0) -> {error, enoent};
+fica_em_loop_ate_obter_pid(Name, Port, Tentativas) ->
 	case ems_util:get_pid_from_port(Port) of
 		{ok, Pid} -> {ok, Pid};
 		_ -> 
+			ems_logger:info("ems_daemon_service ~s failed get pid from port ~p (Tentativas: ~p).", [Name, Port, Tentativas]),
 			ems_util:sleep(1000),
-			fica_em_loop_ate_obter_pid(Port, Tentativas - 1)
+			fica_em_loop_ate_obter_pid(Name, Port, Tentativas - 1)
 	end.
 
 				
@@ -444,13 +446,20 @@ fica_em_loop_ate_encerrar_pid(Port, Pid, Tentativas) ->
 	
 % O comando cmd_start precisa ter um & no final para o barramento não ficar preso 
 % com a execução do comando
+parse_start_cmd(<<>>) -> "";
 parse_start_cmd(Cmd) -> 
 	CmdStr = string:trim(binary_to_list(Cmd)),
-	case lists:reverse(CmdStr) of
-		"&" ++ _ -> CmdStr;
-		_ -> CmdStr ++ " &"
+	case CmdStr =/= "" of
+		true ->
+			case lists:reverse(CmdStr) of
+				"&" ++ _ -> CmdStr;
+				_ -> CmdStr ++ " &"
+			end;
+		false -> ""
 	end.
 			
+			
+parse_variables(<<>>, _) -> "";
 parse_variables(Str, #state{daemon_id = DaemonId,
 							pid = Pid,
 						    port = Port,
@@ -460,6 +469,7 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 						    filename = Filename,
 						    logfile = Logfile,
 						    config_cmd = ConfigCmd}) ->
+	Conf = ems_config:getConfig(),
 	Result = string:trim(ems_util:replace_all_vars(Str, 
 		[{<<"PORT">>, integer_to_list(Port)},
 		 {<<"DAEMON_ID">>, DaemonId},
@@ -470,9 +480,18 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		 {<<"LOGFILE">>, Logfile},
 		 {<<"CONFIG">>, ConfigCmd},
 		 {<<"PIDFILE_WATCHDOG_TIMER">>, integer_to_list(PidfileWatchdogTimer)},
-		 {<<"JAVA_HOME">>, ems_util:get_java_home()}])),
+		 {<<"JAVA_HOME">>, ems_util:get_java_home()},
+		 {<<"JAR_PATH">>, Conf#config.jar_path}])),
 	Result.
 
+parse_enviroment_variables(<<>>) -> "";
+parse_enviroment_variables(Str) ->
+	Conf = ems_config:getConfig(),
+	Result = string:trim(ems_util:replace_all_vars(Str, 
+		[{<<"JAVA_HOME">>, ems_util:get_java_home()},
+		 {<<"JAR_PATH">>, Conf#config.jar_path}])),
+	Result.	 
+		
 
 delete_pidfile(State = #state{name = Name,
 							  pidfile = Pidfile}) ->
@@ -510,3 +529,4 @@ get_modified_time_filename(Name, Filename) ->
 		false ->
 			undefined
 	end.
+
