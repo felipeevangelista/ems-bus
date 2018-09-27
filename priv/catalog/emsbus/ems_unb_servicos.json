@@ -9,12 +9,12 @@
 	"filename" : "{{JAR_PATH}}/unb_sevicos-1.0.0-SNAPSHOT-exec.jar",
 	"verify_daemon" : true,
 	"logfile" : "{{JAR_PATH}}/server.log",
-	"start_cmd" : "{{JAVA_HOME}}/bin/java -jar  {{FILENAME}} -Dems_daemon_id={{DAEMON_ID}} -Dems_daemon_service={{DAEMON_SERVICE}} -Dems_pidfile={{PIDFILE}} -Dems_pidfile_watchdog_timer={{PIDFILE_WATCHDOG_TIMER}}  --server.port={{PORT}} -Dems_config_cmd={{CONFIG}} >> {{LOGFILE}}",
+	"start_cmd" : "{{JAVA_HOME}}/bin/java -jar  {{FILENAME}} -Dems_daemon_id={{DAEMON_ID}} -Dems_daemon_service={{DAEMON_SERVICE}} -Dems_pidfile={{PIDFILE}} -Dems_pidfile_watchdog_timer={{PIDFILE_WATCHDOG_TIMER}}  --server.port={{PORT}} -Dems_daemon_params={{DAEMON_PARAMS}} >> {{LOGFILE}}",
 	"stop_cmd" : "kill {{DAEMON_PID}}",
 	"kill_cmd" : "kill -9 {{DAEMON_PID}}",
 	"pidfile" : "{{JAR_PATH}}/unb_servicos_daemon_id_{{DAEMON_ID}}_port_{{PORT}}.pid",
 	"pidfile_watchdog_timer" : 30000,
-	"config_cmd" : {
+	"daemon_params" : {
 		"jdbc.driverClassName" : "net.sourceforge.jtds.jdbc.Driver",
 		"jdbc.url" : "jdbc:jtds:sqlserver://164.41.106.24:1433;databaseName=BDPessoa;useUnicode=true;characterEncoding=UTF-8",
 		"jdbc.username" : "usuUnBServicos",
@@ -27,11 +27,16 @@
 		"erlangms.url" : "{{BASE_URL}}",
 		"erlangms.user" : "{{ERLANGMS_USER}}",
 		"erlangms.password" : "{{ERLANGMS_PASSWORD}}",
+		"erlangms.ems_thread_pool" : 12,
 		"erlangms.smtp.password" : "erl1523",
 		"erlangms.smtp.from" : "erlangms@unb.br",
 		"erlangms.smtp.port" : "587",
 		"erlangms.smtp.mail" : "mail.unb.br",
-		"erlangms.environment" : "{{CONFIG.ENVIRONMENT}}"
+		"erlangms.environment" : "{{CONFIG.ENVIRONMENT}}",
+		"erlangms.node" : "{{CONFIG.CURRENT_NODE}}",
+		"erlangms.ldap.url" : "ldap://localhost:2389",
+		"erlangms.ldap.admin" : "cn=admin,dc=unb,dc=br",
+		"erlangms.ldap.passwd" : "123456"
 	},
 	"scan_catalogs_jarfile" : true,
 	"scan_catalogs_path" : "BOOT-INF/classes/catalogo/catalogo_unb_servicos.json",
