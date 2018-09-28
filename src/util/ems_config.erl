@@ -460,8 +460,8 @@ parse_config(Json, Filename) ->
 		put(parse_step, jar_path),
 		JarPath = parse_jar_path(maps:get(<<"jar_path">>, Json, ?JAR_PATH)),
 
-		put(parse_step, smtp_password),
-		SmtpPassword = binary_to_list(maps:get(<<"smtp_password">>, Json, <<>>)),
+		put(parse_step, smtp_passwd),
+		SmtpPassword = binary_to_list(maps:get(<<"smtp_passwd">>, Json, <<>>)),
 
 		put(parse_step, smtp_from),
 		SmtpFrom = binary_to_list(maps:get(<<"smtp_from">>, Json, <<>>)),
@@ -478,7 +478,13 @@ parse_config(Json, Filename) ->
 		put(parse_step, ldap_admin),
 		LdapAdmin = binary_to_list(maps:get(<<"ldap_admin">>, Json, <<>>)),
 				 
-		put(parse_step, ldap_admin),
+		put(parse_step, ldap_password_admin_crypto),
+		LdapPasswdAdminCrypto = binary_to_list(maps:get(<<"ldap_password_admin_crypto">>, Json, <<>>)),
+
+		put(parse_step, ldap_base_search),
+		LdapBaseSearch = binary_to_list(maps:get(<<"ldap_base_search">>, Json, <<>>)),
+
+		put(parse_step, ldap_password_admin),
 		LdapPasswordAdmin = binary_to_list(maps:get(<<"ldap_password_admin">>, Json, <<>>)),
 
 		put(parse_step, thread_pool),
@@ -486,6 +492,8 @@ parse_config(Json, Filename) ->
 
 		put(parse_step, variables),
 		Variables = maps:to_list(maps:get(<<"variables">>, Json, #{})),
+
+
 
 		put(parse_step, config),
 		{ok, #config{ cat_host_alias = HostAlias,
@@ -549,13 +557,15 @@ parse_config(Json, Filename) ->
 				 log_file_max_size = LogFileMaxSize,
 				 rest_default_querystring = Querystring,
 				 jar_path = JarPath,
-				 smtp_password = SmtpPassword,
+				 smtp_passwd = SmtpPassword,
 				 smtp_from = SmtpFrom,
 				 smtp_mail = SmtpMail,
 				 smtp_port = SmtpPort,
 				 ldap_url = LdapUrl,
 				 ldap_admin = LdapAdmin,
 				 ldap_password_admin = LdapPasswordAdmin,
+				 ldap_password_admin_crypto = LdapPasswdAdminCrypto,
+				 ldap_base_search = LdapBaseSearch,
 				 thread_pool = ThreadPool,
 				 variables = Variables
 			}}
@@ -628,13 +638,15 @@ get_default_config() ->
 			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
 			 rest_default_querystring = [],
 			 jar_path = ?JAR_PATH,
-			 smtp_password = "",
+			 smtp_passwd = "",
 			 smtp_from = "",
 			 smtp_mail = "",
 			 smtp_port = 587,
 			 ldap_url = "",
 			 ldap_admin = "",
 			 ldap_password_admin = "",
+			 ldap_password_admin_crypto = "",
+			 ldap_base_search = "",
 			 thread_pool = 12,
 			 variables = []
 		}}.

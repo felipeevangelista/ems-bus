@@ -999,11 +999,31 @@ replace_all(Subject, [{Key, Value}|VarTail]) ->
 	replace_all(NewSubject, VarTail).
 
 
--spec replace_all_vars(string(), list(tuple())) -> string().
-replace_all_vars(Subject, []) -> Subject;
-replace_all_vars(Subject, [{Key, Value}|VarTail]) -> 
-	NewSubject = replace(Subject, "{{.?"++ binary_to_list(Key) ++ ".?}}", Value),
-	replace_all_vars(NewSubject, VarTail).
+-spec replace_all_vars(string() | binary(), list(tuple())) -> string().
+replace_all_vars(Subject, Vargs) -> 
+	SubjectStr = case is_binary(Subject) of
+					true -> binary_to_list(Subject);
+					false -> Subject
+				 end,
+	replace_all_vars_(SubjectStr, Vargs).
+
+-spec replace_all_vars_(string(), list(tuple())) -> string().
+replace_all_vars_(Subject, []) -> Subject;
+replace_all_vars_(Subject, [{Key, Value}|VarTail]) -> 
+	KeyStr = case is_binary(Key) of
+				true -> binary_to_list(Key);
+				false -> Key
+			 end,
+	ValueStr = case is_binary(Value) of
+					true -> binary_to_list(Value);
+					false -> 
+						case is_integer(Value) of
+							true -> integer_to_list(Value);
+							false -> Value
+						end
+			   end,
+	NewSubject = replace(Subject, "{{.?"++ KeyStr ++ ".?}}", ValueStr),
+	replace_all_vars_(NewSubject, VarTail).
 
 
 replace_vars_with(Subject, Value) -> re:replace(Subject, "{{.+}}", Value, [global, {return, list}]).
