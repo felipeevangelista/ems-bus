@@ -481,8 +481,19 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		 {<<"LOGFILE">>, Logfile},
 		 {<<"PIDFILE_WATCHDOG_TIMER">>, integer_to_list(PidfileWatchdogTimer)},
 		 {<<"JAVA_HOME">>, ems_util:get_java_home()},
-		 {<<"JAR_PATH">>, Conf#config.jar_path}])),
-	Result.
+		 {<<"JAR_PATH">>, Conf#config.jar_path},
+		 {<<"REST_BASE_URL">>, binary_to_list(Conf#config.rest_base_url)},
+		 {<<"ERLANGMS_USER">>, "erlangms"},
+		 {<<"ERLANGMS_PASSWD">>, "5outLag1"},
+		 {<<"THREAD_POOL">>, Conf#config.thread_pool},
+		 {<<"SMTP_PASSWD">>, Conf#config.smtp_password},
+		 {<<"REST_ENVIRONMENT">>, Conf#config.rest_environment},
+		 {<<"LDAP_URL">>, Conf#config.ldap_url},
+		 {<<"LDAP_ADMIN">>, Conf#config.ldap_admin},
+		 {<<"LDAP_PASSWORD">>, Conf#config.ldap_password_admin}
+		])), 
+	Result2 = string:trim(ems_util:replace_all_vars(Result, Conf#config.variables)), 
+	Result2.
 
 parse_enviroment_variables(<<>>) -> "";
 parse_enviroment_variables(Str) ->

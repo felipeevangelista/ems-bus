@@ -314,6 +314,16 @@
 				 log_show_response_max_length :: boolean(),			%% show response if content length < show_response_max_length
 				 log_show_payload_max_length :: boolean(),			%% show payload if content length < show_response_max_length
 				 log_file_checkpoint :: non_neg_integer(),
-				 log_file_max_size :: non_neg_integer()
+				 log_file_max_size :: non_neg_integer(),
+				 smtp_password :: string(),
+				 smtp_from :: string(),
+				 smtp_mail :: string(),
+				 smtp_port :: non_neg_integer(),
+				 ldap_url :: string(),
+				 ldap_admin :: string(),
+				 ldap_password_admin :: string(),
+ 				 thread_pool :: non_neg_integer(),
+ 				 variables :: list(string())						%% Lista de variáveis genéricas
+
 		 }). 	
 

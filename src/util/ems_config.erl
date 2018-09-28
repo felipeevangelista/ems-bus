@@ -460,6 +460,33 @@ parse_config(Json, Filename) ->
 		put(parse_step, jar_path),
 		JarPath = parse_jar_path(maps:get(<<"jar_path">>, Json, ?JAR_PATH)),
 
+		put(parse_step, smtp_password),
+		SmtpPassword = binary_to_list(maps:get(<<"smtp_password">>, Json, <<>>)),
+
+		put(parse_step, smtp_from),
+		SmtpFrom = binary_to_list(maps:get(<<"smtp_from">>, Json, <<>>)),
+
+		put(parse_step, smtp_mail),
+		SmtpMail = binary_to_list(maps:get(<<"smtp_mail">>, Json, <<>>)),
+
+		put(parse_step, smtp_port),
+		SmtpPort = maps:get(<<"smtp_port">>, Json, 587),
+
+		put(parse_step, ldap_url),
+		LdapUrl = binary_to_list(maps:get(<<"ldap_url">>, Json, <<>>)),
+
+		put(parse_step, ldap_admin),
+		LdapAdmin = binary_to_list(maps:get(<<"ldap_admin">>, Json, <<>>)),
+				 
+		put(parse_step, ldap_admin),
+		LdapPasswordAdmin = binary_to_list(maps:get(<<"ldap_password_admin">>, Json, <<>>)),
+
+		put(parse_step, thread_pool),
+		ThreadPool = ems_util:parse_range(maps:get(<<"thread_pool">>, Json, 12), 1, 120),
+
+		put(parse_step, variables),
+		Variables = maps:to_list(maps:get(<<"variables">>, Json, #{})),
+
 		put(parse_step, config),
 		{ok, #config{ cat_host_alias = HostAlias,
 				 cat_host_search = maps:get(<<"host_search">>, Json, <<>>),							
@@ -521,7 +548,16 @@ parse_config(Json, Filename) ->
 				 log_file_checkpoint = LogFileCheckpoint,
 				 log_file_max_size = LogFileMaxSize,
 				 rest_default_querystring = Querystring,
-				 jar_path = JarPath
+				 jar_path = JarPath,
+				 smtp_password = SmtpPassword,
+				 smtp_from = SmtpFrom,
+				 smtp_mail = SmtpMail,
+				 smtp_port = SmtpPort,
+				 ldap_url = LdapUrl,
+				 ldap_admin = LdapAdmin,
+				 ldap_password_admin = LdapPasswordAdmin,
+				 thread_pool = ThreadPool,
+				 variables = Variables
 			}}
 	catch
 		_:Reason -> 
@@ -591,7 +627,16 @@ get_default_config() ->
 			 log_file_checkpoint = ?LOG_FILE_CHECKPOINT,
 			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
 			 rest_default_querystring = [],
-			 jar_path = ?JAR_PATH
+			 jar_path = ?JAR_PATH,
+			 smtp_password = "",
+			 smtp_from = "",
+			 smtp_mail = "",
+			 smtp_port = 587,
+			 ldap_url = "",
+			 ldap_admin = "",
+			 ldap_password_admin = "",
+			 thread_pool = 12,
+			 variables = []
 		}}.
 
 -spec select_config_file(binary() | string(), binary() | string()) -> {ok, string()} | {error, enofile_config}.
