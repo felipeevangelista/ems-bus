@@ -25,6 +25,7 @@
 		"hibernate.jdbc.batch_size" : 10,
 		"hibernate.show_sql" : true,
 		"spring.jpa.hibernate.format_sql" : true,
+		"erlangms.node" : "node01",
 		"erlangms.url" : "{{REST_BASE_URL}}",
 		"erlangms.environment" : "{{REST_ENVIRONMENT}}",
 		"erlangms.user" : "{{ERLANGMS_USER}}",
@@ -34,7 +35,6 @@
 		"erlangms.smtp.from" : "{{SMTP_FROM}}",
 		"erlangms.smtp.port" : "{{SMTP_PORT}}",
 		"erlangms.smtp.mail" : "{{SMTP_MAIL}}",
-		"erlangms.node" : "node01",
 		"erlangms.ldap.url" : "{{LDAP_URL}}",
 		"erlangms.ldap.admin" : "{{LDAP_ADMIN}}",
 		"erlangms.ldap.passwd" : "{{LDAP_PASSWD}}"
