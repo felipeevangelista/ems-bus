@@ -392,7 +392,7 @@ build_app(){
 		fi
 
 		echo "Copy sources files to \"$STAGE_AREA/docker/app/$APP_NAME/\"..."
-		mv $SOURCE_PATH/dist/ $STAGE_AREA/docker/app/$APP_NAME/   #mv dist/ ../../app/$APP_NAME/
+		mv $SOURCE_PATH/dist/$APP_NAME/ $STAGE_AREA/docker/app/$APP_NAME/   #mv dist/ ../../app/$APP_NAME/
 		cd $STAGE_AREA/docker/build  	#cd ../../
 	else
 		#  ##################### BUILD STATIC FILE PROJECT ######################
