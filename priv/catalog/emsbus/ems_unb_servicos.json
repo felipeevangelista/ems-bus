@@ -17,9 +17,9 @@
 	"daemon_params_encode" : "",
 	"daemon_params" : {
 		"jdbc.driverClassName" : "net.sourceforge.jtds.jdbc.Driver",
-		"jdbc.url" : "jdbc:jtds:sqlserver://164.41.106.24:1433;databaseName=BDPessoa;useUnicode=true;characterEncoding=UTF-8",
-		"jdbc.username" : "usuUnBServicos",
-		"jdbc.password" : "usuunbservicos",
+		"jdbc.url" : "{{JDBC_CONNECTION_STRING}}",
+		"jdbc.username" : "{{JDBC_USERNAME}}",
+		"jdbc.password" : "{{JDBC_PASSWORD}}",
 		"hibernate.max_fetch_depth" : 3,
 		"hibernate.jdbc.fetch_size" : 50,
 		"hibernate.jdbc.batch_size" : 10,

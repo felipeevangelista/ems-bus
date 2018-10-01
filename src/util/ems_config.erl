@@ -256,14 +256,14 @@ parse_static_file_path(StaticFilePathMap) ->
 	[{K, ems_util:remove_ult_backslash_url(binary_to_list(V))} || {K, V} <- StaticFilePathList3].
 	
 
-parse_datasources_([], _, Result) -> maps:from_list(Result);
-parse_datasources_([DsName|T], Datasources, Result) ->
+parse_datasources_([], _, _, Result) -> maps:from_list(Result);
+parse_datasources_([DsName|T], Datasources, Variables, Result) ->
 	M = maps:get(DsName, Datasources),
-	Ds = ems_db:create_datasource_from_map(M, undefined, #{}),
-	parse_datasources_(T, Datasources, [{DsName, Ds} | Result]).
+	Ds = ems_db:create_datasource_from_map(M, undefined, #{}, Variables),
+	parse_datasources_(T, Datasources, Variables, [{DsName, Ds} | Result]).
 								
-parse_datasources(DatasourcesMap) ->
-	parse_datasources_(maps:keys(DatasourcesMap), DatasourcesMap, []).
+parse_datasources(DatasourcesMap, Variables) ->
+	parse_datasources_(maps:keys(DatasourcesMap), DatasourcesMap, Variables, []).
 	
 	
 parse_tcp_allowed_address(undefined) -> all;
@@ -302,6 +302,9 @@ parse_jar_path(Path) ->
 		false -> erlang:error(einvalid_jar_path)
 	end.
 
+parse_variables(V) when is_map(V) -> maps:to_list(V);
+parse_variables(_) -> erlang:error(einvalid_variables).
+
 
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, Filename) ->
@@ -317,6 +320,9 @@ parse_config(Json, Filename) ->
 				Hostname = binary_to_list(Hostname0),
 				HostnameBin = Hostname0
 		end,
+
+		put(parse_step, variables),
+		Variables = parse_variables(maps:get(<<"variables">>, Json, #{})),
 
 		put(parse_step, tcp_listen_prefix_interface_names),
 		TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(maps:get(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
@@ -359,7 +365,7 @@ parse_config(Json, Filename) ->
 		CatPathSearch = parse_cat_path_search(maps:to_list(maps:get(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
 
 		put(parse_step, datasources),
-		Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{})),
+		Datasources = parse_datasources(maps:get(<<"datasources">>, Json, #{}), Variables),
 
 		put(parse_step, rest_base_url),
 		case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
@@ -489,11 +495,6 @@ parse_config(Json, Filename) ->
 
 		put(parse_step, thread_pool),
 		ThreadPool = ems_util:parse_range(maps:get(<<"thread_pool">>, Json, 12), 1, 120),
-
-		put(parse_step, variables),
-		Variables = maps:to_list(maps:get(<<"variables">>, Json, #{})),
-
-
 
 		put(parse_step, config),
 		{ok, #config{ cat_host_alias = HostAlias,

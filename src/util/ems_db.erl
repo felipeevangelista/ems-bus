@@ -18,7 +18,7 @@
 		 sort/2, field_position/3]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
--export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/3, command/2]).
+-export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/4, command/2]).
 -export([get_param/1, get_param/2, set_param/2, get_re_param/2]).
 
 -export([filter_with_sort/2]).
@@ -1311,8 +1311,8 @@ parse_extends_datasource(Map, GlobalDatasources) ->
 			end
 	end.
 
--spec create_datasource_from_map(map(), non_neg_integer(), map()) -> #service_datasource{} | undefined.
-create_datasource_from_map(Map, Rowid, GlobalDatasources) ->
+-spec create_datasource_from_map(map(), non_neg_integer(), map(), list()) -> #service_datasource{} | undefined.
+create_datasource_from_map(Map, Rowid, GlobalDatasources, Variables) ->
 	try
 		put(parse_step, parse_extends_datasource),
 		M = parse_extends_datasource(Map, GlobalDatasources),
@@ -1324,7 +1324,8 @@ create_datasource_from_map(Map, Rowid, GlobalDatasources) ->
 		Driver = parse_data_source_driver(Type, maps:get(<<"driver">>, M, undefined)),
 
 		put(parse_step, connection),
-		Connection = parse_datasource_connection(Type, maps:get(<<"connection">>, M, undefined)),
+		Connection0 = parse_datasource_connection(Type, maps:get(<<"connection">>, M, undefined)),
+		Connection = ems_util:replace_all_vars(Connection0, Variables),
 		
 		put(parse_step, table_name),
 		TableName = parse_datasource_table_name(Type, maps:get(<<"table_name">>, M, undefined)),
