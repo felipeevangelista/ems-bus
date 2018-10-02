@@ -302,6 +302,9 @@ parse_jar_path(Path) ->
 		false -> erlang:error(einvalid_jar_path)
 	end.
 
+parse_java_home(<<>>) -> ems_util:get_java_home();
+parse_java_home(Path) -> binary_to_list(Path).
+
 parse_variables(V) when is_map(V) -> maps:to_list(V);
 parse_variables(_) -> erlang:error(einvalid_variables).
 
@@ -391,6 +394,12 @@ parse_config(Json, Filename) ->
  		put(parse_step, rest_url_mask),
 		RestUrlMask = ems_util:parse_bool(maps:get(<<"rest_url_mask">>, Json, false)),
 
+		put(parse_step, rest_user),
+		RestUser = binary_to_list(maps:get(<<"rest_user">>, Json, <<>>)),
+
+		put(parse_step, rest_passwd),
+		RestPasswd = binary_to_list(maps:get(<<"rest_passwd">>, Json, <<>>)),
+
 		put(parse_step, host_alias),
 		HostAlias = maps:get(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
 		
@@ -463,8 +472,14 @@ parse_config(Json, Filename) ->
 		put(parse_step, restricted_services_admin),
 		RestrictedServicesAdmin = maps:get(<<"restricted_services_admin">>, Json, []),
 		
-		put(parse_step, jar_path),
-		JarPath = parse_jar_path(maps:get(<<"jar_path">>, Json, ?JAR_PATH)),
+		put(parse_step, java_jar_path),
+		JarPath = parse_jar_path(maps:get(<<"java_jar_path">>, Json, ?JAR_PATH)),
+
+		put(parse_step, java_home),
+		JavaHome = parse_java_home(maps:get(<<"java_home">>, Json, <<>>)),
+
+		put(parse_step, java_thread_pool),
+		ThreadPool = ems_util:parse_range(maps:get(<<"java_thread_pool">>, Json, 12), 1, 120),
 
 		put(parse_step, smtp_passwd),
 		SmtpPassword = binary_to_list(maps:get(<<"smtp_passwd">>, Json, <<>>)),
@@ -493,8 +508,6 @@ parse_config(Json, Filename) ->
 		put(parse_step, ldap_password_admin),
 		LdapPasswordAdmin = binary_to_list(maps:get(<<"ldap_password_admin">>, Json, <<>>)),
 
-		put(parse_step, thread_pool),
-		ThreadPool = ems_util:parse_range(maps:get(<<"thread_pool">>, Json, 12), 1, 120),
 
 		put(parse_step, config),
 		{ok, #config{ cat_host_alias = HostAlias,
@@ -536,6 +549,8 @@ parse_config(Json, Filename) ->
 				 rest_login_url = RestLoginUrl,
 				 rest_url_mask = RestUrlMask,
 				 rest_environment = RestEnvironment,
+				 rest_user = RestUser,
+				 rest_passwd = RestPasswd,
 				 config_file = Filename,
 				 params = Json,
 				 client_path_search = select_config_file(<<"clients.json">>, maps:get(<<"client_path_search">>, Json, ?CLIENT_PATH)),
@@ -557,7 +572,9 @@ parse_config(Json, Filename) ->
 				 log_file_checkpoint = LogFileCheckpoint,
 				 log_file_max_size = LogFileMaxSize,
 				 rest_default_querystring = Querystring,
-				 jar_path = JarPath,
+				 java_jar_path = JarPath,
+				 java_home = JavaHome,
+				 java_thread_pool = ThreadPool,
 				 smtp_passwd = SmtpPassword,
 				 smtp_from = SmtpFrom,
 				 smtp_mail = SmtpMail,
@@ -567,7 +584,6 @@ parse_config(Json, Filename) ->
 				 ldap_password_admin = LdapPasswordAdmin,
 				 ldap_password_admin_crypto = LdapPasswdAdminCrypto,
 				 ldap_base_search = LdapBaseSearch,
-				 thread_pool = ThreadPool,
 				 variables = Variables
 			}}
 	catch
@@ -638,7 +654,9 @@ get_default_config() ->
 			 log_file_checkpoint = ?LOG_FILE_CHECKPOINT,
 			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
 			 rest_default_querystring = [],
-			 jar_path = ?JAR_PATH,
+			 java_jar_path = ?JAR_PATH,
+			 java_home = ems_util:get_java_home(),
+			 java_thread_pool = 12,
 			 smtp_passwd = "",
 			 smtp_from = "",
 			 smtp_mail = "",
@@ -648,7 +666,6 @@ get_default_config() ->
 			 ldap_password_admin = "",
 			 ldap_password_admin_crypto = "",
 			 ldap_base_search = "",
-			 thread_pool = 12,
 			 variables = []
 		}}.
 

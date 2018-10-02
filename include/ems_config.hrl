@@ -287,6 +287,8 @@
 				 rest_url_mask :: boolean(),
 				 rest_default_querystring :: map(),					%% querystring default
 				 rest_environment :: binary(),
+				 rest_user :: string(),
+				 rest_passwd :: string(),
 				 config_file,
 				 http_port_offset :: non_neg_integer(),
 				 https_port_offset :: non_neg_integer(),
@@ -302,7 +304,9 @@
 				 user_email_path_search :: string(),
 				 user_endereco_path_search :: string(),
 				 user_telefone_path_search :: string(),
-				 jar_path :: string(),
+				 java_jar_path :: string(),
+				 java_home :: string(),
+ 				 java_thread_pool :: non_neg_integer(),
 				 ssl_cacertfile :: binary(),
 				 ssl_certfile :: binary(),
 				 ssl_keyfile :: binary(),
@@ -324,7 +328,6 @@
 				 ldap_password_admin :: string(),
 				 ldap_password_admin_crypto :: string(),
 				 ldap_base_search :: string(),
- 				 thread_pool :: non_neg_integer(),
  				 variables :: list(string())						%% Lista de variáveis genéricas
 
 		 }). 	
