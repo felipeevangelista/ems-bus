@@ -164,6 +164,7 @@
 		 utf8_string_linux/1,
 		 criptografia_sha1/1,
 		 head_file/2,
+		 replace_all_vars_binary/2,
 		 replace_all_vars/2,
 		 to_utf8/1,
 		 load_erlang_module/1,
@@ -999,7 +1000,15 @@ replace_all(Subject, [{Key, Value}|VarTail]) ->
 	replace_all(NewSubject, VarTail).
 
 
+-spec replace_all_vars_binary(string() | binary(), list(tuple())) -> binary().
+replace_all_vars_binary(<<>>, _) -> <<>>;
+replace_all_vars_binary(undefined, _) -> undefined;
+replace_all_vars_binary(Subject, Vargs) -> 
+	list_to_binary(replace_all_vars(Subject, Vargs)).
+
 -spec replace_all_vars(string() | binary(), list(tuple())) -> string().
+replace_all_vars(<<>>, _) -> "";
+replace_all_vars(undefined, _) -> undefined;
 replace_all_vars(Subject, Vargs) -> 
 	SubjectStr = case is_binary(Subject) of
 					true -> binary_to_list(Subject);
@@ -1022,8 +1031,9 @@ replace_all_vars_(Subject, [{Key, Value}|VarTail]) ->
 							false -> Value
 						end
 			   end,
-	NewSubject = replace(Subject, "{{.?"++ KeyStr ++ ".?}}", ValueStr),
-	replace_all_vars_(NewSubject, VarTail).
+	NewSubject = replace(Subject, "{{.?"++ string:uppercase(KeyStr) ++ ".?}}", ValueStr),
+	NewSubject2 = replace(NewSubject, "{{.?"++ string:lowercase(KeyStr) ++ ".?}}", ValueStr),
+	replace_all_vars_(NewSubject2, VarTail).
 
 
 replace_vars_with(Subject, Value) -> re:replace(Subject, "{{.+}}", Value, [global, {return, list}]).
