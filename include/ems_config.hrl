@@ -328,7 +328,7 @@
 				 ldap_password_admin :: string(),
 				 ldap_password_admin_crypto :: string(),
 				 ldap_base_search :: string(),
- 				 variables :: list(string())						%% Lista de variáveis genéricas
+ 				 custom_variables :: list(binary())						%% Lista de variáveis genéricas
 
 		 }). 	
 

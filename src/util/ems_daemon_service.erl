@@ -475,7 +475,7 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 						    logfile = Logfile,
 						    daemon_params = DaemonParams}) ->
 	Conf = ems_config:getConfig(),
-	Result = ems_util:replace_all_vars(Str, 
+	Result = ems_util:replace_all_vars_and_custom_variables(Str, 
 		[{<<"PORT">>, integer_to_list(Port)},
 		 {<<"DAEMON_ID">>, DaemonId},
 		 {<<"DAEMON_PID">>, ems_util:integer_to_list_def(Pid, "unknow")},
@@ -498,10 +498,10 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		 {<<"SMTP_FROM">>, Conf#config.smtp_from},
 		 {<<"SMTP_PASSWD">>, Conf#config.smtp_passwd},
 		 {<<"SMTP_PORT">>, Conf#config.smtp_port},
-		 {<<"SMTP_MAIL">>, Conf#config.smtp_mail}
+		 {<<"SMTP_MAIL">>, Conf#config.smtp_mail},
+		 {<<"PRIV_PATH">>, ?PRIV_PATH}
 		]), 
-	Result2 = string:trim(ems_util:replace_all_vars(Result, Conf#config.variables)), 
-	Result2.
+	Result.
 
 parse_enviroment_variables(<<>>) -> "";
 parse_enviroment_variables(Str) ->

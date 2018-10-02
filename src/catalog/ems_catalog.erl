@@ -317,7 +317,7 @@ parse_ssl_path(FilenameCat, FilenameConfig, StaticFilePathDefault) ->
 
 -spec parse_datasource(map(), non_neg_integer(), #config{}) -> #service_datasource{} | undefined.
 parse_datasource(undefined, _, _) -> undefined;
-parse_datasource(M, Rowid, Conf) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid, Conf#config.ems_datasources, Conf#config.variables);
+parse_datasource(M, Rowid, Conf) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid, Conf#config.ems_datasources, Conf#config.custom_variables);
 parse_datasource(DsName, _Rowid, Conf) -> 
 	case maps:get(DsName, Conf#config.ems_datasources, undefined) of
 		undefined -> erlang:error(einexistent_datasource);

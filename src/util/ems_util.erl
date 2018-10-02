@@ -166,6 +166,10 @@
 		 head_file/2,
 		 replace_all_vars_binary/2,
 		 replace_all_vars/2,
+		 replace_all_vars_and_custom_variables/2,
+		 replace_all_vars_and_custom_variables_binary/2,
+		 replace_custom_variables/1,
+		 replace_custom_variables_binary/1,
 		 to_utf8/1,
 		 load_erlang_module/1,
 		 mime_type/1,
@@ -1006,6 +1010,32 @@ replace_all_vars_binary(undefined, _) -> undefined;
 replace_all_vars_binary(Subject, Vargs) -> 
 	list_to_binary(replace_all_vars(Subject, Vargs)).
 
+
+-spec replace_all_vars_and_custom_variables_binary(string() | binary(), list(tuple())) -> binary().
+replace_all_vars_and_custom_variables_binary(<<>>, _) -> <<>>;
+replace_all_vars_and_custom_variables_binary(undefined, _) -> undefined;
+replace_all_vars_and_custom_variables_binary(Subject, Vargs) -> 
+	list_to_binary(replace_all_vars_and_custom_variables(Subject, Vargs)).
+
+
+-spec replace_all_vars_and_custom_variables(string() | binary(), list(tuple())) -> string().
+replace_all_vars_and_custom_variables(Subject, Vargs) -> 
+	CustomVariables = ems_db:get_param(custom_variables),
+	Result = replace_all_vars(Subject, Vargs),
+	ems_util:replace_all_vars(Result, CustomVariables).
+
+
+-spec replace_custom_variables(string() | binary()) -> string().
+replace_custom_variables(Str) -> 
+	CustomVariables = ems_db:get_param(custom_variables),
+	ems_util:replace_all_vars(Str, CustomVariables).
+
+-spec replace_custom_variables_binary(string() | binary()) -> string().
+replace_custom_variables_binary(Str) -> 
+	CustomVariables = ems_db:get_param(custom_variables),
+	list_to_binary(ems_util:replace_all_vars(Str, CustomVariables)).
+
+
 -spec replace_all_vars(string() | binary(), list(tuple())) -> string().
 replace_all_vars(<<>>, _) -> "";
 replace_all_vars(undefined, _) -> undefined;
@@ -1077,7 +1107,7 @@ parse_file_name_path(Path, StaticFilePathList, RootPath) ->
 								_ -> remove_ult_backslash_url(remove_ult_backslash_url(RootPath) ++ "/" ++ string:substr(Path, 3))
 							end;
 						false -> 
-							Path2 = replace_all_vars(Path, StaticFilePathList),
+							Path2 = replace_all_vars_and_custom_variables(Path, StaticFilePathList),
 							% after process variables, check ~ or . wildcards
 							case string:substr(Path2, 1, 1) == "\~" of
 								true -> replace(Path2, "\~", get_home_dir());

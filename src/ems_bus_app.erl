@@ -78,7 +78,7 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mssl_cacertfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_cacertfile]),
 			ems_logger:info("  \033[0;32mssl_certfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_certfile]),
 			ems_logger:info("  \033[0;32mssl_keyfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_keyfile]),
-			ems_logger:info("  \033[0;32mvariables\033[0m: \033[01;34m~p\033[0m.", [Conf#config.variables]),
+			ems_logger:info("  \033[0;32mcustom_variables\033[0m: \033[01;34m~p\033[0m.", [Conf#config.custom_variables]),
 			Ret;
 		{error, Reason} ->
 			io:format("Error processing configuration file. Reason: ~p.", [Reason]),
