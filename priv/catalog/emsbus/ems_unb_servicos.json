@@ -14,7 +14,7 @@
 	"kill_cmd" : "kill -9 {{DAEMON_PID}}",
 	"pidfile" : "{{JAVA_JAR_PATH}}/unb_servicos_daemon_id_{{DAEMON_ID}}_port_{{PORT}}.pid",
 	"pidfile_watchdog_timer" : 30000,
-	"daemon_params_encode" : "",
+	"daemon_params_encode" : "base64",
 	"daemon_params" : {
 		"jdbc.driverClassName" : "net.sourceforge.jtds.jdbc.Driver",
 		"jdbc.url" : "{{JDBC_CONNECTION_STRING}}",

@@ -195,7 +195,7 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 						ok ->
 							case ems_util:os_command(CmdStart2, #{ max_size => 0 }) of
 								{ok, _Result} ->
-									case fica_em_loop_ate_obter_pid(Name, Port, 60) of
+									case fica_em_loop_ate_obter_pid(Name, Port, 0, 60) of
 										{ok, Pid} -> 
 											ems_logger:info("ems_daemon_service ~s new daemon started (Pid: ~p Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
 											State2 = State#state{state = monitoring, 
@@ -427,23 +427,27 @@ do_scan_catalogs_jarfile(#state{filename = Filename,
 
 
 % Fica em um loop até conseguir obter o pid por meio da porta utilizada pelo processo externo
-fica_em_loop_ate_obter_pid(_,_, 0) -> {error, enoent};
-fica_em_loop_ate_obter_pid(Name, Port, Tentativas) ->
+fica_em_loop_ate_obter_pid(_,_, _, 0) -> {error, enoent};
+fica_em_loop_ate_obter_pid(Name, Port, Timeout, Tentativas) ->
+	ems_util:sleep(3000),
 	case ems_util:get_pid_from_port(Port) of
 		{ok, Pid} -> {ok, Pid};
 		_ -> 
-			ems_logger:info("ems_daemon_service ~s failed get pid from port ~p (Tentativas: ~p).", [Name, Port, Tentativas]),
-			ems_util:sleep(1000),
-			fica_em_loop_ate_obter_pid(Name, Port, Tentativas - 1)
+			% Imprime warning depois de 30 segundos
+			case Timeout > 30000 of
+				true -> ems_logger:warn("ems_daemon_service ~s failed get pid from port ~p (Tentativas: ~p).", [Name, Port, Tentativas]);
+				false -> ok
+			end,
+			fica_em_loop_ate_obter_pid(Name, Port, Timeout + 3000, Tentativas - 1)
 	end.
 
 				
 % Fica em um loop até o pid ser encerrado
 fica_em_loop_ate_encerrar_pid(_, _, 0) -> ok;
 fica_em_loop_ate_encerrar_pid(Port, Pid, Tentativas) ->
+	ems_util:sleep(3000),
 	case ems_util:get_pid_from_port(Port) of
 		{ok, Pid2} when Pid2 =:= Pid -> 
-			ems_util:sleep(1000),
 			fica_em_loop_ate_encerrar_pid(Port, Pid, Tentativas - 1);
 		_ -> ok
 	end.
