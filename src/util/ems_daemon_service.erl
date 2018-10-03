@@ -19,7 +19,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3, 
-		 start_daemon/0, stop_daemon/0, kill_daemon/0, restart_daemon/0, verify_daemon/0]).
+		 start_daemon/0, stop_daemon/0, kill_daemon/0, restart_daemon/0, daemon_watchdog/0]).
 
 
 -define(SERVER, ?MODULE).
@@ -40,8 +40,9 @@
 				logfile,
 				daemon_params_encode,
 				daemon_params,
-				auto_deploy,
-				verify_daemon,
+				daemon_watchdog,
+				daemon_watchdog_policy,
+				hotdeploy,
 				scan_catalogs_jarfile,
 				scan_catalogs_path,
 				state}). 
@@ -69,8 +70,8 @@ kill_daemon() ->
 restart_daemon() ->
 	gen_server:cast(?SERVER, restart_daemon).
 
-verify_daemon() ->
-	gen_server:cast(?SERVER, verify_daemon).
+daemon_watchdog() ->
+	gen_server:cast(?SERVER, daemon_watchdog).
 
  
 %%====================================================================
@@ -88,16 +89,14 @@ init(#service{name = Name,
     StopCmd = maps:get(<<"stop_cmd">>, Props, <<>>),
     KillCmd = maps:get(<<"kill_cmd">>, Props, <<>>),
 	PidFileWatchDogTimeOut = ems_util:parse_range(maps:get(<<"pidfile_watchdog_timer">>, Props, 30000), 0, 86400000),
-    Filename = parse_enviroment_variables(FilenameService),
-    PidFile = parse_enviroment_variables(maps:get(<<"pidfile">>, Props, <<>>)),
-    Logfile = parse_enviroment_variables(maps:get(<<"logfile">>, Props, <<>>)),
-    DaemonParamsEncode = maps:get(<<"daemon_params_encode">>, Props, <<"base64">>),
-    DaemonParams = case DaemonParamsEncode of
-						<<"base64">> -> list_to_binary("'base64:" ++ base64:encode_to_string(ems_util:json_encode(maps:get(<<"daemon_params">>, Props, <<"{}">>))) ++ "'");
-						_ -> list_to_binary("'" ++ binary_to_list(ems_util:json_encode(maps:get(<<"daemon_params">>, Props, <<"{}">>))) ++ "'")
-				   end,
-    AutoDeploy = ems_util:parse_bool(maps:get(<<"auto_deploy">>, Props, false)),
-    VerifyDaemon = ems_util:parse_bool(maps:get(<<"verify_daemon">>, Props, false)),
+    Filename = parse_java_variables(FilenameService),
+    PidFile = parse_java_variables(maps:get(<<"pidfile">>, Props, <<>>)),
+    Logfile = parse_java_variables(maps:get(<<"logfile">>, Props, <<>>)),
+    DaemonParamsEncode = maps:get(<<"daemon_params_encode">>, Props, <<>>),
+	DaemonParamsJson = binary_to_list(ems_util:json_encode(maps:get(<<"daemon_params">>, Props, <<"{}">>))),
+    DaemonWatchdog = ems_util:parse_bool(maps:get(<<"daemon_watchdog">>, Props, false)),
+	DaemonWachdogPolicy = parse_daemon_watchdog_policy(maps:get(<<"daemon_watchdog_policy">>, Props, <<"link">>)),
+    Hotdeploy = ems_util:parse_bool(maps:get(<<"hotdeploy">>, Props, false)),
 	LastModifiedTime = get_modified_time_filename(Name, Filename),
 	ScanCatalogsJarfile = ems_util:parse_bool(maps:get(<<"scan_catalogs_jarfile">>, Props, false)),
 	ScanCatalogsPath = binary_to_list(maps:get(<<"scan_catalogs_path">>, Props, <<>>)),
@@ -112,9 +111,11 @@ init(#service{name = Name,
 				   daemon_id = "unknow",
 				   filename = Filename,
 				   logfile = Logfile,
-				   daemon_params = DaemonParams,
-				   auto_deploy = AutoDeploy,
-				   verify_daemon = VerifyDaemon,
+				   daemon_params = DaemonParamsJson,
+				   daemon_params_encode = DaemonParamsEncode,
+				   daemon_watchdog = DaemonWatchdog,
+				   daemon_watchdog_policy = DaemonWachdogPolicy,
+				   hotdeploy = Hotdeploy,
 				   filename_lastmodified_time = LastModifiedTime,
 				   scan_catalogs_jarfile = ScanCatalogsJarfile,
 				   scan_catalogs_path = ScanCatalogsPath,
@@ -138,8 +139,8 @@ handle_cast(restart_daemon, State = #state{name = Name, timeout = Timeout}) ->
 	State2 = do_restart_daemon(Msg, State, info),
     {noreply, State2, Timeout};
 
-handle_cast(verify_daemon, State = #state{timeout = Timeout}) ->
-	State2 = do_verify_daemon(State),
+handle_cast(daemon_watchdog, State = #state{timeout = Timeout}) ->
+	State2 = do_daemon_watchdog(State),
     {noreply, State2, Timeout};
 
 handle_cast(shutdown, State) ->
@@ -159,7 +160,7 @@ handle_info(timeout, State = #state{state = stopped}) ->
 	{noreply, State};
 
 handle_info(timeout, State = #state{state = monitoring}) ->
-	State2 = do_verify_daemon(State),
+	State2 = do_daemon_watchdog(State),
 	{noreply, State2, State2#state.timeout}.
 
 
@@ -177,14 +178,25 @@ code_change(_OldVsn, State, _Extra) ->
 do_start_daemon(State = #state{start_cmd = CmdStart, 
 							   port = Port,
 							   name = Name,
-							   filename = Filename,
-							   pidfile = Pidfile}) ->
+							   pidfile = Pidfile,
+							   daemon_watchdog_policy = DaemonWatchdogPolicy}) ->
+	DaemonId = integer_to_list(ems_util:get_milliseconds()),
 	case ems_util:get_pid_from_port(Port) of
 		{ok, CurrentPid} -> 
-			Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, restart in progress.", [Name, CurrentPid]),
-			do_restart_daemon(Msg, State#state{pid = CurrentPid, daemon_id = "unknow"}, error);
+			case DaemonWatchdogPolicy of
+				restart -> 
+					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, restart policy in progress...", [Name, CurrentPid]),
+					ems_logger:warn(Msg),
+					do_restart_daemon(Msg, State#state{pid = CurrentPid, daemon_id = "unknow"}, error);
+				'link' ->
+					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, link policy in progress...", [Name, CurrentPid]),
+					ems_logger:warn(Msg),
+					do_link_daemon(DaemonId, State);
+				none -> 
+					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, none policy in progress...", [Name, CurrentPid]),
+					ems_logger:warn(Msg)
+			end;
 		_ ->
-			DaemonId = integer_to_list(ems_util:get_milliseconds()),
 			Pidfile2 = parse_variables(Pidfile, State#state{daemon_id = DaemonId}),
 			CmdStart2 = parse_variables(CmdStart, State#state{daemon_id = DaemonId, pidfile = Pidfile2}),
 			ems_logger:info("ems_daemon_service ~s starting new daemon. \033[0;32mOS Command\033[0m: \033[01;34m~s\033[0m.", [Name, CmdStart2]),
@@ -194,19 +206,8 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 					case delete_pidfile(State#state{daemon_id = DaemonId}) of
 						ok ->
 							case ems_util:os_command(CmdStart2, #{ max_size => 0 }) of
-								{ok, _Result} ->
-									case fica_em_loop_ate_obter_pid(Name, Port, 0, 60) of
-										{ok, Pid} -> 
-											ems_logger:info("ems_daemon_service ~s new daemon started (Pid: ~p Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
-											State2 = State#state{state = monitoring, 
-																 pid = Pid, 
-																 daemon_id = DaemonId, 
-																 filename_lastmodified_time = get_modified_time_filename(Name, Filename)},
-											do_scan_catalogs(State2);
-										_ -> 
-											ems_logger:error("ems_daemon_service ~s start new daemon failed because does not adquire pid of current daemon.", [Name]),
-											State#state{state = start, pid = undefined, daemon_id = "unknow"}
-									end;
+								{ok, _Result} -> 
+									do_link_daemon(DaemonId, State);
 								{error, einvalid_command} ->
 									ems_logger:error("ems_daemon_service ~s failed to start daemon with invalid start_cmd parameter. \033[0;32mOS Command\033[0m: \033[01;34m~s\033[0m.", [Name, CmdStart2]),
 									State#state{state = stopped, pid = undefined, daemon_id = "unknow"}
@@ -219,6 +220,29 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 					ems_logger:error("ems_daemon_service ~s failed to start daemon because start_cmd parameter is empty.", [Name]),
 					State#state{state = stopped, pid = undefined, daemon_id = "unknow"}
 			end
+	end.
+	
+do_link_daemon(DaemonId, State = #state{port = Port,
+										name = Name,
+										filename = Filename,
+										daemon_watchdog_policy = DaemonWatchdogPolicy}) ->
+	case fica_em_loop_ate_obter_pid(Name, Port, 0, 60) of
+		{ok, Pid} -> 
+			case DaemonWatchdogPolicy of
+				restart -> ems_logger:info("ems_daemon_service ~s new daemon started (Pid: ~p Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]);
+				'link' -> ems_logger:info("ems_daemon_service ~s daemon linked (Pid: ~p Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId])
+			end,
+			State2 = State#state{state = monitoring, 
+								 pid = Pid, 
+								 daemon_id = DaemonId, 
+								 filename_lastmodified_time = get_modified_time_filename(Name, Filename)},
+			do_scan_catalogs(State2);
+		_ -> 
+			case DaemonWatchdogPolicy of
+				restart -> ems_logger:error("ems_daemon_service ~s start new daemon failed because does not adquire pid of current daemon.", [Name]);
+				'link' -> ems_logger:error("ems_daemon_service ~s daemon link failed because does not adquire pid of current daemon.", [Name])
+			end,
+			State#state{state = start, pid = undefined, daemon_id = "unknow"}
 	end.
 	
 
@@ -286,29 +310,30 @@ do_restart_daemon(Message, State, MsgType) ->
 	do_start_daemon(State2).
 
 
-% Monitora o processo externo executado por start_cmd
+% Monitora o processo externo executado por start_cmd para verificar se está vivo
 % Se o processo morrer outro será reiniciado
 % Além disso, se pidfile_watchdog_timer > 0, testa se o pid está atualizado
 % nós verificamos também se uma nova versão do cmd deve ser executado quando o executável for mais novo
-do_verify_daemon(State = #state{name = Name,
+do_daemon_watchdog(State = #state{name = Name,
 							 port = Port,
 							 pid = Pid,
 						     pidfile_watchdog_timer = PidFileWatchdogTimeout,
 							 daemon_id = DaemonId,
-							 auto_deploy = AutoDeploy,
+							 hotdeploy = Hotdeploy,
 							 filename = Filename,
-							 verify_daemon = VerifyDaemon}) ->
+							 daemon_watchdog = DaemonWatchdog,
+							 daemon_watchdog_policy = DaemonWatchdogPolicy}) ->
 	
-	% Quando auto deploy é true e existe uma nova versão do executável
+	% Quando hotdeploy é true e existe uma nova versão do executável
 	% então reinicia o daemon
 	% caso contrário apenas verifica se o daemon atual está vivo e saudável
-	case AutoDeploy andalso exist_new_version(State) of
+	case Hotdeploy andalso exist_new_version(State) of
 		true -> 
-			Msg = io_lib:format("ems_daemon_service ~s auto deploy daemon \033[01;34m\"~s\"\033[0m...", [Name, Filename]),
+			Msg = io_lib:format("ems_daemon_service ~s hotdeploy daemon \033[01;34m\"~s\"\033[0m...", [Name, Filename]),
 			do_restart_daemon(Msg, State, info);
 		false ->
-			% para verificar o daemon atual, o flag VerifyDaemon deve estar true
-			case VerifyDaemon of
+			% para verificar o daemon atual, o flag DaemonWatchdog deve estar true
+			case DaemonWatchdog of
 				true ->
 					?DEBUG("ems_daemon_service ~s if daemon is ok (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]),
 					case ems_util:get_pid_from_port(Port) of
@@ -323,10 +348,17 @@ do_verify_daemon(State = #state{name = Name,
 											State#state{state = monitoring}
 									end;
 								false ->
-									% o pid não é o mesmo então outro processo foi iniciado pelo sistema operacional
-									% não podemos permitir isso pois é o ems_daemon_service o responsável pelo processo
-									Msg = io_lib:format("ems_daemon_service ~s will be restarted because unknow pid detected (Pid: ~p, OtherPid: ~p).", [Name, Pid, CurrentPid]),
-									do_restart_daemon(Msg, State, error)
+									case DaemonWatchdogPolicy == restart orelse DaemonWatchdogPolicy == 'link' of
+										true ->
+											% o pid não é o mesmo então outro processo foi iniciado pelo sistema operacional
+											% não podemos permitir isso pois é o ems_daemon_service o responsável pelo processo
+											Msg = io_lib:format("ems_daemon_service ~s will be restarted because unknow pid detected (Pid: ~p, OtherPid: ~p, DaemonWatchdogPolicy: ~p).", [Name, Pid, CurrentPid, DaemonWatchdogPolicy]),
+											do_restart_daemon(Msg, State, error);
+										false ->
+											Msg = io_lib:format("ems_daemon_service ~s unknow pid detected (Pid: ~p, OtherPid: ~p, DaemonWatchdogPolicy: none).", [Name, Pid, CurrentPid]),
+											ems_logger:warn(Msg),
+											State#state{state = monitoring}
+									end
 							end;	
 						_ ->
 							% O pid não existe mais, inicia um novo processo
@@ -347,7 +379,9 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 								 pid = Pid,
 								 pidfile = PidFile,
 								 pidfile_watchdog_timer = PidFileWatchdogTimeout,
-								 daemon_id = DaemonId}, Tentativa) ->
+								 daemon_id = DaemonId,
+								 daemon_watchdog_policy = DaemonWatchdogPolicy}, 
+						  Tentativa) ->
 	% mostra mensagem apenas na primeira tentativa
 	case Tentativa == 1 of
 		true -> ?DEBUG("ems_daemon_service ~s check pidfile daemon (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pid, Port, DaemonId]);
@@ -358,7 +392,7 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 		true ->
 			% verifica o timestamp do arquivo de pid, se ficar desatualizado, será reiniciado
 			case file:read_file_info(Pidfile2, []) of
-				{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
+				{ok, {file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
 					TimeAtual = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
 					TimePidfile = calendar:datetime_to_gregorian_seconds(MTime),
 					DiffTime = erlang:abs((TimeAtual - TimePidfile) * 1000),
@@ -366,8 +400,15 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 						true -> 
 							case Tentativa == 3 of
 								true ->
-									Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is ~pms outdated, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId]),
-									do_restart_daemon(Msg, State, error);
+									case DaemonWatchdogPolicy == restart orelse DaemonWatchdogPolicy == 'link' of
+										true ->
+											Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is ~pms outdated, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s, DaemonWatchdogPolicy: ~p).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId, DaemonWatchdogPolicy]),
+											do_restart_daemon(Msg, State, error);
+										false ->
+											Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m is ~pms outdated (Pid: ~p, Port: ~p, DaemonId: ~s, DaemonWatchdogPolicy: none).", [Name, Pidfile2, DiffTime, Pid, Port, DaemonId]),
+											ems_logger:warn(Msg),
+											State#state{state = monitoring}
+									end;
 								false -> 
 									ems_util:sleep(1),
 									do_pidfile_watchdog_check(State, Tentativa + 1)
@@ -378,8 +419,15 @@ do_pidfile_watchdog_check(State = #state{name = Name,
 				{error, enoent} -> 
 					case Tentativa == 3 of
 						true -> 
-							Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m does not exist, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s).", [Name, Pidfile2, Pid, Port, DaemonId]),
-							do_restart_daemon(Msg, State, error);
+							case DaemonWatchdogPolicy == restart orelse DaemonWatchdogPolicy == 'link' of
+								true ->
+									Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m does not exist, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s, DaemonWatchdogPolicy: ~p).", [Name, Pidfile2, Pid, Port, DaemonId, DaemonWatchdogPolicy]),
+									do_restart_daemon(Msg, State, error);
+								false ->
+									Msg = io_lib:format("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;31m does not exist, restart in progress (Pid: ~p, Port: ~p, DaemonId: ~s, DaemonWatchdogPolicy: none).", [Name, Pidfile2, Pid, Port, DaemonId]),
+									ems_logger:warn(Msg),
+									State#state{state = monitoring}
+							end;
 						false -> do_pidfile_watchdog_check(State, Tentativa + 1)
 					end;
 				{error, Reason} -> 
@@ -477,18 +525,48 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 						    pidfile_watchdog_timer = PidfileWatchdogTimer,
 						    filename = Filename,
 						    logfile = Logfile,
-						    daemon_params = DaemonParams}) ->
+						    daemon_params = DaemonParams,
+						    daemon_params_encode = DaemonParamsEncode}) ->
 	Conf = ems_config:getConfig(),
+    DaemonParams2 = ems_util:replace_all_vars_and_custom_variables(DaemonParams, 
+    		[{<<"PORT">>, integer_to_list(Port)},
+			 {<<"DAEMON_SERVICE">>, Name},
+			 {<<"DAEMON_ID">>, DaemonId},
+			 {<<"DAEMON_PID">>, ems_util:integer_to_list_def(Pid, "unknow")},
+			 {<<"FILENAME">>, Filename},
+			 {<<"LOGFILE">>, Logfile},
+			 {<<"PIDFILE_WATCHDOG_TIMER">>, integer_to_list(PidfileWatchdogTimer)},
+			 {<<"PIDFILE">>, Pidfile},
+			 {<<"JAVA_HOME">>, Conf#config.java_home},
+			 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
+			 {<<"JAVA_JAR_PATH">>, Conf#config.java_jar_path},
+			 {<<"REST_BASE_URL">>, binary_to_list(Conf#config.rest_base_url)},
+			 {<<"REST_ENVIRONMENT">>, Conf#config.rest_environment},
+			 {<<"REST_USER">>, Conf#config.rest_user},
+			 {<<"REST_PASSWD">>, Conf#config.rest_passwd},
+			 {<<"LDAP_URL">>, Conf#config.ldap_url},
+			 {<<"LDAP_ADMIN">>, Conf#config.ldap_admin},
+			 {<<"LDAP_PASSWD">>, Conf#config.ldap_password_admin},
+			 {<<"SMTP_FROM">>, Conf#config.smtp_from},
+			 {<<"SMTP_PASSWD">>, Conf#config.smtp_passwd},
+			 {<<"SMTP_PORT">>, Conf#config.smtp_port},
+			 {<<"SMTP_MAIL">>, Conf#config.smtp_mail},
+			 {<<"PRIV_PATH">>, ?PRIV_PATH}
+			]), 
+    DaemonParams3 = case DaemonParamsEncode of
+						<<"base64">> -> list_to_binary("'base64:" ++ base64:encode_to_string(DaemonParams2) ++ "'");
+						_ -> list_to_binary("'" ++ DaemonParams2 ++ "'")
+				    end,
 	Result = ems_util:replace_all_vars_and_custom_variables(Str, 
 		[{<<"PORT">>, integer_to_list(Port)},
+		 {<<"DAEMON_SERVICE">>, Name},
 		 {<<"DAEMON_ID">>, DaemonId},
 		 {<<"DAEMON_PID">>, ems_util:integer_to_list_def(Pid, "unknow")},
-		 {<<"DAEMON_SERVICE">>, Name},
-		 {<<"DAEMON_PARAMS">>, DaemonParams},
+		 {<<"DAEMON_PARAMS">>, DaemonParams3},
 		 {<<"FILENAME">>, Filename},
-		 {<<"PIDFILE">>, Pidfile},
 		 {<<"LOGFILE">>, Logfile},
 		 {<<"PIDFILE_WATCHDOG_TIMER">>, integer_to_list(PidfileWatchdogTimer)},
+		 {<<"PIDFILE">>, Pidfile},
 		 {<<"JAVA_HOME">>, Conf#config.java_home},
 		 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
 		 {<<"JAVA_JAR_PATH">>, Conf#config.java_jar_path},
@@ -507,11 +585,12 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		]), 
 	Result.
 
-parse_enviroment_variables(<<>>) -> "";
-parse_enviroment_variables(Str) ->
+parse_java_variables(<<>>) -> "";
+parse_java_variables(Str) ->
 	Conf = ems_config:getConfig(),
 	Result = string:trim(ems_util:replace_all_vars(Str, 
 		[{<<"JAVA_HOME">>, Conf#config.java_home},
+		 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
 		 {<<"JAVA_JAR_PATH">>, Conf#config.java_jar_path}])),
 	Result.	 
 		
@@ -531,11 +610,11 @@ delete_pidfile(State = #state{name = Name,
 		false -> ok
 	end.
 
-exist_new_version(#state{auto_deploy = false}) -> false;
+exist_new_version(#state{hotdeploy = false}) -> false;
 exist_new_version(#state{name = Name, 
 						 filename = Filename,
 						 filename_lastmodified_time = LastModifiedTime,
-						 auto_deploy = true}) ->
+						 hotdeploy = true}) ->
 	CurrentModifiedTime = get_modified_time_filename(Name, Filename),
 	CurrentModifiedTime =/= undefined andalso LastModifiedTime =/= undefined andalso LastModifiedTime =/= CurrentModifiedTime.
 								 
@@ -552,4 +631,11 @@ get_modified_time_filename(Name, Filename) ->
 		false ->
 			undefined
 	end.
+
+parse_daemon_watchdog_policy(<<>>) -> none;
+parse_daemon_watchdog_policy(<<"restart">>) -> restart;
+parse_daemon_watchdog_policy(<<"link">>) -> 'link';
+parse_daemon_watchdog_policy(<<"none">>) -> none;
+parse_daemon_watchdog_policy(_) -> throw(einvalid_daemon_watchdog_policy).
+
 
