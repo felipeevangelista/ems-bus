@@ -447,7 +447,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 												  last_update_param_name = LastUpdateParamName,
 												  last_update = LastUpdate}) ->
 	% garante que os dados serão atualizados mesmo que as datas não estejam sincronizadas
-	NextUpdate = ems_util:date_dec_minute(calendar:local_time(), 30), 
+	NextUpdate = ems_util:date_dec_minute(calendar:local_time(), 120), 
 	LastUpdateStr = ems_util:timestamp_str(),
 	Conf = ems_config:getConfig(),
 	case LastUpdate == undefined orelse do_is_empty(State) of

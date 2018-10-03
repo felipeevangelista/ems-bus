@@ -14,15 +14,12 @@
 -include("include/ems_schema.hrl").
 
 
--export([start/1, stop/0]).
+-export([start/1, stop/1]).
 
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3, 
-		 start_daemon/0, stop_daemon/0, kill_daemon/0, restart_daemon/0, daemon_watchdog/0]).
-
-
--define(SERVER, ?MODULE).
+		 start_daemon/1, stop_daemon/1, kill_daemon/1, restart_daemon/1, watchdog_daemon/1]).
 
 
 -record(state, {daemon_id, 
@@ -52,26 +49,57 @@
 %% Server API
 %%====================================================================
 
-start(Service) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, Service, []).
+start(Service = #service{name = Name}) ->
+	ServerName = erlang:binary_to_atom(Name, utf8),
+    gen_server:start_link({local, ServerName}, ?MODULE, Service, []).
  
-stop() ->
-    gen_server:cast(?SERVER, shutdown).
- 
-start_daemon() ->
-	gen_server:cast(?SERVER, start_daemon).
+stop(ServerName) ->
+    gen_server:cast(ServerName, shutdown).
 
-stop_daemon() ->
-	gen_server:cast(?SERVER, stop_daemon).
+start_daemon(Request = #request{service = #service{owner = Owner}}) when is_tuple(Request) ->
+	ServerName2 = erlang:binary_to_atom(Owner, utf8),
+	gen_server:cast(ServerName2, start_daemon),
+	{ok, Request#request{code = 200, 
+						 response_data = ?OK_JSON}
+	};
+start_daemon(ServerName) ->
+	gen_server:cast(ServerName, start_daemon).
 
-kill_daemon() ->
-	gen_server:cast(?SERVER, kill_daemon).
+stop_daemon(Request = #request{service = #service{owner = Owner}}) when is_tuple(Request) ->
+	ServerName2 = erlang:binary_to_atom(Owner, utf8),
+	gen_server:cast(ServerName2, stop_daemon),
+	{ok, Request#request{code = 200, 
+						 response_data = ?OK_JSON}
+	};
+stop_daemon(ServerName) ->
+	gen_server:cast(ServerName, stop_daemon).
 
-restart_daemon() ->
-	gen_server:cast(?SERVER, restart_daemon).
+kill_daemon(Request = #request{service = #service{owner = Owner}}) when is_tuple(Request) ->
+	ServerName2 = erlang:binary_to_atom(Owner, utf8),
+	gen_server:cast(ServerName2, kill_daemon),
+	{ok, Request#request{code = 200, 
+						 response_data = ?OK_JSON}
+	};
+kill_daemon(ServerName) ->
+	gen_server:cast(ServerName, kill_daemon).
 
-daemon_watchdog() ->
-	gen_server:cast(?SERVER, daemon_watchdog).
+restart_daemon(Request = #request{service = #service{owner = Owner}}) when is_tuple(Request) ->
+	ServerName2 = erlang:binary_to_atom(Owner, utf8),
+	gen_server:cast(ServerName2, restart_daemon),
+	{ok, Request#request{code = 200, 
+						 response_data = ?OK_JSON}
+	};
+restart_daemon(ServerName) ->
+	gen_server:cast(ServerName, restart_daemon).
+
+watchdog_daemon(Request = #request{service = #service{owner = Owner}}) when is_tuple(Request) ->
+	ServerName2 = erlang:binary_to_atom(Owner, utf8),
+	gen_server:cast(ServerName2, watchdog_daemon),
+	{ok, Request#request{code = 200, 
+						 response_data = ?OK_JSON}
+	};
+watchdog_daemon(ServerName) ->
+	gen_server:cast(ServerName, watchdog_daemon).
 
  
 %%====================================================================
@@ -139,7 +167,7 @@ handle_cast(restart_daemon, State = #state{name = Name, timeout = Timeout}) ->
 	State2 = do_restart_daemon(Msg, State, info),
     {noreply, State2, Timeout};
 
-handle_cast(daemon_watchdog, State = #state{timeout = Timeout}) ->
+handle_cast(watchdog_daemon, State = #state{timeout = Timeout}) ->
 	State2 = do_daemon_watchdog(State),
     {noreply, State2, Timeout};
 

@@ -110,14 +110,18 @@ do_oauth2_check_access_token(AccessToken, Service, Req) ->
 	
 
 -spec do_check_grant_permission(#service{}, #request{}, #client{} | public, #user{}, binary(), binary(), atom()) -> {ok, #client{}, #user{}, binary(), binary()} | {error, access_denied}.
-do_check_grant_permission(Service, 
+do_check_grant_permission(Service = #service{restricted = RestrictedService}, 
 						  Req, 
 						  Client, 
 						  User = #user{admin = Admin}, 
 						  AccessToken, 
 						  Scope, 
 						  AuthorizationMode) ->
-	case Admin orelse ems_user_permission:has_grant_permission(Service, Req, User) of
+	% Para consumir o serviço deve obedecer as regras
+	% ===================================================================
+	% O usuário é administrador e pode consumir qualquer serviço
+	% Não é administrador e possui permissão em serviços não restritos a administradores
+	case Admin orelse (not RestrictedService andalso ems_user_permission:has_grant_permission(Service, Req, User)) of
 		true -> 
 			case AuthorizationMode of
 				basic -> ems_db:inc_counter(ems_auth_user_basic_success);
@@ -131,6 +135,9 @@ do_check_grant_permission(Service,
 				oauth2 -> ems_db:inc_counter(ems_auth_user_oauth2_denied);
 				_ -> ems_db:inc_counter(ems_auth_user_public_denied)
 			end,
-			{error, access_denied, eno_grant_permission}
+			case RestrictedService of
+				true ->	{error, access_denied, erestricted_service};
+				false -> {error, access_denied, eno_grant_permission}
+			end
 	end.
 
