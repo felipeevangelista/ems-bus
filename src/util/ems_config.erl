@@ -38,7 +38,7 @@ stop() ->
 %% Client API
 %%====================================================================
  
-getConfig() -> gen_server:call(?SERVER, get_config).
+getConfig() -> ems_db:get_param(config_variables).
 
 -spec getConfig(binary(), binary(), any()) -> any().
 getConfig(ParamName, ServiceName, Default) -> gen_server:call(?SERVER, {get_config, ParamName, ServiceName, Default}).
@@ -313,8 +313,7 @@ parse_java_home(Path) ->
 parse_variables(V) when is_map(V) -> maps:to_list(V);
 parse_variables(_) -> erlang:error(einvalid_variables).
 
-
-get_param(ParamName, Map, DefaultValue) ->
+get_p(ParamName, Map, DefaultValue) ->
 	Result = maps:get(ParamName, Map, DefaultValue),
 	case is_binary(Result) of
 		true -> ems_util:replace_custom_variables_binary(Result);
@@ -342,7 +341,7 @@ parse_config(Json, Filename) ->
 		end,
 
 		put(parse_step, tcp_listen_prefix_interface_names),
-		TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(get_param(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
+		TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(get_p(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
 		
 		put(parse_step, tcp_listen_address),
 		TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
@@ -354,13 +353,13 @@ parse_config(Json, Filename) ->
 		{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
 
 		put(parse_step, show_debug_response_headers),
-		ShowDebugResponseHeaders = ems_util:parse_bool(get_param(<<"show_debug_response_headers">>, Json, ?SHOW_DEBUG_RESPONSE_HEADERS)),
+		ShowDebugResponseHeaders = ems_util:parse_bool(get_p(<<"show_debug_response_headers">>, Json, ?SHOW_DEBUG_RESPONSE_HEADERS)),
 
 		put(parse_step, http_headers),
-		HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_param(<<"http_headers">>, Json, #{})),
+		HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_p(<<"http_headers">>, Json, #{})),
 
 		put(parse_step, http_headers_options),
-		HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_param(<<"http_headers_options">>, Json, #{})),
+		HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_p(<<"http_headers_options">>, Json, #{})),
 
 		put(parse_step, parse_http_headers),
 		HttpHeaders = parse_http_headers(HttpHeaders0, ShowDebugResponseHeaders, HostnameBin),
@@ -369,20 +368,20 @@ parse_config(Json, Filename) ->
 		HttpHeadersOptions = parse_http_headers(HttpHeadersOptions0, ShowDebugResponseHeaders, HostnameBin),
 
 		put(parse_step, rest_default_querystring),
-		{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(get_param(<<"rest_default_querystring">>, Json, []), []),
+		{Querystring, _QtdQuerystringRequired} = ems_util:parse_querystring_def(get_p(<<"rest_default_querystring">>, Json, []), []),
 
 		put(parse_step, static_file_path_probing),
-		StaticFilePathProbing = ems_util:parse_bool(get_param(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
+		StaticFilePathProbing = ems_util:parse_bool(get_p(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
 
 		put(parse_step, static_file_path),
-		StaticFilePath = parse_static_file_path(get_param(<<"static_file_path">>, Json, #{})),
+		StaticFilePath = parse_static_file_path(get_p(<<"static_file_path">>, Json, #{})),
 		StaticFilePathMap = maps:from_list(StaticFilePath),
 
 		put(parse_step, catalog_path),
-		CatPathSearch = parse_cat_path_search(maps:to_list(get_param(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
+		CatPathSearch = parse_cat_path_search(maps:to_list(get_p(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
 
 		put(parse_step, datasources),
-		Datasources = parse_datasources(get_param(<<"datasources">>, Json, #{}), CustomVariables),
+		Datasources = parse_datasources(get_p(<<"datasources">>, Json, #{}), CustomVariables),
 
 		put(parse_step, rest_base_url),
 		case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
@@ -406,127 +405,127 @@ parse_config(Json, Filename) ->
 			RestLoginUrlValue -> RestLoginUrl = ems_util:remove_ult_backslash_url_binary(RestLoginUrlValue)
 		end,
  		put(parse_step, rest_url_mask),
-		RestUrlMask = ems_util:parse_bool(get_param(<<"rest_url_mask">>, Json, false)),
+		RestUrlMask = ems_util:parse_bool(get_p(<<"rest_url_mask">>, Json, false)),
 
 		put(parse_step, rest_user),
-		RestUser = binary_to_list(get_param(<<"rest_user">>, Json, <<>>)),
+		RestUser = binary_to_list(get_p(<<"rest_user">>, Json, <<>>)),
 
 		put(parse_step, rest_passwd),
-		RestPasswd = binary_to_list(get_param(<<"rest_passwd">>, Json, <<>>)),
+		RestPasswd = binary_to_list(get_p(<<"rest_passwd">>, Json, <<>>)),
 
 		put(parse_step, host_alias),
-		HostAlias = get_param(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
+		HostAlias = get_p(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
 		
 		put(parse_step, debug),
-		Debug = ems_util:parse_bool(get_param(<<"debug">>, Json, false)),
+		Debug = ems_util:parse_bool(get_p(<<"debug">>, Json, false)),
 
 		put(parse_step, result_cache),
-		ResultCache = ems_util:parse_result_cache(get_param(<<"result_cache">>, Json, ?TIMEOUT_DISPATCHER_CACHE)),
+		ResultCache = ems_util:parse_result_cache(get_p(<<"result_cache">>, Json, ?TIMEOUT_DISPATCHER_CACHE)),
 
 		put(parse_step, result_cache_shared),
-		ResultCacheShared = ems_util:parse_bool(get_param(<<"result_cache_shared">>, Json, ?RESULT_CACHE_SHARED)),
+		ResultCacheShared = ems_util:parse_bool(get_p(<<"result_cache_shared">>, Json, ?RESULT_CACHE_SHARED)),
 
 		put(parse_step, tcp_allowed_address),
-		TcpAllowedAddress = parse_tcp_allowed_address(get_param(<<"tcp_allowed_address">>, Json, all)),
+		TcpAllowedAddress = parse_tcp_allowed_address(get_p(<<"tcp_allowed_address">>, Json, all)),
 		
 		put(parse_step, http_max_content_length),
-		HttpMaxContentLength = ems_util:parse_range(get_param(<<"http_max_content_length">>, Json, ?HTTP_MAX_CONTENT_LENGTH), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
+		HttpMaxContentLength = ems_util:parse_range(get_p(<<"http_max_content_length">>, Json, ?HTTP_MAX_CONTENT_LENGTH), 0, ?HTTP_MAX_CONTENT_LENGTH_BY_SERVICE),
 		
 		put(parse_step, authorization),
-		Authorization = ems_util:parse_authorization_type(get_param(<<"authorization">>, Json, ?AUTHORIZATION_TYPE_DEFAULT)),
+		Authorization = ems_util:parse_authorization_type(get_p(<<"authorization">>, Json, ?AUTHORIZATION_TYPE_DEFAULT)),
 
 		put(parse_step, oauth2_with_check_constraint),
-		OAuth2WithCheckConstraint = ems_util:parse_bool(get_param(<<"oauth2_with_check_constraint">>, Json, false)),
+		OAuth2WithCheckConstraint = ems_util:parse_bool(get_p(<<"oauth2_with_check_constraint">>, Json, false)),
 		
 		put(parse_step, oauth2_refresh_token),
-		OAuth2RefreshToken = ems_util:parse_range(get_param(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
+		OAuth2RefreshToken = ems_util:parse_range(get_p(<<"oauth2_refresh_token">>, Json, ?OAUTH2_DEFAULT_TOKEN_EXPIRY), 0, ?OAUTH2_MAX_TOKEN_EXPIRY),
 
 		put(parse_step, auth_allow_user_inative_credentials),
-		AuthAllowUserInativeCredentials = ems_util:parse_bool(get_param(<<"auth_allow_user_inative_credentials">>, Json, true)),
+		AuthAllowUserInativeCredentials = ems_util:parse_bool(get_p(<<"auth_allow_user_inative_credentials">>, Json, true)),
 
 		put(parse_step, log_show_response),
-		LogShowResponse = ems_util:parse_bool(get_param(<<"log_show_response">>, Json, ?LOG_SHOW_RESPONSE)),
+		LogShowResponse = ems_util:parse_bool(get_p(<<"log_show_response">>, Json, ?LOG_SHOW_RESPONSE)),
 		
 		put(parse_step, log_show_payload),
-		LogShowPayload = ems_util:parse_bool(get_param(<<"log_show_payload">>, Json, ?LOG_SHOW_PAYLOAD)),
+		LogShowPayload = ems_util:parse_bool(get_p(<<"log_show_payload">>, Json, ?LOG_SHOW_PAYLOAD)),
 		
 		put(parse_step, log_show_response_max_length),
-		LogShowResponseMaxLength = get_param(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH),
+		LogShowResponseMaxLength = get_p(<<"log_show_response_max_length">>, Json, ?LOG_SHOW_RESPONSE_MAX_LENGTH),
 		
 		put(parse_step, log_show_payload_max_length),
-		LogShowPayloadMaxLength = get_param(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH),
+		LogShowPayloadMaxLength = get_p(<<"log_show_payload_max_length">>, Json, ?LOG_SHOW_PAYLOAD_MAX_LENGTH),
 		
 		put(parse_step, log_file_checkpoint),
-		LogFileCheckpoint = get_param(<<"log_file_checkpoint">>, Json, ?LOG_FILE_CHECKPOINT),
+		LogFileCheckpoint = get_p(<<"log_file_checkpoint">>, Json, ?LOG_FILE_CHECKPOINT),
 		
 		put(parse_step, log_file_max_size),
-		LogFileMaxSize = get_param(<<"log_file_max_size">>, Json, ?LOG_FILE_MAX_SIZE),
+		LogFileMaxSize = get_p(<<"log_file_max_size">>, Json, ?LOG_FILE_MAX_SIZE),
 		
 		put(parse_step, rest_environment),
 		RestEnvironment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
 		
 		put(parse_step, sufixo_email_institucional),
-		SufixoEmailInstitucional = binary_to_list(get_param(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
+		SufixoEmailInstitucional = binary_to_list(get_p(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
 		
 		put(parse_step, disable_services),
-		DisableServices = get_param(<<"disable_services">>, Json, []),
+		DisableServices = get_p(<<"disable_services">>, Json, []),
 		
 		put(parse_step, enable_services),
-		EnableServices = get_param(<<"enable_services">>, Json, []),
+		EnableServices = get_p(<<"enable_services">>, Json, []),
 		
 		put(parse_step, disable_services_owner),
-		DisableServicesOwner = get_param(<<"disable_services_owner">>, Json, []),
+		DisableServicesOwner = get_p(<<"disable_services_owner">>, Json, []),
 		
 		put(parse_step, enable_services_owner),
-		EnableServicesOwner = get_param(<<"enable_services_owner">>, Json, []),
+		EnableServicesOwner = get_p(<<"enable_services_owner">>, Json, []),
 		
 		put(parse_step, restricted_services_owner),
-		RestrictedServicesOwner = get_param(<<"restricted_services_owner">>, Json, []),
+		RestrictedServicesOwner = get_p(<<"restricted_services_owner">>, Json, []),
 		
 		put(parse_step, restricted_services_admin),
-		RestrictedServicesAdmin = get_param(<<"restricted_services_admin">>, Json, []),
+		RestrictedServicesAdmin = get_p(<<"restricted_services_admin">>, Json, []),
 		
 		put(parse_step, java_jar_path),
-		JarPath = parse_jar_path(get_param(<<"java_jar_path">>, Json, ?JAR_PATH)),
+		JarPath = parse_jar_path(get_p(<<"java_jar_path">>, Json, ?JAR_PATH)),
 
 		put(parse_step, java_home),
-		JavaHome = parse_java_home(get_param(<<"java_home">>, Json, <<>>)),
+		JavaHome = parse_java_home(get_p(<<"java_home">>, Json, <<>>)),
 
 		put(parse_step, java_thread_pool),
-		ThreadPool = ems_util:parse_range(get_param(<<"java_thread_pool">>, Json, 12), 1, 120),
+		ThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
 
 		put(parse_step, smtp_passwd),
-		SmtpPassword = binary_to_list(get_param(<<"smtp_passwd">>, Json, <<>>)),
+		SmtpPassword = binary_to_list(get_p(<<"smtp_passwd">>, Json, <<>>)),
 
 		put(parse_step, smtp_from),
-		SmtpFrom = binary_to_list(get_param(<<"smtp_from">>, Json, <<>>)),
+		SmtpFrom = binary_to_list(get_p(<<"smtp_from">>, Json, <<>>)),
 
 		put(parse_step, smtp_mail),
-		SmtpMail = binary_to_list(get_param(<<"smtp_mail">>, Json, <<>>)),
+		SmtpMail = binary_to_list(get_p(<<"smtp_mail">>, Json, <<>>)),
 
 		put(parse_step, smtp_port),
-		SmtpPort = get_param(<<"smtp_port">>, Json, 587),
+		SmtpPort = get_p(<<"smtp_port">>, Json, 587),
 
 		put(parse_step, ldap_url),
-		LdapUrl = binary_to_list(get_param(<<"ldap_url">>, Json, <<>>)),
+		LdapUrl = binary_to_list(get_p(<<"ldap_url">>, Json, <<>>)),
 
 		put(parse_step, ldap_admin),
-		LdapAdmin = binary_to_list(get_param(<<"ldap_admin">>, Json, <<>>)),
+		LdapAdmin = binary_to_list(get_p(<<"ldap_admin">>, Json, <<>>)),
 				 
 		put(parse_step, ldap_password_admin_crypto),
-		LdapPasswdAdminCrypto = binary_to_list(get_param(<<"ldap_password_admin_crypto">>, Json, <<>>)),
+		LdapPasswdAdminCrypto = binary_to_list(get_p(<<"ldap_password_admin_crypto">>, Json, <<>>)),
 
 		put(parse_step, ldap_base_search),
-		LdapBaseSearch = binary_to_list(get_param(<<"ldap_base_search">>, Json, <<>>)),
+		LdapBaseSearch = binary_to_list(get_p(<<"ldap_base_search">>, Json, <<>>)),
 
 		put(parse_step, ldap_password_admin),
-		LdapPasswordAdmin = binary_to_list(get_param(<<"ldap_password_admin">>, Json, <<>>)),
-
+		LdapPasswordAdmin = binary_to_list(get_p(<<"ldap_password_admin">>, Json, <<>>)),
 
 		put(parse_step, config),
-		{ok, #config{ cat_host_alias = HostAlias,
-				 cat_host_search = get_param(<<"host_search">>, Json, <<>>),							
-				 cat_node_search = get_param(<<"node_search">>, Json, <<>>),
+		Conf = #config{ 
+				 cat_host_alias = HostAlias,
+				 cat_host_search = get_p(<<"host_search">>, Json, <<>>),							
+				 cat_node_search = get_p(<<"node_search">>, Json, <<>>),
 				 cat_path_search = CatPathSearch,
 				 static_file_path = StaticFilePath,
 				 static_file_path_map = StaticFilePathMap,
@@ -567,17 +566,17 @@ parse_config(Json, Filename) ->
 				 rest_passwd = RestPasswd,
 				 config_file = Filename,
 				 params = Json,
-				 client_path_search = select_config_file(<<"clients.json">>, get_param(<<"client_path_search">>, Json, ?CLIENT_PATH)),
-				 user_path_search = select_config_file(<<"users.json">>, get_param(<<"user_path_search">>, Json, ?USER_PATH)),
-				 user_dados_funcionais_path_search = select_config_file(<<"user_dados_funcionais.json">>, get_param(<<"user_dados_funcionais_path">>, Json, ?USER_DADOS_FUNCIONAIS_PATH)),
-				 user_perfil_path_search = select_config_file(<<"user_perfil.json">>, get_param(<<"user_perfil_path_search">>, Json, ?USER_PERFIL_PATH)),
-				 user_permission_path_search = select_config_file(<<"user_permission.json">>, get_param(<<"user_permission_path_search">>, Json, ?USER_PERMISSION_PATH)),
-				 user_endereco_path_search = select_config_file(<<"user_endereco.json">>, get_param(<<"user_endereco_path_search">>, Json, ?USER_ENDERECO_PATH)),
-				 user_telefone_path_search = select_config_file(<<"user_telefone.json">>, get_param(<<"user_telefone_path_search">>, Json, ?USER_TELEFONE_PATH)),
-				 user_email_path_search	= select_config_file(<<"user_email.json">>, get_param(<<"user_email_path_search">>, Json, ?USER_EMAIL_PATH)),
-				 ssl_cacertfile = get_param(<<"ssl_cacertfile">>, Json, undefined),
-				 ssl_certfile = get_param(<<"ssl_certfile">>, Json, undefined),
-				 ssl_keyfile = get_param(<<"ssl_keyfile">>, Json, undefined),
+				 client_path_search = select_config_file(<<"clients.json">>, get_p(<<"client_path_search">>, Json, ?CLIENT_PATH)),
+				 user_path_search = select_config_file(<<"users.json">>, get_p(<<"user_path_search">>, Json, ?USER_PATH)),
+				 user_dados_funcionais_path_search = select_config_file(<<"user_dados_funcionais.json">>, get_p(<<"user_dados_funcionais_path">>, Json, ?USER_DADOS_FUNCIONAIS_PATH)),
+				 user_perfil_path_search = select_config_file(<<"user_perfil.json">>, get_p(<<"user_perfil_path_search">>, Json, ?USER_PERFIL_PATH)),
+				 user_permission_path_search = select_config_file(<<"user_permission.json">>, get_p(<<"user_permission_path_search">>, Json, ?USER_PERMISSION_PATH)),
+				 user_endereco_path_search = select_config_file(<<"user_endereco.json">>, get_p(<<"user_endereco_path_search">>, Json, ?USER_ENDERECO_PATH)),
+				 user_telefone_path_search = select_config_file(<<"user_telefone.json">>, get_p(<<"user_telefone_path_search">>, Json, ?USER_TELEFONE_PATH)),
+				 user_email_path_search	= select_config_file(<<"user_email.json">>, get_p(<<"user_email_path_search">>, Json, ?USER_EMAIL_PATH)),
+				 ssl_cacertfile = get_p(<<"ssl_cacertfile">>, Json, undefined),
+				 ssl_certfile = get_p(<<"ssl_certfile">>, Json, undefined),
+				 ssl_keyfile = get_p(<<"ssl_keyfile">>, Json, undefined),
 				 sufixo_email_institucional = SufixoEmailInstitucional,
 				 log_show_response = LogShowResponse,
 				 log_show_payload = LogShowPayload,
@@ -599,7 +598,9 @@ parse_config(Json, Filename) ->
 				 ldap_password_admin_crypto = LdapPasswdAdminCrypto,
 				 ldap_base_search = LdapBaseSearch,
 				 custom_variables = CustomVariables
-			}}
+			},
+		ems_db:set_param(config_variables, Conf),
+		{ok, Conf}
 	catch
 		_:Reason -> 
 			ems_logger:format_warn("\nems_config cannot parse ~p in configuration file ~p. Reason: ~p.\nRunning with default settings.\n", [get(parse_step), Filename, Reason]),
@@ -614,7 +615,8 @@ get_default_config() ->
 	TcpListenAddress = [<<"0.0.0.0">>],
 	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress),
  	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
-	{ok, #config{ cat_host_alias		= #{<<"local">> => HostnameBin},
+ 	Conf = #config{ 
+			 cat_host_alias				= #{<<"local">> => HostnameBin},
 			 cat_host_search			= <<>>,							
 			 cat_node_search			= <<>>,
 			 cat_path_search			= [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}],
@@ -681,7 +683,10 @@ get_default_config() ->
 			 ldap_password_admin_crypto = "",
 			 ldap_base_search = "",
 			 custom_variables = []
-		}}.
+		},
+	ems_db:set_param(config_variables, Conf),
+	{ok, Conf}.
+	
 
 -spec select_config_file(binary() | string(), binary() | string()) -> {ok, string()} | {error, enofile_config}.
 select_config_file(ConfigFile, ConfigFileDefault) ->

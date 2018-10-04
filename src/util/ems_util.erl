@@ -170,6 +170,8 @@
 		 replace_all_vars_and_custom_variables_binary/2,
 		 replace_custom_variables/1,
 		 replace_custom_variables_binary/1,
+		 replace_config_and_custom_variables_binary/1,
+		 replace_config_and_custom_variables/1,
 		 to_utf8/1,
 		 load_erlang_module/1,
 		 mime_type/1,
@@ -1025,15 +1027,45 @@ replace_all_vars_and_custom_variables(Subject, Vargs) ->
 	ems_util:replace_all_vars(Result, CustomVariables).
 
 
+-spec replace_custom_variables_binary(string() | binary()) -> binary().
+replace_custom_variables_binary(Str) -> 
+	CustomVariables = ems_db:get_param(custom_variables),
+	list_to_binary(ems_util:replace_all_vars(Str, CustomVariables)).
+
+
 -spec replace_custom_variables(string() | binary()) -> string().
 replace_custom_variables(Str) -> 
 	CustomVariables = ems_db:get_param(custom_variables),
 	ems_util:replace_all_vars(Str, CustomVariables).
 
--spec replace_custom_variables_binary(string() | binary()) -> string().
-replace_custom_variables_binary(Str) -> 
-	CustomVariables = ems_db:get_param(custom_variables),
-	list_to_binary(ems_util:replace_all_vars(Str, CustomVariables)).
+
+-spec replace_config_and_custom_variables_binary(string() | binary()) -> binary().
+replace_config_and_custom_variables_binary(Str) -> 
+	list_to_binary(replace_config_and_custom_variables(Str)).
+
+
+-spec replace_config_and_custom_variables(string() | binary()) -> string().
+replace_config_and_custom_variables(Str) -> 
+	Conf = ems_config:getConfig(),
+	Result = ems_util:replace_all_vars_and_custom_variables(Str, 
+		[{<<"HOSTNAME">>, binary_to_list(Conf#config.ems_hostname)},
+		 {<<"JAVA_HOME">>, Conf#config.java_home},
+		 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
+		 {<<"JAVA_JAR_PATH">>, Conf#config.java_jar_path},
+		 {<<"REST_BASE_URL">>, binary_to_list(Conf#config.rest_base_url)},
+		 {<<"REST_ENVIRONMENT">>, Conf#config.rest_environment},
+		 {<<"REST_USER">>, Conf#config.rest_user},
+		 {<<"REST_PASSWD">>, Conf#config.rest_passwd},
+		 {<<"LDAP_URL">>, Conf#config.ldap_url},
+		 {<<"LDAP_ADMIN">>, Conf#config.ldap_admin},
+		 {<<"LDAP_PASSWD">>, Conf#config.ldap_password_admin},
+		 {<<"SMTP_FROM">>, Conf#config.smtp_from},
+		 {<<"SMTP_PASSWD">>, Conf#config.smtp_passwd},
+		 {<<"SMTP_PORT">>, Conf#config.smtp_port},
+		 {<<"SMTP_MAIL">>, Conf#config.smtp_mail},
+		 {<<"PRIV_PATH">>, ?PRIV_PATH}
+		]), 
+	Result.
 
 
 -spec replace_all_vars(string() | binary(), list(tuple())) -> string().
@@ -2367,7 +2399,9 @@ parse_url_service(Url) ->
 	LenUrl = length(Url),
 	case LenUrl > 0 andalso LenUrl =< 360 andalso is_url_valido(Url) of
 		true -> list_to_binary(Url);
-		false -> erlang:error(einvalid_url_service)
+		false -> 
+			ems_logger:error("ems_util parse invalid url ~p.", [Url]),
+			erlang:error(einvalid_url_service)
 	end.
 
 -spec parse_lang(binary() | string() | non_neg_integer()) -> binary().
@@ -2620,8 +2654,12 @@ load_from_file_req(Request = #request{url = Url,
 									  response_header = ResponseHeader,
 									  service = #service{expires = ExpiresService,
 														 path = Path,
+														 filename = FilenameService,
 														 show_debug_response_headers = ShowDebugResponseHeaders}}) ->
-	Filename = Path ++ string:substr(Url, string:len(hd(string:tokens(Url, "/")))+2),
+	case FilenameService == <<>> orelse FilenameService == undefined of
+		true -> Filename = Path ++ string:substr(Url, string:len(hd(string:tokens(Url, "/")))+2);
+		false -> Filename = FilenameService
+	end,
 	case file:read_file_info(Filename, [{time, universal}]) of
 		{ok,{file_info, FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
 			?DEBUG("ems_static_file_service loading file ~p.", [Filename]),
@@ -2675,7 +2713,7 @@ load_from_file_req(Request = #request{url = Url,
 					end
 			end;
 		{error, Reason} = Error -> 
-			?DEBUG("ems_static_file_service read_file_info ~p failed. Reason: ~p.", [Filename, Reason]),
+			ems_logger:error("ems_static_file_service read_file_info ~p failed. Reason: ~p.", [Filename, Reason]),
 			{error, Request#request{code = case Reason of enoent -> 404; _ -> 400 end, 
 									 reason = Reason,	
 									 response_data = ems_schema:to_json(Error)}

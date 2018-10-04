@@ -2,7 +2,7 @@
 	{
 		"name": "unb_servicos",
 		"comment": "Catalog for ems_unb_servicos",
-		"owner": "emsbus",
+		"owner": "unb_servicos",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:start",
 		"url": "/unb/unb_servicos/daemon",
@@ -54,58 +54,137 @@
 	},
 	
 	{
-		"name": "/netadm/unb_servicos/restart",
+		"name": "/unb_servicos/restart",
 		"comment": "Restart unb_servicos.",
 		"owner": "unb_servicos",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:restart_daemon",
-		"url": "/netadm/unb_servicos/restart",
+		"url": "/unb_servicos/restart",
 		"type": "POST",
-		"lang" : "erlang"
+		"lang" : "erlang",
+		"restricted" : true
 	},
 	
 	{
-		"name": "/netadm/unb_servicos/start",
+		"name": "/unb_servicos/start",
 		"comment": "Start unb_servicos.",
 		"owner": "unb_servicos",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:start_daemon",
-		"url": "/netadm/unb_servicos/start",
+		"url": "/unb_servicos/start",
 		"type": "POST",
-		"lang" : "erlang"
+		"lang" : "erlang",
+		"restricted" : true
 	},
 	
 	{
-		"name": "/netadm/unb_servicos/stop",
+		"name": "/unb_servicos/stop",
 		"comment": "Stop unb_servicos.",
 		"owner": "unb_servicos",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:stop_daemon",
-		"url": "/netadm/unb_servicos/stop",
+		"url": "/unb_servicos/stop",
 		"type": "POST",
-		"lang" : "erlang"
+		"lang" : "erlang",
+		"restricted" : true
 	},
 	
 	{
-		"name": "/netadm/unb_servicos/kill",
+		"name": "/unb_servicos/kill",
 		"comment": "Stop unb_servicos.",
 		"owner": "unb_servicos",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:kill_daemon",
-		"url": "/netadm/unb_servicos/kill",
+		"url": "/unb_servicos/kill",
 		"type": "POST",
-		"lang" : "erlang"
+		"lang" : "erlang",
+		"restricted" : true
 	},
 
 	{
-		"name": "/netadm/unb_servicos/watchdog",
+		"name": "/unb_servicos/watchdog",
 		"comment": "watchdog unb_servicos.",
 		"owner": "unb_servicos",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:watchdog_daemon",
-		"url": "/netadm/unb_servicos/watchdog",
+		"url": "/unb_servicos/watchdog",
 		"type": "POST",
-		"lang" : "erlang"
+		"lang" : "erlang",
+		"restricted" : true
+	},
+	
+	{
+		"name": "/unb_servicos/log",
+		"comment": "Retorna o arquivo de log completo",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_static_file_service:execute",
+		"url": "/unb_servicos/log",
+		"filename" : "{{JAVA_JAR_PATH}}/server.log",
+		"content_type":"text/plain",
+		"type": "GET",
+		"lang" : "erlang",
+		"restricted" : true
+	},
+	
+	{
+		"name": "/unb_servicos/log/head",
+		"comment": "Show log head.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_logger_os_service:log_file_head",
+		"url": "/unb_servicos/log/head",
+		"filename" : "{{JAVA_JAR_PATH}}/server.log",
+		"async": "false",
+		"result_cache" : 0,
+		"type": "GET",
+		"lang" : "erlang",
+		"restricted" : true
+	},
+	
+	{
+		"name": "/unb_servicos/log/tail",
+		"comment": "Show log head.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_logger_os_service:log_file_tail",
+		"url": "/unb_servicos/log/tail",
+		"filename" : "{{JAVA_JAR_PATH}}/server.log",
+		"async": "false",
+		"result_cache" : 0,
+		"type": "GET",
+		"lang" : "erlang",
+		"restricted" : true
+	},
+
+	{
+		"name": "/unb_servicos/log/filename",
+		"comment": "Show log head.",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_logger_os_service:log_file_name",
+		"url": "/unb_servicos/log/filename",
+		"filename" : "{{JAVA_JAR_PATH}}/server.log",
+		"async": "false",
+		"result_cache" : 0,
+		"type": "GET",
+		"lang" : "erlang",
+		"restricted" : true
+	},
+	
+	{
+		"name": "/unb_servicos/ps",
+		"comment": "Exibe o comando ps em relação ao unb_servicos",
+		"owner": "netadm",
+		"version": "1.0.0",
+		"service" : "ems_cmd_service:execute",
+		"url": "/unb_servicos/ps",
+		"script" : [ "ps aux | grep unb_servicos" ],
+		"content_type" : "text/plain",
+		"type": "GET",
+		"lang" : "erlang",
+		"restricted" : true
 	}
+	
 	
 ]
