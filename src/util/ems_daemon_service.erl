@@ -213,15 +213,15 @@ do_start_daemon(State = #state{start_cmd = CmdStart,
 		{ok, CurrentPid} -> 
 			case DaemonWatchdogPolicy of
 				restart -> 
-					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, restart policy in progress...", [Name, CurrentPid]),
+					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with pid ~p, restart policy in progress...", [Name, CurrentPid]),
 					ems_logger:warn(Msg),
 					do_restart_daemon(Msg, State#state{pid = CurrentPid, daemon_id = "unknow"}, error);
 				'link' ->
-					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, link policy in progress...", [Name, CurrentPid]),
+					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with pid ~p, link policy in progress...", [Name, CurrentPid]),
 					ems_logger:warn(Msg),
 					do_link_daemon(DaemonId, State);
 				none -> 
-					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with unknow pid ~p, none policy in progress...", [Name, CurrentPid]),
+					Msg = io_lib:format("ems_daemon_service ~s daemon already exist with pid ~p, none policy in progress...", [Name, CurrentPid]),
 					ems_logger:warn(Msg)
 			end;
 		_ ->

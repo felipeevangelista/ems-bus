@@ -143,7 +143,7 @@ init(#service{name = Name,
 	DisabledMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_disabled">>]), utf8),
 	SkipMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_skip">>]), utf8),
 	GroupDataLoader = lists:delete(NameStr, ems_util:binlist_to_list(maps:get(<<"group">>, Props, []))),
-	%erlang:send_after(60000 * 60, self(), check_sync_full),
+	erlang:send_after(60000 * 60, self(), check_sync_full),
 	case CheckRemoveRecords andalso CheckRemoveRecordsCheckpoint > 0 of
 		true -> erlang:send_after(CheckRemoveRecordsCheckpoint + 90000 + rand:uniform(10000), self(), check_count_records);
 		false -> ok
@@ -236,7 +236,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 											wait_count = WaitCount
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-		case Hour >= 3 andalso Hour =< 6 of
+		case (Hour == 6 orelse Hour == 10 orelse Hour == 13 orelse Hour == 18 orelse Hour == 22) of
 			true ->
 				?DEBUG("~s handle check_sync_full execute now.", [Name]),
 				case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader, check_sync_full, WaitCount) of
@@ -244,29 +244,29 @@ handle_info(check_sync_full, State = #state{name = Name,
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
 						ems_logger:info("~s sync full checkpoint now.", [Name]),
 						State2 = State#state{last_update = undefined,
-											  allow_clear_table_full_sync = true},
+											 allow_clear_table_full_sync = (Hour == 6)},  % limpar a tabela somente às 6h da manhã
 						case do_check_load_or_update_checkpoint(State2) of
 							{ok, State3 = #state{insert_count = InsertCount, update_count = UpdateCount, error_count = ErrorCount, disable_count = DisableCount, skip_count = SkipCount}} ->
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),
 								ems_logger:info("~s sync full checkpoint successfully", [Name]),
-								erlang:send_after(86400 * 1000, self(), check_sync_full),
+								erlang:send_after(3600000, self(), check_sync_full),
 								{noreply, State3#state{wait_count = 0}, UpdateCheckpoint};
 							{error, Reason} -> 
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, 0, 0, 0, 0, 0, Reason),
 								ems_db:inc_counter(ErrorCheckpointMetricName),
-								erlang:send_after(86400 * 1000, self(), check_sync_full),
-								?DEBUG("~s sync full wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
+								erlang:send_after(3600000, self(), check_sync_full),
+								ems_logger:error("~s sync full wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
 								{noreply, State#state{wait_count = 0}, TimeoutOnError}
 						end;
 					false ->
 						TimeoutWait = get_timeout_wait(WaitCount),
-						?DEBUG("~s handle check_sync_full wait ~pms to execute.", [Name, TimeoutWait]),
+						ems_logger:warn("~s handle check_sync_full wait ~pms to execute (WaitCount: ~p).", [Name, TimeoutWait, WaitCount]),
 						erlang:send_after(TimeoutWait, self(), check_sync_full),
 						{noreply, State#state{wait_count = WaitCount + 1}, UpdateCheckpoint}
 				end;
 			_ -> 
-				?DEBUG("~s skip sync full checkpoint due to the programmed time window.", [Name]),
-				erlang:send_after(60000 * 60, self(), check_sync_full),
+				ems_logger:info("~s skip sync full checkpoint due to the programmed time window.", [Name]),
+				erlang:send_after(60000 * 15, self(), check_sync_full),
 				{noreply, State, UpdateCheckpoint}
 		end;
 
@@ -447,7 +447,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 												  last_update_param_name = LastUpdateParamName,
 												  last_update = LastUpdate}) ->
 	% garante que os dados serão atualizados mesmo que as datas não estejam sincronizadas
-	NextUpdate = ems_util:date_dec_minute(calendar:local_time(), 120), 
+	NextUpdate = ems_util:date_dec_minute(calendar:local_time(), 240), 
 	LastUpdateStr = ems_util:timestamp_str(),
 	Conf = ems_config:getConfig(),
 	case LastUpdate == undefined orelse do_is_empty(State) of
@@ -463,7 +463,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 				Error -> Error
 			end;
 		false ->
-			?DEBUG("~s do_check_load_or_update_checkpoint update checkpoint. last update: ~s.", [Name, ems_util:timestamp_str(LastUpdate)]),
+			?DEBUG("~s do_check_load_or_update_checkpoint update checkpoint.", [Name]),
 			case do_update(LastUpdate, LastUpdateStr, Conf, State) of
 				{ok, State2} -> 
 					ems_db:set_param(LastUpdateParamName, NextUpdate),

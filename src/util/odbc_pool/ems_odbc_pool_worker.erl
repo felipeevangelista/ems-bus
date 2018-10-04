@@ -200,7 +200,7 @@ handle_info(close_idle_connection, State = #state{datasource = #service_datasour
 																				   conn_ref = ConnRef},
 												  check_valid_connection_ref = CheckValidConnectionRef,
 												  query_count = QueryCount}) ->
-   ?DEBUG("ems_odbc_pool_worker close_idle_connection (Ds: ~p Worker: ~p timerRef: ~p QueryCount: ~p).", [Id, ConnRef, QueryCount]),
+   ?DEBUG("ems_odbc_pool_worker close_idle_connection (Ds: ~p Worker: ~p QueryCount: ~p).", [Id, ConnRef, QueryCount]),
    erlang:cancel_timer(CheckValidConnectionRef),
    {stop, normal, State#state{close_idle_connection_ref = undefined, 
 							  check_valid_connection_ref = undefined}};
