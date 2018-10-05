@@ -25,7 +25,13 @@
 #
 ########################################################################################################
 
-VERSION_SCRIPT="3.0.0"
+
+VERSION_SCRIPT="3.0.1"
+
+# Necessário para as bibliotecas c utilizadas
+export CFLAGS='-std=c11 -O3 -Wl,-Bstatic -llibc'
+echo "Usando CFLAGS=$CFLAGS"
+
 
 if [ -z "$ERLANGMS_IN_DOCKER" ]; then
 	echo "Build erlangms tool ( Version: $VERSION_SCRIPT   Hostname: `hostname` )"
@@ -274,8 +280,6 @@ else
 	fi	
 	
 	echo "Compiling the project erlangms..."
-
-	export CFLAGS='-std=c11 -O3'
 
 	if [ "$SKIP_DEPS" = "false" ]; then
 		clean_deps
