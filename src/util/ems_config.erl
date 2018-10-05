@@ -141,11 +141,6 @@ get_config_data() ->
 		_:_ -> {error, enofile_config}
 	end.
 
-print_config_settings(Json = #config{ems_debug = true}) ->
-	ems_logger:format_debug("~p\n", [Json]);
-print_config_settings(_) -> ok.
-	
-
 
 % Load the configuration file
 load_config() ->
