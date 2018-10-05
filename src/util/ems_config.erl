@@ -155,9 +155,7 @@ load_config() ->
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Data} -> 
 					case parse_config(Data, Filename) of
-						{ok, Result} -> 
-							print_config_settings(Result),
-							Result;
+						{ok, Result} -> Result;
 						{error, Reason} -> 
 							ems_logger:format_warn("\nems_config cannot parse configuration file ~p. Reason: ~p. Data; ~p.\nRunning with default settings.\n", [Filename, Reason, Data]),
 							get_default_config()
