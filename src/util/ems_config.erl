@@ -146,17 +146,17 @@ get_config_data() ->
 load_config() ->
 	case get_config_data() of
 		{ok, ConfigData, Filename} ->
-			ems_logger:format_info("ems_config loading configuration file ~p...", [Filename]),
+			ems_logger:format_info("ems_config loading configuration file \033[01;34m\"~s\"\033[0m\033[00;33m...", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Data} -> 
 					case parse_config(Data, Filename) of
 						{ok, Result} -> Result;
 						{error, Reason} -> 
-							ems_logger:format_warn("\nems_config cannot parse configuration file ~p. Reason: ~p. Data; ~p.\nRunning with default settings.\n", [Filename, Reason, Data]),
+							ems_logger:format_warn("\nems_config cannot parse configuration file \033[01;34m\"~s\"\033[0m\033[00;33m. Reason: ~p. Data; ~p.\nRunning with default settings.\n", [Filename, Reason, Data]),
 							get_default_config()
 					end;
 				{error, Reason2} -> 
-					ems_logger:format_warn("\nems_config cannot decode configuration file ~p as json. Reason: ~p\n. Running with default settings.\n", [Filename, Reason2]),
+					ems_logger:format_warn("\nems_config cannot decode configuration file \033[01;34m\"~s\"\033[0m\033[00;33m as json. Reason: ~p\n. Running with default settings.\n", [Filename, Reason2]),
 					get_default_config()
 			end;
 		{error, enofile_config} ->

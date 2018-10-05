@@ -47,7 +47,7 @@ execute_script([], Output) ->
 	end;
 execute_script([H|T], Output) ->
 	try
-		Cmd = binary_to_list(H),
+		Cmd = ems_util:replace_config_and_custom_variables(H),
 		ems_logger:info("ems_cmd_service \033[0;32mOS Command\033[0m: ~p.", [Cmd]),
 		case os:cmd(Cmd, #{ max_size => 8000000 }) of
 			"sudo: no tty present and no askpass program specified\n" -> 

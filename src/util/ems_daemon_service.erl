@@ -113,13 +113,13 @@ init(#service{name = Name,
 			  properties = Props}) ->
     NameStr = binary_to_list(Name),
     Port = maps:get(<<"port">>, Props, 0),
-    StartCmd = parse_start_cmd(maps:get(<<"start_cmd">>, Props, <<>>)),
-    StopCmd = maps:get(<<"stop_cmd">>, Props, <<>>),
-    KillCmd = maps:get(<<"kill_cmd">>, Props, <<>>),
+    StartCmd = ems_util:replace_config_and_custom_variables(parse_start_cmd(maps:get(<<"start_cmd">>, Props, <<>>))),
+    StopCmd = ems_util:replace_config_and_custom_variables(maps:get(<<"stop_cmd">>, Props, <<>>)),
+    KillCmd = ems_util:replace_config_and_custom_variables(maps:get(<<"kill_cmd">>, Props, <<>>)),
 	PidFileWatchDogTimeOut = ems_util:parse_range(maps:get(<<"pidfile_watchdog_timer">>, Props, 30000), 0, 86400000),
-    Filename = parse_java_variables(FilenameService),
-    PidFile = parse_java_variables(maps:get(<<"pidfile">>, Props, <<>>)),
-    Logfile = parse_java_variables(maps:get(<<"logfile">>, Props, <<>>)),
+    Filename = ems_util:replace_config_and_custom_variables(FilenameService),
+    PidFile = ems_util:replace_config_and_custom_variables(maps:get(<<"pidfile">>, Props, <<>>)),
+    Logfile = ems_util:replace_config_and_custom_variables(maps:get(<<"logfile">>, Props, <<>>)),
     DaemonParamsEncode = maps:get(<<"daemon_params_encode">>, Props, <<>>),
 	DaemonParamsJson = binary_to_list(ems_util:json_encode(maps:get(<<"daemon_params">>, Props, <<"{}">>))),
     DaemonWatchdog = ems_util:parse_bool(maps:get(<<"daemon_watchdog">>, Props, false)),
@@ -478,14 +478,14 @@ do_scan_catalogs(State = #state{name = Name,
 		true -> 
 			case do_scan_catalogs_jarfile(State) of
 				{ok, CatFilename} ->
-					ems_logger:info("ems_daemon_service ~s scan catalogs on ~s of jarfile ~s.", [Name, ScanCatalogsPath, Filename]),
+					ems_logger:info("ems_daemon_service ~s scan catalogs on \033[01;34m\"~s\"\033[0m of jarfile \033[01;34m\"~s\"\033[0m\033[00;33m.", [Name, ScanCatalogsPath, Filename]),
 					ems_config:add_catalog(CatName, CatFilename),
 					ems_json_loader:sync_full(ems_catalog_loader_fs);
 				{error, Reason} ->
-					ems_logger:error("ems_daemon_service ~s scan catalogs failed on ~s of jarfile ~s. Reason: ~p", [Name, ScanCatalogsPath, Filename, Reason])
+					ems_logger:error("ems_daemon_service ~s scan catalogs failed on \033[01;34m\"~s\"\033[0m of jarfile \033[01;34m\"~s\"\033[0m\033[00;33m. Reason: ~p", [Name, ScanCatalogsPath, Filename, Reason])
 			end;
 		false -> 
-			ems_logger:info("ems_daemon_service ~s scan catalogs on ~s.", [Name, ScanCatalogsPath]),
+			ems_logger:info("ems_daemon_service ~s scan catalogs on \033[01;34m\"~s\"\033[0m\033[00;33m.", [Name, ScanCatalogsPath]),
 			ems_config:add_catalog(CatName, ScanCatalogsPath),
 			ems_json_loader:sync_full(ems_catalog_loader_fs)
 	end,
@@ -613,15 +613,6 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		]), 
 	Result.
 
-parse_java_variables(<<>>) -> "";
-parse_java_variables(Str) ->
-	Conf = ems_config:getConfig(),
-	Result = string:trim(ems_util:replace_all_vars(Str, 
-		[{<<"JAVA_HOME">>, Conf#config.java_home},
-		 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
-		 {<<"JAVA_JAR_PATH">>, Conf#config.java_jar_path}])),
-	Result.	 
-		
 
 delete_pidfile(State = #state{name = Name,
 							  pidfile = Pidfile}) ->
