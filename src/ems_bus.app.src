@@ -11,7 +11,6 @@
 					public_key,    
 					ssl,    
 					inets,
-					xmerl,
 					syntax_tools,
 					compiler,
 					parse_trans,
@@ -25,8 +24,7 @@
 					jesse,
 					poolboy,
 					mochiweb,
-					oauth2,
-					ibrowse
+					oauth2
                  ]},
   {mod, { ems_bus_app, []}},
   {env, [

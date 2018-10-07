@@ -20,6 +20,7 @@
 start(_) -> start().
 
 start() -> 
+    application:start(rfc3339),
     application:start(asn1),
     application:start(crypto),
 	application:start(public_key),    
@@ -44,6 +45,7 @@ start() ->
     
 stop() -> 
 	application:stop(ems_bus),
+	application:stop(rfc3339),
 	application:stop(public_key),    
 	application:stop(asn1),
 	application:stop(json_rec),

@@ -146,7 +146,7 @@ get_config_data() ->
 load_config() ->
 	case get_config_data() of
 		{ok, ConfigData, Filename} ->
-			ems_logger:format_info("ems_config loading configuration file \033[01;34m\"~s\"\033[0m\033[00;33m...", [Filename]),
+			ems_logger:format_info("ems_config loading configuration file \033[01;34m\"~s\"\033[0m.", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Data} -> 
 					case parse_config(Data, Filename) of

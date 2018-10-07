@@ -15,14 +15,14 @@
 
 
 start(_StartType, StartArgs) ->
-	erlang:system_flag(min_heap_size, 22000),
 	io:format("\n"),
+	ems_logger:format_info("Loading ~s instance ( PID: ~s  Erlang/OTP Version: ~s )", [?SERVER_NAME, os:getpid(), erlang:system_info(otp_release)]),
+	erlang:system_flag(min_heap_size, 22000),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->
 			Conf = ems_config:getConfig(),
 			ems_logger:set_level(info),
-			ems_logger:format_info("Loading ~s instance ( Hostname: ~s  PID: ~s  Erlang/OTP Version: ~s )", [?SERVER_NAME, Conf#config.ems_hostname, os:getpid(), erlang:system_info(otp_release)]),
 			ems_dispatcher:start(),
 			Ret = ems_bus_sup:start_link(StartArgs),
 			AuthorizationMode = case Conf#config.authorization of
