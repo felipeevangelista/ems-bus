@@ -95,15 +95,17 @@ handle_call({use_port_offset, ServiceName, DefaultPort}, _From, State = #config{
 	State2 = State#config{params = Params2},
 	{reply, Port, State2};
 
-handle_call({add_catalog, CatName, CatFilename}, _From, State = #config{cat_path_search = CatPathSearch}) ->
+handle_call({add_catalog, CatName, CatFilename}, _From, Conf = #config{cat_path_search = CatPathSearch}) ->
 	CatPathSearch2 = lists:keydelete(CatName, 1, CatPathSearch),
-	State2 = State#config{cat_path_search = CatPathSearch2 ++ [{CatName, CatFilename}]},
-	{reply, undefined, State2};
+	Conf2 = Conf#config{cat_path_search = [{CatName, CatFilename} | CatPathSearch2]},
+	ems_db:set_param(config_variables, Conf2),
+	{reply, undefined, Conf2};
 
-handle_call({remove_catalog, CatName}, _From, State = #config{cat_path_search = CatPathSearch}) ->
+handle_call({remove_catalog, CatName}, _From, Conf = #config{cat_path_search = CatPathSearch}) ->
 	CatPathSearch2 = lists:keydelete(CatName, 1, CatPathSearch),
-	State2 = State#config{cat_path_search = CatPathSearch2},
-	{reply, undefined, State2}.
+	Conf2 = Conf#config{cat_path_search = CatPathSearch2},
+	ems_db:set_param(config_variables, Conf2),
+	{reply, undefined, Conf2}.
 
 
 handle_info(_Msg, State) ->
