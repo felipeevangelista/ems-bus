@@ -621,7 +621,7 @@ delete_pidfile(State = #state{name = Name,
 		true ->
 			case file:delete(Pidfile2) of
 				ok -> 
-					ems_logger:warn("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;33m manually deleted because it was not deleted by the daemon.", [Name, Pidfile2]),
+					ems_logger:warn("ems_daemon_service ~s pidfile \033[01;34m\"~s\"\033[0m\033[00;33m deleted.", [Name, Pidfile2]),
 					ok;
 				{error, enoent} -> ok;  % ok, pid não existe
 				Error -> Error

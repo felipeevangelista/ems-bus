@@ -29,7 +29,7 @@
 VERSION_SCRIPT="3.0.1"
 
 # Necessário para as bibliotecas c utilizadas
-export CFLAGS='-std=c11 -O3 -Wl,-Bstatic -llibc'
+export CFLAGS='-std=c11 -static'
 echo "Usando CFLAGS=$CFLAGS"
 
 
