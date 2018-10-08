@@ -220,11 +220,11 @@
 
 		
 -record(user_dados_funcionais, {
-			   id :: non_neg_integer(), 					%%  1 - id
+			   id :: non_neg_integer(), 					%%  1 - matricula
 			   type :: non_neg_integer(),					%%  2 - type     interno  1 = tecnico  2 = docente  3 = discente
 			   subtype :: non_neg_integer(),				%%  3 - subtype  se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
 			   active :: boolean(),							%%  4 - active
-			   matricula :: non_neg_integer(),				%%  5 - matricula
+			   user_id :: non_neg_integer(),				%%  5 - id do usuário
 			   ctrl_path :: string(),						%% 14 - ctrl_path
 			   ctrl_file :: string(),						%% 15 - ctrl_file
 			   ctrl_insert :: binary(),						%% 16 - ctrl_insert				-> Data que foi inserido no banco mnesia
@@ -234,12 +234,12 @@
 		}).
 		
 -define(USER_DADOS_FUNCIONAIS_SCHEMA_DESCRIPTOR, {
-			   atom_type,									%%  0 - nome da tabela	
+			   atom_type,									%%  1 - matricula
 			   non_neg_integer_type, 						%%  1 - id   
 			   non_neg_integer_type,						%%  2 - type
 			   non_neg_integer_type,						%%  3 - subtype
 			   boolean_type,								%%  4 - active
-			   non_neg_integer_type,						%%  5 - matricula
+			   non_neg_integer_type,						%%  5 - id do usuário
 			   string_type,									%%  6 - ctrl_path
 			   string_type,									%%  7 - ctrl_file
 			   binary_type,									%%  8 - ctrl_insert
