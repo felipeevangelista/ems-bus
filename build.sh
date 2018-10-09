@@ -28,16 +28,15 @@
 
 VERSION_SCRIPT="3.0.1"
 
+if [ -z "$ERLANGMS_IN_DOCKER" ]; then
+	echo "Build erlangms tool ( Version: $VERSION_SCRIPT   Hostname: `hostname` )"
+fi
+
 # Necessário para as bibliotecas c utilizadas
 export CFLAGS='-std=c11 -static'
 export CXXFLAGS='-std=c11 -static'
 echo "Usando CFLAGS=$CFLAGS"
 echo "Usando CXXFLAGS=$CXXFLAGS"
-
-
-if [ -z "$ERLANGMS_IN_DOCKER" ]; then
-	echo "Build erlangms tool ( Version: $VERSION_SCRIPT   Hostname: `hostname` )"
-fi
 
 # Erlang Runtime version required > 20
 ERLANG_VERSION=20

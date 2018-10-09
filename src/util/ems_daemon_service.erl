@@ -637,14 +637,13 @@ exist_new_version(#state{name = Name,
 	CurrentModifiedTime = get_modified_time_filename(Name, Filename),
 	CurrentModifiedTime =/= undefined andalso LastModifiedTime =/= undefined andalso LastModifiedTime =/= CurrentModifiedTime.
 								 
-get_modified_time_filename(Name, Filename) ->
+get_modified_time_filename(_, Filename) ->
 	case Filename =/= "" of
 		true ->
 			case file:read_file_info(Filename, []) of
 				{ok,{file_info, _FSize, _Type, _Access, _ATime, MTime, _CTime, _Mode,_,_,_,_,_,_}} -> 
 					calendar:datetime_to_gregorian_seconds(MTime);
-				{error, Reason} -> 
-					ems_logger:warn("ems_daemon_service ~s get_modified_time_filename failed. Reason: ~p.", [Name, Reason]),
+				_ -> 
 					undefined
 			end;
 		false ->

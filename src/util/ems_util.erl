@@ -190,6 +190,7 @@
 		 is_email_institucional/2,
 		 invoque_service/3,
 		 url_mask/1,
+		 url_mask_str/1,
 		 list_map_to_list_tuple/1,
 		 list_tuple_to_list_map/1,
 		 format_rest_status/5,
@@ -1726,6 +1727,10 @@ invoque_service(Type, Url, QuerystringBin, QuerystringMap, ContentTypeIn) ->
 
 -spec url_mask(string() | binary()) -> binary().
 url_mask(Url) -> iolist_to_binary([<<"/erl.ms/">>, base64:encode(Url)]). 
+
+-spec url_mask_str(string() | binary()) -> string().
+url_mask_str(Url) -> binary_to_list(iolist_to_binary([<<"/erl.ms/">>, base64:encode(Url)])). 
+
 
 -spec encode_request_cowboy(tuple(), pid(), #encode_request_state{}) -> {ok, #request{}} | {error, atom()}.
 encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_default = HttpHeaderDefault,

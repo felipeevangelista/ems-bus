@@ -236,7 +236,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 											wait_count = WaitCount
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-		case (Hour == 6 orelse Hour == 10 orelse Hour == 13 orelse Hour == 18 orelse Hour == 22) of
+		case (Hour == 5 orelse Hour == 8 orelse Hour == 10 orelse Hour == 13 orelse Hour == 16 orelse Hour == 19 orelse Hour == 22) of
 			true ->
 				?DEBUG("~s handle check_sync_full execute now.", [Name]),
 				case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader, check_sync_full, WaitCount) of
@@ -244,7 +244,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
 						ems_logger:info("~s sync full checkpoint now.", [Name]),
 						State2 = State#state{last_update = undefined,
-											 allow_clear_table_full_sync = (Hour == 6)},  % limpar a tabela somente às 6h da manhã
+											 allow_clear_table_full_sync = (Hour == 5)},  % limpar a tabela somente às 5h da manhã
 						case do_check_load_or_update_checkpoint(State2) of
 							{ok, State3 = #state{insert_count = InsertCount, update_count = UpdateCount, error_count = ErrorCount, disable_count = DisableCount, skip_count = SkipCount}} ->
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),
@@ -265,7 +265,6 @@ handle_info(check_sync_full, State = #state{name = Name,
 						{noreply, State#state{wait_count = WaitCount + 1}, UpdateCheckpoint}
 				end;
 			_ -> 
-				ems_logger:info("~s skip sync full checkpoint due to the programmed time window.", [Name]),
 				erlang:send_after(60000 * 15, self(), check_sync_full),
 				{noreply, State, UpdateCheckpoint}
 		end;
