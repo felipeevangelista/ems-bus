@@ -285,7 +285,7 @@ prepare_project_to_build(){
 	echo "Entra na pasta \"$STAGE_AREA/docker/build\" onde será feito o clone do projeto"
 	cd $STAGE_AREA/docker/build
 
-	# Clone git project app if it does not emsbus
+	# Clone git project
 	echo "Git clone $APP_URL_GIT $APP_NAME"
 	if ! git clone $APP_URL_GIT $APP_NAME 2> /dev/null ; then
 		die "Fatal: Could not access project repository $APP_URL_GIT, check your network connection or password!"
@@ -293,22 +293,31 @@ prepare_project_to_build(){
 	 
 	
 	# Entra no projeto
+	echo "Entrando no projeto git $APP_NAME..."
 	cd $APP_NAME
+	
+	echo "Pesquisando a tag $GIT_CHECKOUT_TAG..."
 	
 	# Faz clone da última tag gerada do projeto se não foi informado o parâmetro --tag
 	# Se não há nenhuma tag e não foi informado --tag, faz da master mesmo
 	if [ -z "$GIT_CHECKOUT_TAG" ]; then
+		echo "Obtendo a última tag..." 
 		GIT_CHECKOUT_TAG="$(git tag -l --sort=-creatordate | sed '1!d')"
+		echo "Ultima tag é $GIT_CHECKOUT_TAG."
 		if [ -z "$GIT_CHECKOUT_TAG" ]; then
-			echo "Git checkout from master..."
+			echo "Git checkout from master pois não encontrou nenhuma tag..."
 			BUILD_FROM_MASTER="true"
 		else
-			echo "Git checkout from lastest tag..."
-			echo "exec: git checkout -b $GIT_CHECKOUT_TAG"
-			git checkout -b $GIT_CHECKOUT_TAG
-			#[ $? -ne 0 ] | die "Fatal: Could not git checkout $GIT_CHECKOUT_TAG!"
+			echo "Git checkout from tag encontrada $GIT_CHECKOUT_TAG..."
+			git checkout $GIT_CHECKOUT_TAG
 		fi
+	else
+		echo "Git checkout from tag $GIT_CHECKOUT_TAG..."
+		git checkout $GIT_CHECKOUT_TAG
 	fi
+	
+	echo "Tag onde estou:"
+	git status
 	
 	# Se existe um diretório frontend, move para lá pois é onde está o código fonte em projetos Kubernetes
 	if [ -d frontend ]; then
@@ -809,11 +818,7 @@ if [ "$SKIP_BUILD" = "false" ]; then
 	if [ "$BUILD_FROM_MASTER" = "true" ]; then
 		echo "Build app version: master"
 	else
-		if [ -z "$GIT_CHECKOUT_TAG" ]; then
-			echo "Build app version: latest"
-		else
-			echo "Build app version: $GIT_CHECKOUT_TAG"
-		fi
+		echo "Build app version: $GIT_CHECKOUT_TAG"
 	fi	
 	echo "Option keep stage enabled after build: $KEEP_STAGE"
 	echo "Option Skip build enabled: $SKIP_BUILD"
