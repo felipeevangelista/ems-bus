@@ -104,8 +104,8 @@
 % Armazena o buffer do log a cada LOG_FILE_CHECKPOINT ms (Aumente este valor se existir muita contenção de escrita em disco)
 -define(LOG_FILE_CHECKPOINT, 400).  
 
-% Tamanho em KB máximo permitido para os arquivos de logs
--define(LOG_FILE_MAX_SIZE, 51200000).  
+% Tamanho máximo permitido para os arquivos de logs: 250MB
+-define(LOG_FILE_MAX_SIZE, 262144000000).  
 
 % Arquiva o log a cada LOG_ARCHIVE_CHECKPOINT ms
 -define(LOG_ARCHIVE_CHECKPOINT, 1000 * 60 * 60 * 24).  % Por default são 24 horas

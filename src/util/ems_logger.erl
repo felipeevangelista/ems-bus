@@ -287,9 +287,9 @@ format_alert(Message, Params) ->
 %%====================================================================
  
 init(#service{properties = Props}) ->
-	Checkpoint = maps:get(<<"log_file_checkpoint">>, Props, ?LOG_FILE_CHECKPOINT),
-	LogFileMaxSize = maps:get(<<"log_file_max_size">>, Props, ?LOG_FILE_MAX_SIZE),
 	Conf = ems_config:getConfig(),
+	Checkpoint = Conf#config.log_file_checkpoint,
+	LogFileMaxSize = Conf#config.log_file_max_size,
 	Debug = Conf#config.ems_debug,
 	mode_debug(Debug),
 	State = #state{log_file_checkpoint = Checkpoint,
@@ -576,7 +576,6 @@ sync_log_buffer(State = #state{log_buffer = Buffer,
 							   log_file_name = CurrentLogFilename,
 							   log_file_max_size = LogFileMaxSize,
 							   log_file_handle = CurrentIODevice}) ->
-	ems_db:inc_counter(ems_logger_sync_log_buffer),
 	FileSize = filelib:file_size(CurrentLogFilename),
 	case FileSize > LogFileMaxSize of 	% check limit log file max size
 		true -> 
@@ -599,7 +598,9 @@ sync_log_buffer(State = #state{log_buffer = Buffer,
 	end,
 	Msg = lists:reverse(Buffer),
 	case file:write(State2#state.log_file_handle, Msg) of
-		ok -> ok;
+		ok -> 
+			ems_db:inc_counter(ems_logger_sync_log_buffer),
+			ok;
 		{error, enospc} -> 
 			ems_db:inc_counter(ems_logger_sync_log_buffer_enospc),
 			ems_logger:error("ems_logger does not have disk storage space to write to the log files.");
