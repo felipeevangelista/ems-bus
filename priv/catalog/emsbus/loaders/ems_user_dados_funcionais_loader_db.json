@@ -34,6 +34,7 @@
 							  ON df.matsipes = c.matsipes 
 					   left join sipes.dbo.cargos ca 
 							  ON c.codcargo = ca.codcargo 
+				where df.MatSipes is not null
                 ",
 	"sql_update" : 
 				"select 
@@ -54,8 +55,8 @@
 							ON df.matsipes = c.matsipes 
 					left join sipes.dbo.cargos ca 
 							ON c.codcargo = ca.codcargo 
-				where u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
-					  u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?
+				where df.MatSipes is not null and (u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
+					  u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?)
                 ",
 
 			
