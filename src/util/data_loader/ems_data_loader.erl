@@ -236,7 +236,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 											wait_count = WaitCount
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-		case (Hour == 5 orelse Hour == 8 orelse Hour == 10 orelse Hour == 13 orelse Hour == 16 orelse Hour == 19 orelse Hour == 22) of
+		case (Hour >= 5 andalso Hour =< 23) of
 			true ->
 				?DEBUG("~s handle check_sync_full execute now.", [Name]),
 				case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader, check_sync_full, WaitCount) of
@@ -265,7 +265,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 						{noreply, State#state{wait_count = WaitCount + 1}, UpdateCheckpoint}
 				end;
 			_ -> 
-				erlang:send_after(60000 * 15, self(), check_sync_full),
+				erlang:send_after(60000 * 5, self(), check_sync_full),
 				{noreply, State, UpdateCheckpoint}
 		end;
 

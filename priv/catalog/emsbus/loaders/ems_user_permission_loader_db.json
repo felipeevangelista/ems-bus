@@ -12,7 +12,7 @@
 	"check_remove_records_checkpoint" : 3600000,
 	"group" : [],
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 6000,
+	"start_timeout" : 7000,
 	"middleware" : "ems_user_permission_loader_middleware",
 	"pool_size" : 1,
 	"pool_max" : 1,

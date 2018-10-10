@@ -443,63 +443,161 @@ to_resource_owner(User) ->
 -spec new_from_map(map(), #config{}) -> {ok, #user{}} | {error, atom()}.
 new_from_map(Map, Conf) ->
 	try
+		put(parse_step, passwd_crypto),
 		PasswdCrypto = maps:get(<<"passwd_crypto">>, Map, <<>>),
+
+		put(parse_step, password),
 		Password = maps:get(<<"password">>, Map, <<>>),
+		Password2 = case PasswdCrypto of
+						<<"SHA1">> -> ?UTF8_STRING(Password);
+						_ -> ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
+					end,
+							   
+		put(parse_step, login),
 		Login = list_to_binary(string:to_lower(binary_to_list(?UTF8_STRING(maps:get(<<"login">>, Map))))),
-		{ok, #user{	id = maps:get(<<"id">>, Map),
-					codigo = maps:get(<<"codigo">>, Map, 0),
+
+		put(parse_step, id),
+		Id = maps:get(<<"id">>, Map),
+		
+		put(parse_step, codigo),
+		Codigo = maps:get(<<"codigo">>, Map, 0),
+		
+		put(parse_step, name),
+		Name = ?UTF8_STRING(maps:get(<<"name">>, Map, Login)),
+		
+		put(parse_step, cpf),
+		Cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
+		
+		put(parse_step, dt_expire_password),
+		DtExpirePassword = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
+							  <<>> -> undefined;
+							  DtExpirePasswordValue -> DtExpirePasswordValue
+						   end,
+		
+		put(parse_step, endereco),
+		Endereco = ?UTF8_STRING(maps:get(<<"endereco">>, Map, <<>>)),
+		
+		put(parse_step, complemento_endereco),
+		ComplementoEndereco = ?UTF8_STRING(maps:get(<<"complemento_endereco">>, Map, <<>>)),
+		
+		put(parse_step, bairro),
+		Bairro = ?UTF8_STRING(maps:get(<<"bairro">>, Map, <<>>)),
+		
+		put(parse_step, cidade),
+		Cidade = ?UTF8_STRING(maps:get(<<"cidade">>, Map, <<>>)),
+		
+		put(parse_step, uf),
+		Uf = ?UTF8_STRING(maps:get(<<"uf">>, Map, <<>>)),
+		
+		put(parse_step, cep),
+		Cep = ?UTF8_STRING(maps:get(<<"cep">>, Map, <<>>)),
+		
+		put(parse_step, rg),
+		Rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
+		
+		put(parse_step, data_nascimento),
+		DataNascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
+		
+		put(parse_step, sexo),
+		Sexo = case maps:get(<<"sexo">>, Map, undefined) of
+					SexoValue when is_binary(SexoValue) -> ems_util:list_to_integer_def(string:strip(binary_to_list(SexoValue)), undefined);
+					SexoValue when is_list(SexoValue) -> ems_util:list_to_integer_def(string:strip(SexoValue), undefined);
+					SexoValue when is_integer(SexoValue) -> SexoValue;
+					undefined -> undefined
+				end,
+		
+		put(parse_step, telefone),
+		Telefone = ?UTF8_STRING(maps:get(<<"telefone">>, Map, <<>>)),
+		
+		put(parse_step, celular),
+		Celular = ?UTF8_STRING(maps:get(<<"celular">>, Map, <<>>)),
+		
+		put(parse_step, ddd),
+		DDD = ?UTF8_STRING(maps:get(<<"ddd">>, Map, <<>>)),
+		
+		put(parse_step, nome_pai),
+		NomePai = ?UTF8_STRING(maps:get(<<"nome_pai">>, Map, <<>>)),
+		
+		put(parse_step, nome_mae),
+		NomeMae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
+		
+		put(parse_step, nacionalidade),
+		Nacionalidade = case maps:get(<<"nacionalidade">>, Map, undefined) of
+							NacionalidadeValue when is_binary(NacionalidadeValue) -> ems_util:binary_to_integer_def(NacionalidadeValue, undefined);
+							NacionalidadeValue when is_integer(NacionalidadeValue) -> NacionalidadeValue;
+							undefined -> undefined
+						end,
+						
+		put(parse_step, email),						
+		Email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
+		
+		put(parse_step, type),
+		Type = maps:get(<<"type">>, Map, 1),
+		
+		put(parse_step, subtype),
+		Subtype = maps:get(<<"subtype">>, Map, 0),
+		
+		put(parse_step, active),
+		Active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
+		
+		put(parse_step, remap_user_id),
+		RemapUserId = maps:get(<<"remap_user_id">>, Map, undefined),
+		
+		put(parse_step, admin),
+		Admin = ems_util:value_to_boolean(maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_admin))),
+		
+		put(parse_step, ctrl_path),
+		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
+		
+		put(parse_step, ctrl_file),
+		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
+		
+		put(parse_step, ctrl_modified),
+		CtrlModified = maps:get(<<"ctrl_modified">>, Map, undefined),
+		
+		put(parse_step, ctrl_hash),
+		CtrlHash = erlang:phash2(Map),
+		
+		put(parse_step, new_user),
+		{ok, #user{	id = Id,
+					codigo = Codigo,
 					login = Login,
-					name = ?UTF8_STRING(maps:get(<<"name">>, Map, Login)),
-					cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
-					password = case PasswdCrypto of
-									<<"SHA1">> -> ?UTF8_STRING(Password);
-									_ -> ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
-							   end,
+					name = Name,
+					cpf = Cpf,
+					password = Password2,
 					passwd_crypto = <<"SHA1">>,
-					dt_expire_password = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
-											  <<>> -> undefined;
-											  DtExpirePasswordValue -> DtExpirePasswordValue
-										 end,
-					endereco = ?UTF8_STRING(maps:get(<<"endereco">>, Map, <<>>)),
-					complemento_endereco = ?UTF8_STRING(maps:get(<<"complemento_endereco">>, Map, <<>>)),
-					bairro = ?UTF8_STRING(maps:get(<<"bairro">>, Map, <<>>)),
-					cidade = ?UTF8_STRING(maps:get(<<"cidade">>, Map, <<>>)),
-					uf = ?UTF8_STRING(maps:get(<<"uf">>, Map, <<>>)),
-					cep = ?UTF8_STRING(maps:get(<<"cep">>, Map, <<>>)),
-					rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
-					data_nascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
-					sexo = case maps:get(<<"sexo">>, Map, undefined) of
-								SexoValue when is_binary(SexoValue) -> ems_util:list_to_integer_def(string:strip(binary_to_list(SexoValue)), undefined);
-								SexoValue when is_list(SexoValue) -> ems_util:list_to_integer_def(string:strip(SexoValue), undefined);
-								SexoValue when is_integer(SexoValue) -> SexoValue;
-								undefined -> undefined
-							end,
-					telefone = ?UTF8_STRING(maps:get(<<"telefone">>, Map, <<>>)),
-					celular = ?UTF8_STRING(maps:get(<<"celular">>, Map, <<>>)),
-					ddd = ?UTF8_STRING(maps:get(<<"ddd">>, Map, <<>>)),
-					nome_pai = ?UTF8_STRING(maps:get(<<"nome_pai">>, Map, <<>>)),
-					nome_mae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
-					nacionalidade = case maps:get(<<"nacionalidade">>, Map, undefined) of
-										NacionalidadeValue when is_binary(NacionalidadeValue) -> ems_util:binary_to_integer_def(NacionalidadeValue, undefined);
-										NacionalidadeValue when is_integer(NacionalidadeValue) -> NacionalidadeValue;
-										undefined -> undefined
-									end,
-					email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
-					type = maps:get(<<"type">>, Map, 1),
-					subtype = maps:get(<<"subtype">>, Map, 0),
-					active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
-					remap_user_id = maps:get(<<"remap_user_id">>, Map, undefined),
-					admin = ems_util:value_to_boolean(maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_admin))),
-					ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
-					ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
-					ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),
-					ctrl_hash = erlang:phash2(Map)
+					dt_expire_password = DtExpirePassword,
+					endereco = Endereco,
+					complemento_endereco = ComplementoEndereco,
+					bairro = Bairro,
+					cidade = Cidade,
+					uf = Uf,
+					cep = Cep,
+					rg = Rg,
+					data_nascimento = DataNascimento,
+					sexo = Sexo,
+					telefone = Telefone,
+					celular = Celular,
+					ddd = DDD,
+					nome_pai = NomePai,
+					nome_mae = NomeMae,
+					nacionalidade = Nacionalidade,
+					email = Email,
+					type = Type,
+					subtype = Subtype,
+					active = Active,
+					remap_user_id = RemapUserId,
+					admin = Admin,
+					ctrl_path = CtrlPath,
+					ctrl_file = CtrlFile,
+					ctrl_modified = CtrlModified,
+					ctrl_hash = CtrlHash
 			}
 		}
 	catch
 		_Exception:Reason -> 
 			ems_db:inc_counter(edata_loader_invalid_user),
-			ems_logger:warn("ems_user parse invalid user specification: ~p\n\t~p.\n", [Reason, Map]),
+			ems_logger:warn("ems_user parse invalid user specification on field ~p: ~p\n\t~p.\n", [get(parse_step), Reason, Map]),
 			{error, Reason}
 	end.
 
