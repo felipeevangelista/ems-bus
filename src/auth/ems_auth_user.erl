@@ -121,7 +121,7 @@ do_check_grant_permission(Service = #service{restricted = RestrictedService},
 	% ===================================================================
 	% O usuário é administrador e pode consumir qualquer serviço
 	% Não é administrador e possui permissão em serviços não restritos a administradores
-	case Admin orelse (not RestrictedService andalso ems_user_permission:has_grant_permission(Service, Req, User)) of
+	case Admin orelse not RestrictedService orelse ems_user_permission:has_grant_permission(Service, Req, User) of
 		true -> 
 			case AuthorizationMode of
 				basic -> ems_db:inc_counter(ems_auth_user_basic_success);

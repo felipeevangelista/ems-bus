@@ -286,7 +286,7 @@ format_alert(Message, Params) ->
 %% gen_server callbacks
 %%====================================================================
  
-init(#service{properties = Props}) ->
+init(_Service) ->
 	Conf = ems_config:getConfig(),
 	Checkpoint = Conf#config.log_file_checkpoint,
 	LogFileMaxSize = Conf#config.log_file_max_size,
