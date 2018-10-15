@@ -56,7 +56,9 @@
 				log_show_response_url_list = [],			% show response if url in 
 				log_show_payload_url_list = [],				% show payload if url in 
 				log_ult_msg,								% last print message
-				log_ult_reqhash 							% last reqhash of print message
+				log_ult_reqhash, 							% last reqhash of print message
+				log_file_path,
+				log_file_archive_path
  			   }). 
 
 
@@ -288,17 +290,17 @@ format_alert(Message, Params) ->
  
 init(_Service) ->
 	Conf = ems_config:getConfig(),
-	Checkpoint = Conf#config.log_file_checkpoint,
-	LogFileMaxSize = Conf#config.log_file_max_size,
-	Debug = Conf#config.ems_debug,
-	mode_debug(Debug),
-	State = #state{log_file_checkpoint = Checkpoint,
-				   log_file_max_size = LogFileMaxSize,
-				   log_file_handle = undefined,
+	mode_debug(Conf#config.ems_debug),
+	State = #state{log_file_checkpoint = Conf#config.log_file_checkpoint,
+				   log_file_max_size = Conf#config.log_file_max_size,
 		 		   log_show_response = Conf#config.log_show_response,
 				   log_show_payload = Conf#config.log_show_payload,
 				   log_show_response_max_length = Conf#config.log_show_response_max_length,
- 				   log_show_payload_max_length = Conf#config.log_show_payload_max_length},
+ 				   log_show_payload_max_length = Conf#config.log_show_payload_max_length,
+ 				   log_file_name = undefined,
+ 				   log_file_handle = undefined,
+ 				   log_file_path = Conf#config.log_file_path,
+ 				   log_file_archive_path = Conf#config.log_file_archive_path},
 	State2 = checkpoint_arquive_log(State, false),
     {ok, State2}.
     
@@ -409,55 +411,85 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec checkpoint_arquive_log(#state{}, boolean()) -> #state{} | {error, atom()}.
 checkpoint_arquive_log(State = #state{log_file_handle = CurrentIODevice, 
-									  log_file_name = CurrentLogFilename}, Immediate) ->
-	case Immediate of
-		true -> 
-			ems_db:inc_counter(ems_logger_immediate_archive_log_checkpoint),
-			ems_logger:info("ems_logger immediate archive log file checkpoint.");
-		false -> 
-			ems_db:inc_counter(ems_logger_archive_log_checkpoint),
-			ems_logger:info("ems_logger archive log file checkpoint.")
-	end,
-	close_filename_device(CurrentIODevice, CurrentLogFilename),
-	case open_filename_device() of
-		{ok, LogFilename, IODevice2} ->
-			ems_logger:info("ems_logger open \033[01;34m~p\033[0m.", [LogFilename]),
-			State2 = State#state{log_file_name = LogFilename, 
-								 log_file_handle = IODevice2};
-		{error, Reason} ->
+									  log_file_name = CurrentLogFilename,
+									  log_file_archive_path = LogFileArchivePath}, Immediate) ->
+	try
+		% Fecha o arquivo atual se existir
+		case CurrentLogFilename =/= undefined andalso CurrentIODevice =/= undefined andalso filelib:is_regular(CurrentLogFilename) of
+			true ->
+				?DEBUG("ems_logger close current log file \033[01;34m~p\033[0m.", [CurrentLogFilename]),
+				file:close(CurrentIODevice),
+
+				% Cria um nome de arquivo para arquivamento
+				{{Ano,Mes,Dia},{Hora,Min,_}} = calendar:local_time(),
+				MesAbrev = ems_util:mes_abreviado(Mes),
+				ArchiveLogFilename = lists:flatten(io_lib:format("~s/~p/~s/~s_~s_~2..0w~2..0w~4..0w_~2..0w~2..0w.log", [LogFileArchivePath, Ano, MesAbrev, "server", MesAbrev, Dia, Mes, Ano, Hora, Min])),
+
+				% Renomear o arquivo atual para arquivar com outro nome
+				case filelib:ensure_dir(ArchiveLogFilename) of
+					ok ->
+						case file:rename(CurrentLogFilename, ArchiveLogFilename) of
+							ok ->
+								case Immediate of
+									true -> 
+										ems_db:inc_counter(ems_logger_immediate_archive_log_checkpoint),
+										ems_logger:info("ems_logger immediate archive log file \033[01;34m~p\033[0m.", [ArchiveLogFilename]);
+									false -> 
+										ems_db:inc_counter(ems_logger_archive_log_checkpoint),
+										ems_logger:info("ems_logger archive log file \033[01;34m~p\033[0m.", [ArchiveLogFilename])
+								end;
+							{error, Reason2} ->
+								ems_db:inc_counter(ems_logger_archive_log_error),
+								ems_logger:error("ems_logger archive log file failed on rename file \033[01;34m~p\033[0m to \033[01;34m~p\033[0m. Reason: ~p.", [CurrentLogFilename, ArchiveLogFilename, Reason2])
+						end;
+					_ -> 
+						ems_db:inc_counter(ems_logger_create_archive_path_failed),
+						ems_logger:error("ems_logger archive log file failed on create archive path \033[01;34m~p\033[0m.", [LogFileArchivePath])
+				end,
+				% Mesmo que possa ocorrer arquivo ao arquivar, precisamos criar o novo arquivo de log
+				State2 = create_new_logfile(State);
+			false -> 
+				% Como o arquivo não existe, apenas cria novo arquivo de log
+				State2 = create_new_logfile(State)
+		end,
+		set_timeout_archive_log_checkpoint(),
+		State2
+	catch
+		_:Reason3 ->
 			ems_db:inc_counter(ems_logger_archive_log_error),
-			ems_logger:error("ems_logger archive log file checkpoint exception: ~p.", [Reason]),
-			State2 = State
-	end,
-	set_timeout_archive_log_checkpoint(),
-	State2.
+			ems_logger:error("ems_logger archive log file checkpoint exception. Reason: ~p.", [Reason3]),
+			set_timeout_archive_log_checkpoint(),
+			State#state{log_file_name = undefined,
+						log_file_handle = undefined}
+	end.
 
-    
-open_filename_device() -> 
-	{{Ano,Mes,Dia},{Hora,Min,_}} = calendar:local_time(),
-	MesAbrev = ems_util:mes_abreviado(Mes),
-	LogFilename = lists:flatten(io_lib:format("~s/~p/~s/~s_~s_~2..0w~2..0w~4..0w_~2..0w~2..0w.log", [?LOG_PATH, Ano, MesAbrev, "emsbus", MesAbrev, Dia, Mes, Ano, Hora, Min])),
-	open_filename_device(LogFilename).
 
-open_filename_device(LogFilename) ->
+   
+create_new_logfile(State = #state{log_file_path = LogFilePath}) -> 
+	LogFilename = filename:join([LogFilePath, "server.log"]),
 	case filelib:ensure_dir(LogFilename) of
 		ok ->
-			case file:open(LogFilename, [append, {delayed_write, 256, 2}]) of
+			case file:open(LogFilename, [append]) of
 				{ok, IODevice} -> 
-					{ok, LogFilename, IODevice};
-				{error, enospc} = Error ->
-					ems_db:inc_counter(ems_logger_open_file_enospc),
-					ems_logger:error("ems_logger open_filename_device does not have disk storage space to write to the log files."),
-					Error;
-				{error, Reason} = Error -> 
-					ems_db:inc_counter(ems_logger_open_file_error),
-					ems_logger:error("ems_logger open_filename_device failed to open log file. Reason: ~p.", [Reason]),
-					Error
+					ems_logger:info("ems_logger open new logfile \033[01;34m~p\033[0m.", [LogFilename]),
+					State#state{log_file_name = LogFilename, 
+								log_file_handle = IODevice};
+				{error, enospc} ->
+					ems_db:inc_counter(ems_logger_enospc),
+					ems_logger:error("ems_logger create_new_logfile does not have disk storage space to write to the log files."),
+					State#state{log_file_name = undefined, 
+								log_file_handle = undefined};
+				{error, Reason} -> 
+					ems_db:inc_counter(ems_logger_create_file_error),
+					ems_logger:error("ems_logger create_new_logfile failed to open log file ~p to write. Reason: ~p.", [LogFilename, Reason]),
+					State#state{log_file_name = undefined, 
+								log_file_handle = undefined}
 			end;
-		{error, Reason} = Error -> 
-			ems_db:inc_counter(ems_logger_open_file_error),
-			ems_logger:error("ems_logger open_filename_device failed to create log file dir. Reason: ~p.", [Reason]),
-			Error
+		{error, Reason} -> 
+			ems_db:inc_counter(ems_logger_create_path_failed),
+			ems_logger:error("ems_logger create_new_logfile failed to create log file dir. Reason: ~p.", [Reason]),
+			State#state{log_file_name = undefined, 
+						log_file_handle = undefined}
 	end.
 
 log_file_head(#state{log_file_name = LogFilename}, N) ->
@@ -475,11 +507,6 @@ log_file_tail(#state{log_file_name = LogFilename}, N) ->
 			ems_logger:error("ems_logger log_file_tail failed to open log file for read. Reason: ~p.", [Reason]),
 			Error
 	end.
-
-close_filename_device(undefined, _) -> ok;
-close_filename_device(IODevice, LogFilename) -> 
-	?DEBUG("ems_logger close log file \033[01;34m~p\033[0m.", [LogFilename]),
-	file:close(IODevice).
 
 set_timeout_for_sync_log_buffer(#state{flag_checkpoint_sync_log_buffer = false, log_file_checkpoint=Timeout}) ->    
 	erlang:send_after(Timeout, self(), checkpoint);
@@ -572,49 +599,61 @@ sync_log_buffer_screen(State) ->
 	State#state{log_log_buffer_screen = [], flag_checkpoint_screen = false, log_ult_msg = undefined, log_ult_reqhash = undefined}.
 
 
+sync_log_buffer(State = #state{log_buffer = []}) -> State#state{flag_checkpoint_sync_log_buffer = false};
 sync_log_buffer(State = #state{log_buffer = Buffer,
 							   log_file_name = CurrentLogFilename,
 							   log_file_max_size = LogFileMaxSize,
-							   log_file_handle = CurrentIODevice}) ->
-	FileSize = filelib:file_size(CurrentLogFilename),
-	case FileSize > LogFileMaxSize of 	% check limit log file max size
-		true -> 
-			ems_db:inc_counter(ems_logger_sync_log_buffer_file_size_exceeded),
-			ems_logger:info("ems_logger is writing to a log file that has already exceeded the allowed limit."),
-			State2 = checkpoint_arquive_log(State, true);
-		false ->
-			case FileSize == 0 of % Check file deleted
-				true ->
-					close_filename_device(CurrentIODevice, CurrentLogFilename),
-					{ok, LogFilename, IODevice} = open_filename_device(),
-					State2 = State#state{log_buffer = [], 
-										 log_file_handle = IODevice,
-										 log_file_name = LogFilename,
-										 flag_checkpoint_sync_log_buffer = false};
-				false ->
-					State2 = State#state{log_buffer = [], 
-										 flag_checkpoint_sync_log_buffer = false}
-			end
-	end,
-	Msg = lists:reverse(Buffer),
-	case file:write(State2#state.log_file_handle, Msg) of
-		ok -> 
-			ems_db:inc_counter(ems_logger_sync_log_buffer),
-			ok;
-		{error, enospc} -> 
-			ems_db:inc_counter(ems_logger_sync_log_buffer_enospc),
-			ems_logger:error("ems_logger does not have disk storage space to write to the log files.");
-		{error, ebadf} ->
-			ems_db:inc_counter(ems_logger_sync_log_buffer_ebadf),
-			ems_logger:error("ems_logger does no have log file descriptor valid.");
-		{error, Reason} ->
-			ems_db:inc_counter(ems_logger_sync_log_buffer_error),
-			ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Reason]);
-		_ ->
-			ems_db:inc_counter(ems_logger_sync_log_buffer_error),
-			ems_logger:error("ems_logger was unable to unload the log log_buffer cache.")
-	end,
-	State2.
+							   log_file_handle = CurrentLogFileHandle}) ->
+	try
+		case CurrentLogFileHandle == undefined of
+			true -> 
+				State2 = checkpoint_arquive_log(State, true);
+			false ->
+				FileSize = filelib:file_size(CurrentLogFilename),
+				case FileSize > LogFileMaxSize of 	% check limit log file max size
+					true -> 
+						ems_db:inc_counter(ems_logger_sync_log_buffer_file_size_exceeded),
+						ems_logger:info("ems_logger is writing to a log file that has already exceeded the allowed limit."),
+						State2 = checkpoint_arquive_log(State, true);
+					false ->
+						case filelib:is_regular(CurrentLogFilename) of % Check file deleted
+							false ->
+								ems_db:inc_counter(ems_logger_sync_buffer_file_deleted),
+								ems_logger:error("ems_logger is writing to a log file deleted."),
+								State2 = checkpoint_arquive_log(State, true);
+							true ->
+								State2 = State#state{log_buffer = [], 
+													 flag_checkpoint_sync_log_buffer = false}
+						end
+				end
+		end,
+		Msg = lists:reverse(Buffer),
+		case file:write(State2#state.log_file_handle, Msg) of
+			ok -> 
+				ems_db:inc_counter(ems_logger_sync_log_buffer),
+				ok;
+			{error, enospc} -> 
+				ems_db:inc_counter(ems_logger_sync_log_buffer_enospc),
+				ems_logger:error("ems_logger does not have disk storage space to write to the log files.");
+			{error, ebadf} ->
+				ems_db:inc_counter(ems_logger_sync_log_buffer_ebadf),
+				sync_log_buffer(State#state{log_file_name = undefined,
+											log_file_handle = undefined});
+			{error, Reason} ->
+				ems_db:inc_counter(ems_logger_sync_log_buffer_error),
+				ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Reason]);
+			Error ->
+				ems_db:inc_counter(ems_logger_sync_log_buffer_error),
+				ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Error])
+		end,
+		State2
+	catch
+		_:Reason2 ->
+			ems_db:inc_counter(ems_logger_sync_buffer_failed),
+			ems_logger:error("ems_logger sync_log_buffer exception. Reason: ~p.", [Reason2]),
+			State#state{log_buffer = [], 
+						flag_checkpoint_sync_log_buffer = false}
+	end.
 
 	
 do_log_request(Request = #request{rid = RID,

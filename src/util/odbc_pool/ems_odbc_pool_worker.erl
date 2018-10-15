@@ -83,6 +83,27 @@ handle_cast(_Msg, State) ->
 	{noreply, State}.
 
 
+handle_call({select_count, Sql}, _From, State = #state{query_count = QueryCount}) ->
+	case do_select_count(Sql, State) of
+		{ok, Result, Datasource} -> 
+			{reply, Result, State#state{datasource = Datasource, 
+										last_error = undefined,
+										query_count = QueryCount + 1}};
+		Error -> 
+			{reply, Error, State#state{last_error = Error,
+									    query_count = QueryCount + 1}}
+	end;
+
+
+handle_call({select, Offset, Limit}, _From, State) ->
+	case do_select(Offset, Limit, State) of
+		{ok, Result, Datasource} -> 
+			{reply, Result, State#state{datasource = Datasource, 
+										last_error = undefined}};
+		Error -> 
+			{reply, Error, State#state{last_error = Error}}
+	end;
+
 handle_call({param_query, Sql, Params}, _From, State = #state{query_count = QueryCount}) ->
 	case do_param_query(Sql, Params, State) of
 		{ok, Result, Datasource} -> 
@@ -282,22 +303,44 @@ do_param_query(Sql, Params, #state{datasource = Datasource = #service_datasource
 																				 conn_ref = ConnRef,
 																				 timeout = Timeout}}) ->
 	try
+		%io:format("do_param_query1: sql-> ~s\n", [Sql]),
 		case odbc:param_query(ConnRef, Sql, Params, Timeout) of
 			{error, Reason} ->
-				?DEBUG("ems_odbc_pool_worker param_query failed (Ds: ~p Worker: p Reason: p \n\tSQL: ~s \n\t.Reason: ~p.", [Id, ConnRef, Reason, Sql]),
+				ems_logger:error("ems_odbc_pool_worker param_query failed (Ds: ~p Reason: ~p)\n\tSQL: ~s", [Id, Reason, Sql]),
 				{error, eodbc_connection_closed};
-			{selected, Fields1, Result1} -> 
-				%?DEBUG("Odbc resultset query: ~p.", [Result1]),
+			{selected, Fields1, Result1} = Result -> 
 				{ok, {selected, [?UTF8_STRING(F) || F <- Fields1], Result1}, Datasource}
 		end
 	catch
 		_:timeout -> 
-			?DEBUG("ems_odbc_pool_worker param_query timeout (Ds: ~p Worker: p Reason: p \n\tSQL: ~s \n\t.Reason: timeout.", [Id, ConnRef, Sql]),
+			ems_logger:error("ems_odbc_pool_worker param_query timeout (Ds: ~p)\n\tSQL: ~s.", [Id, Sql]),
 			{error, eodbc_connection_timeout};
 		_:Reason2 -> 
-			?DEBUG("ems_odbc_pool_worker param_query exception (Ds: ~p Worker: p Reason: p \n\tSQL: ~s \n\t.Reason: ~p.", [Id, ConnRef, Reason2, Sql]),
+			ems_logger:error("ems_odbc_pool_worker param_query exception (Ds: ~p Reason: ~p)\n\tSQL: ~s", [Id, Reason2, Sql]),
 			{error, eodbc_invalid_connection}
 	end.
 
+
+do_select_count(Sql, #state{datasource = Datasource = #service_datasource{id = Id,
+																		 conn_ref = ConnRef,
+																		 timeout = Timeout}}) ->
+	Result = odbc:select_count(ConnRef, Sql, Timeout),
+	{ok, Result, Datasource}.
     
+do_select(Offset, Limit, #state{datasource = Datasource = #service_datasource{id = Id,
+																			  conn_ref = ConnRef,
+																			  timeout = Timeout}}) ->
+	try
+		case odbc:select(ConnRef, Offset, Limit) of
+			{error, Reason} ->
+				{error, eodbc_connection_closed};
+			{selected, Fields1, Result1} -> 
+				{ok, {selected, [?UTF8_STRING(F) || F <- Fields1], Result1}, Datasource}
+		end
+	catch
+		_:timeout -> 
+			{error, eodbc_connection_timeout};
+		_:Reason2 -> 
+			{error, eodbc_invalid_connection}
+	end.
 						

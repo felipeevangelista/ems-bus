@@ -11,12 +11,13 @@
 	"check_remove_records" : true,
 	"check_remove_records_checkpoint" : 14400000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 15000,
+	"start_timeout" : 18000,
 	"middleware" : "ems_user_email_loader_middleware",
 	"group" : [],
 	"pool_size" : 1,
 	"pool_max" : 1,
 	"enable" : false,
+	"sql_load_limit" : 5000,
 	"sql_load" : 
 				"select 
 				   em.EmaCodigo as id,

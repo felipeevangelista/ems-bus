@@ -22,7 +22,7 @@
 			   rtrim(s.SisUrl) as RedirectUri,
 			   rtrim(s.SisDescricao) as Description,
 			   s.SisSituacao as Active,
-			   rtrim(s.SisAuthScope),
+			   s.SisAuthScope,
 			   s.SisAuthSecret,
 			   s.SisGroup,
 			   s.SisGlyphIcon 

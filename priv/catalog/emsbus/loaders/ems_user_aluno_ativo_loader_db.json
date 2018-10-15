@@ -16,6 +16,7 @@
 	"pool_max" : 1,
 	"enable" : false,
 	"source_type" : "user_aluno_ativo_db",
+	"sql_load_limit" : 5000,
 	"sql_load" : 
 				"select al.AluMatricula as Id, 
 					   p.PesCodigoPessoa as Codigo, 

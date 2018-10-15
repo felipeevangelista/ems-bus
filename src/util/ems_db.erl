@@ -18,7 +18,7 @@
 		 sort/2, field_position/3]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
--export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/4, command/2]).
+-export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/4, command/2, select_count/2]).
 -export([get_param/1, get_param/2, set_param/2, get_re_param/2]).
 
 -export([filter_with_sort/2]).
@@ -1445,7 +1445,7 @@ command(Datasource, Sql) when is_tuple(Datasource) ->
 	try
 		case ems_odbc_pool:get_connection(Datasource) of
 			{ok, Datasource2} -> 
-				ems_logger:format_info("ems_db command connection passed.\n"),
+				ems_logger:format_info("ems_db command connection passed."),
 				case ems_odbc_pool:param_query(Datasource2, Sql, []) of
 					{_, _, Records} -> 
 						ems_odbc_pool:release_connection(Datasource2),
@@ -1462,3 +1462,28 @@ command(Datasource, Sql) when is_tuple(Datasource) ->
 		_:Reason-> ems_logger:format_error("ems_db command exception. Reason: ~p.\n", [Reason])
 	end.
 		
+
+select_count(Datasource, Sql) when is_integer(Datasource) ->
+	case ems_db:get(service_datasource, Datasource) of
+		{ok, Record} -> select_count(Record, Sql);
+		{error, enoent} -> ems_logger:format_error("ems_db select_count datasource not found.\n")	
+	end;
+select_count(Datasource, Sql) when is_tuple(Datasource) ->
+	try
+		case ems_odbc_pool:get_connection(Datasource) of
+			{ok, Datasource2} -> 
+				ems_logger:format_info("ems_db select_count connection passed."),
+				case ems_odbc_pool:select_count(Datasource2, Sql) of
+					{ok, NumRows} -> 
+						ems_odbc_pool:release_connection(Datasource2),
+						ems_logger:format_info("ems_db select_count: ~p rows\n", [NumRows]);
+					Error1 -> 
+						ems_odbc_pool:release_connection(Datasource2),
+						ems_logger:format_error("ems_db select_count exception. Reason: ~p.", [Error1])
+				end;
+			Error2 -> 
+				ems_logger:format_error("ems_db select_count exception. Reason: ~p.\n", [Error2])
+		end
+	catch
+		_:Reason-> ems_logger:format_error("ems_db select_count exception. Reason: ~p.\n", [Reason])
+	end.

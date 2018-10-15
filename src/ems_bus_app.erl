@@ -57,6 +57,8 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mlog_show_payload_max_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_payload_max_length]),
 			ems_logger:info("  \033[0;32mlog_file_checkpoint\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.log_file_checkpoint]),
 			ems_logger:info("  \033[0;32mlog_file_max_size\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_file_max_size]),
+			ems_logger:info("  \033[0;32mlog_file_path\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_file_path]),
+			ems_logger:info("  \033[0;32mlog_file_archive_path\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_file_archive_path]),
 			ems_logger:info("  \033[0;32mwww_path\033[0m: \033[01;34m~p\033[0m.", [maps:get(<<"www_path">>, Conf#config.static_file_path_map, <<>>)]),
 			ems_logger:info("  \033[0;32mshow_debug_response_headers\033[0m: \033[01;34m~p\033[0m.", [Conf#config.show_debug_response_headers]),
 			ems_logger:info("  \033[0;32mresult_cache\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.ems_result_cache]),

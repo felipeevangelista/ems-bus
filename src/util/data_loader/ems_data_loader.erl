@@ -31,6 +31,7 @@
 				last_update,
 				last_update_param_name,
 				sql_load,
+				sql_load_limit,
 				sql_update,
 				sql_count,
 				sql_ids,
@@ -124,6 +125,7 @@ init(#service{name = Name,
 		false -> CheckRemoveRecordsCheckpoint = CheckRemoveRecordsCheckpoint0 + rand:uniform(30000)
 	end,
 	SqlLoad = string:trim(binary_to_list(maps:get(<<"sql_load">>, Props, <<>>))),
+	SqlLoadLimit = maps:get(<<"sql_load_limit">>, Props, 5000),
 	SqlUpdate = string:trim(binary_to_list(maps:get(<<"sql_update">>, Props, <<>>))),
 	SqlCount = re:replace(SqlLoad, "select (.+)( from.+)( order by.+)?","select count(1)\\2", [{return,list}]),
 	SqlIds = re:replace(SqlLoad, "select ([^,]+),(.+)( from.+)( order by.+)?", "select \\1 \\3", [{return,list}]),
@@ -155,6 +157,7 @@ init(#service{name = Name,
 				   last_update = LastUpdate,
 				   check_remove_records_checkpoint = CheckRemoveRecordsCheckpoint,
 				   sql_load = SqlLoad,
+				   sql_load_limit = SqlLoadLimit,
 				   sql_update = SqlUpdate,
 				   sql_count = SqlCount,
 				   sql_ids = SqlIds,
@@ -446,7 +449,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 												  last_update_param_name = LastUpdateParamName,
 												  last_update = LastUpdate}) ->
 	% garante que os dados serão atualizados mesmo que as datas não estejam sincronizadas
-	NextUpdate = ems_util:date_dec_minute(calendar:local_time(), 240), 
+	NextUpdate = ems_util:date_dec_minute(calendar:local_time(), 59), 
 	LastUpdateStr = ems_util:timestamp_str(),
 	Conf = ems_config:getConfig(),
 	case LastUpdate == undefined orelse do_is_empty(State) of
@@ -490,50 +493,11 @@ do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 										 allow_clear_table_full_sync = AllowClearTableFullSync}) -> 
 	try
 		?DEBUG("~s do_load execute.", [Name]),
-		ems_db:inc_counter(LoadCheckpointMetricName),
 		case ems_odbc_pool:get_connection(Datasource) of
 			{ok, Datasource2} -> 
-				Result = case ems_odbc_pool:param_query(Datasource2, SqlLoad, []) of
-					{_, _, Records} ->
-						ems_odbc_pool:release_connection(Datasource2),
-						case AllowClearTableFullSync of
-							true ->
-								case do_clear_table(State) of
-									ok ->
-										do_reset_sequence(State),
-										{ok, InsertCount, _, ErrorCount, DisabledCount, SkipCount} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
-										ems_logger:info("~s sync full ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
-										ems_db:counter(InsertMetricName, InsertCount),
-										ems_db:counter(ErrorsMetricName, ErrorCount),
-										ems_db:counter(DisabledMetricName, DisabledCount),
-										ems_db:counter(SkipMetricName, SkipCount),
-										{ok, State#state{insert_count = InsertCount,
-														 error_count = ErrorCount,
-														 disable_count = DisabledCount,
-														 skip_count = SkipCount}};
-									Error ->
-										ems_logger:error("~s do_load could not clear table before load data.", [Name]),
-										Error
-								end;
-							false ->
-								{ok, InsertCount, _, ErrorCount, DisabledCount, SkipCount} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
-								ems_logger:info("~s sync ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
-								ems_db:counter(InsertMetricName, InsertCount),
-								ems_db:counter(ErrorsMetricName, ErrorCount),
-								ems_db:counter(DisabledMetricName, DisabledCount),
-								ems_db:counter(SkipMetricName, SkipCount),
-								{ok, State#state{insert_count = InsertCount,
-												 update_count = 0,
-												 error_count = ErrorCount,
-												 disable_count = DisabledCount,
-												 skip_count = SkipCount}}
-
-						end;
-					{error, Reason2} = Error2 -> 
-						ems_odbc_pool:release_connection(Datasource2),
-						?DEBUG("~s do_load failed to execute sql ~p. Reason: ~p.", [Name, SqlLoad, Reason2]),
-						Error2
-				end,
+				ems_db:inc_counter(LoadCheckpointMetricName),
+				Result = do_load_table(CtrlInsert, Conf, State#state{datasource = Datasource2}),
+				ems_odbc_pool:release_connection(Datasource),
 				Result;
 			{error, Reason3} = Error3 -> 
 				ems_logger:warn("~s do_load failed to get connection. Reason: ~p.", [Name, Reason3]),
@@ -542,6 +506,98 @@ do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 	catch
 		_Exception:Reason4 -> 
 			ems_logger:error("~s do_load exception. Reason: ~p.", [Name, Reason4]),
+			{error, Reason4}
+	end.
+
+do_load_table(CtrlInsert, Conf, State = #state{datasource = Datasource,
+										 name = Name,
+										 middleware = Middleware,
+										 sql_load = SqlLoad,
+										 fields = Fields,
+										 load_checkpoint_metric_name = LoadCheckpointMetricName,
+										 insert_metric_name = InsertMetricName,
+										 error_metric_name = ErrorsMetricName,
+										 disable_metric_name = DisabledMetricName,
+										 skip_metric_name = SkipMetricName,
+										 source_type = SourceType,
+										 allow_clear_table_full_sync = AllowClearTableFullSync}) -> 
+	try
+		case AllowClearTableFullSync of
+			true ->
+				case do_clear_table(State) of
+					ok ->
+						do_reset_sequence(State),
+						{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} = do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0),
+						ems_logger:info("~s sync full ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
+						ems_db:counter(InsertMetricName, InsertCount),
+						ems_db:counter(ErrorsMetricName, ErrorCount),
+						ems_db:counter(DisabledMetricName, DisabledCount),
+						ems_db:counter(SkipMetricName, SkipCount),
+						{ok, State#state{insert_count = InsertCount,
+										 error_count = ErrorCount,
+										 disable_count = DisabledCount,
+										 skip_count = SkipCount}};
+					Error ->
+						ems_logger:error("~s do_load could not clear table before load data.", [Name]),
+						Error
+				end;
+			false ->
+				{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} = do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0),
+				ems_logger:info("~s sync ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
+				ems_db:counter(InsertMetricName, InsertCount),
+				ems_db:counter(ErrorsMetricName, ErrorCount),
+				ems_db:counter(DisabledMetricName, DisabledCount),
+				ems_db:counter(SkipMetricName, SkipCount),
+				{ok, State#state{insert_count = InsertCount,
+								 update_count = 0,
+								 error_count = ErrorCount,
+								 disable_count = DisabledCount,
+								 skip_count = SkipCount}}
+
+		end
+	catch
+		_Exception:Reason4 -> 
+			ems_logger:error("~s do_load_query exception. Reason: ~p.", [Name, Reason4]),
+			{error, Reason4}
+	end.
+
+do_load_data_pump(CtrlInsert, 
+				  Conf, 
+				  State = #state{datasource = Datasource,
+								 name = Name,
+								 middleware = Middleware,
+								 sql_load = SqlLoad,
+								 sql_load_limit = SqlLoadLimit,
+								 fields = Fields,
+								 load_checkpoint_metric_name = LoadCheckpointMetricName,
+								 insert_metric_name = InsertMetricName,
+								 error_metric_name = ErrorsMetricName,
+								 disable_metric_name = DisabledMetricName,
+								 skip_metric_name = SkipMetricName,
+								 source_type = SourceType,
+								 allow_clear_table_full_sync = AllowClearTableFullSync}, 
+				 Offset, InsertCount, ErrorCount, DisabledCount, SkipCount) -> 
+	try
+		case Offset > 1 of
+			true ->	SqlLoad2 = io_lib:format("select * from ( select *, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlLoad, Offset, Offset+SqlLoadLimit-1]);
+			false -> SqlLoad2 = io_lib:format("select top ~p * from ( ~s ) _t_sql", [Offset+SqlLoadLimit-1, SqlLoad])
+		end,
+		SqlLoad3 = re:replace(SqlLoad2, "\\s+", " ", [global,{return,list}]),
+		SqlLoad4 = re:replace(SqlLoad3, "\\s+$", "", [global,{return,list}]),
+		case ems_odbc_pool:param_query(Datasource, SqlLoad4, []) of
+			{_, _, []} -> 
+				{ok, InsertCount, ErrorCount, DisabledCount, SkipCount};
+			{_, _, Records} ->
+				io:format("buscando ~s de ~p ate ~p\n", [Name, Offset, Offset+SqlLoadLimit-1]),
+				{ok, InsertCount2, _, ErrorCount2, DisabledCount2, SkipCount2} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
+				do_load_data_pump(CtrlInsert, Conf, State, Offset + SqlLoadLimit, InsertCount + InsertCount2, ErrorCount + ErrorCount2, DisabledCount + DisabledCount2, SkipCount + SkipCount2);
+			{error, Reason} = Error -> 
+				?DEBUG("~s do_load_data_pump fetch exception. Reason: ~p.", [Name, Reason]),
+				Error
+		end
+	catch
+		_Exception:Reason4 -> 
+			ems_logger:error("~s do_load_data_pump exception. Reason: ~p.", [Name, Reason4]),
 			{error, Reason4}
 	end.
 
@@ -564,9 +620,9 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 		case SqlUpdate =/= "" of
 			true ->
 				?DEBUG("~s do_update execute.", [Name]),
-				ems_db:inc_counter(UpdateCheckpointMetricName),
 				case ems_odbc_pool:get_connection(Datasource) of
 					{ok, Datasource2} -> 
+						ems_db:inc_counter(UpdateCheckpointMetricName),
 						{{Year, Month, Day}, {Hour, Min, _}} = LastUpdate,
 						DateInitial = {{Year, Month, Day}, {Hour, Min, 0}},
 						Params = [{sql_timestamp, [DateInitial]},

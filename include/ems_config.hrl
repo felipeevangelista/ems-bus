@@ -37,8 +37,12 @@
 % Caminho do catálogo de serviços
 -define(CONF_PATH, filename:join(?PRIV_PATH, "conf")).
 
-% Caminho da pasta log
--define(LOG_PATH, filename:join(?PRIV_PATH, "log")).
+% Caminho da pasta para o arquivo server.log
+-define(LOG_FILE_PATH, filename:join(?PRIV_PATH, "log")).
+
+% Caminho da pasta para arquivar o server.log
+-define(LOG_FILE_ARCHIVE_PATH, filename:join([?PRIV_PATH, "log", "archive"])).
+
 
 % Caminho do favicon
 -define(FAVICON_PATH, filename:join(?PRIV_PATH, "favicon.ico")).
@@ -100,6 +104,9 @@
 % Mostra no log payload e response
 -define(LOG_SHOW_RESPONSE, true).
 -define(LOG_SHOW_PAYLOAD, true).
+
+-define(RESTRICTED_SERVICES_OWNER, [ <<"netadm">>, <<"logger">>, <<"auth">> ]).
+-define(RESTRICTED_SERVICES_ADMIN, [ <<"erlangms">> ]).
 
 % Armazena o buffer do log a cada LOG_FILE_CHECKPOINT ms (Aumente este valor se existir muita contenção de escrita em disco)
 -define(LOG_FILE_CHECKPOINT, 400).  
@@ -319,6 +326,8 @@
 				 log_show_payload_max_length :: boolean(),			%% show payload if content length < show_response_max_length
 				 log_file_checkpoint :: non_neg_integer(),
 				 log_file_max_size :: non_neg_integer(),
+				 log_file_path :: string(),
+				 log_file_archive_path :: string(),
 				 smtp_passwd :: string(),
 				 smtp_from :: string(),
 				 smtp_mail :: string(),

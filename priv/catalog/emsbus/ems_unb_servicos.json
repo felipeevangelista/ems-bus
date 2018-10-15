@@ -47,7 +47,7 @@
 		"type": "KERNEL",
 		"enable" : false,
 		"timeout" : 15000,
-		"start_timeout" : 8000,
+		"start_timeout" : 10000,
 		"lang" : "erlang",
 		"pool_size" : 1,
 		"pool_max" : 1

@@ -19,7 +19,7 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/1, handle_info/2, terminate/2, code_change/3]).
 
--export([get_connection/1, release_connection/1, connection_pool_size/1, param_query/2, param_query/3, param_query/4]).
+-export([get_connection/1, release_connection/1, connection_pool_size/1, param_query/2, param_query/3, param_query/4, select_count/2, select/3]).
 
 -define(SERVER, ?MODULE).
 
@@ -123,6 +123,24 @@ param_query(#service_datasource{id = Id, owner = Owner}, Sql, Params, Timeout) -
 	catch
 		_ : _ ->
 			?DEBUG("ems_odbc_pool param_query catch timeout exception from datasource id ~p.", [Id]),
+			{error, eunavailable_odbc_connection}
+	end.
+
+select_count(#service_datasource{id = Id, owner = Owner, timeout = Timeout}, Sql) ->
+	try
+		gen_server:call(Owner, {select_count, Sql}, Timeout)
+	catch
+		_ : _ ->
+			?DEBUG("ems_odbc_pool select_count timeout exception from datasource id ~p.", [Id]),
+			{error, eunavailable_odbc_connection}
+	end.
+
+select(#service_datasource{id = Id, owner = Owner, timeout = Timeout}, Offset, Limit) ->
+	try
+		gen_server:call(Owner, {select, Offset, Limit})
+	catch
+		_ : _ ->
+			?DEBUG("ems_odbc_pool select timeout exception from datasource id ~p.", [Id]),
 			{error, eunavailable_odbc_connection}
 	end.
 

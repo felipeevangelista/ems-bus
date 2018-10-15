@@ -456,11 +456,17 @@ parse_config(Json, Filename) ->
 		put(parse_step, log_file_max_size),
 		LogFileMaxSize = get_p(<<"log_file_max_size">>, Json, ?LOG_FILE_MAX_SIZE),
 		
+		put(parse_step, log_file_path),
+		LogFilePath = get_p(<<"log_file_path">>, Json, ?LOG_FILE_PATH),
+
+		put(parse_step, log_file_archive_path),
+		LogFileArchivePath = get_p(<<"log_file_archive_path">>, Json, ?LOG_FILE_ARCHIVE_PATH),
+
 		put(parse_step, rest_environment),
 		RestEnvironment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
 		
 		put(parse_step, sufixo_email_institucional),
-		SufixoEmailInstitucional = binary_to_list(get_p(<<"sufixo_email_institucional">>, Json, <<"@unb.br">>)),
+		SufixoEmailInstitucional = binary_to_list(get_p(<<"sufixo_email_institucional">>, Json, ?SUFIXO_EMAIL_INSTITUCIONAL)),
 		
 		put(parse_step, disable_services),
 		DisableServices = get_p(<<"disable_services">>, Json, []),
@@ -475,10 +481,10 @@ parse_config(Json, Filename) ->
 		EnableServicesOwner = get_p(<<"enable_services_owner">>, Json, []),
 		
 		put(parse_step, restricted_services_owner),
-		RestrictedServicesOwner = get_p(<<"restricted_services_owner">>, Json, []),
+		RestrictedServicesOwner = get_p(<<"restricted_services_owner">>, Json, ?RESTRICTED_SERVICES_OWNER),
 		
 		put(parse_step, restricted_services_admin),
-		RestrictedServicesAdmin = get_p(<<"restricted_services_admin">>, Json, []),
+		RestrictedServicesAdmin = get_p(<<"restricted_services_admin">>, Json, ?RESTRICTED_SERVICES_ADMIN),
 		
 		put(parse_step, java_jar_path),
 		JarPath = parse_jar_path(get_p(<<"java_jar_path">>, Json, ?JAR_PATH)),
@@ -487,7 +493,7 @@ parse_config(Json, Filename) ->
 		JavaHome = parse_java_home(get_p(<<"java_home">>, Json, <<>>)),
 
 		put(parse_step, java_thread_pool),
-		ThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
+		JavaThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
 
 		put(parse_step, smtp_passwd),
 		SmtpPassword = binary_to_list(get_p(<<"smtp_passwd">>, Json, <<>>)),
@@ -579,10 +585,12 @@ parse_config(Json, Filename) ->
 				 log_show_payload_max_length = LogShowPayloadMaxLength,
 				 log_file_checkpoint = LogFileCheckpoint,
 				 log_file_max_size = LogFileMaxSize,
+				 log_file_path = LogFilePath,
+				 log_file_archive_path = LogFileArchivePath,
 				 rest_default_querystring = Querystring,
 				 java_jar_path = JarPath,
 				 java_home = JavaHome,
-				 java_thread_pool = ThreadPool,
+				 java_thread_pool = JavaThreadPool,
 				 smtp_passwd = SmtpPassword,
 				 smtp_from = SmtpFrom,
 				 smtp_mail = SmtpMail,
@@ -664,6 +672,8 @@ get_default_config() ->
 			 log_show_payload_max_length = ?LOG_SHOW_PAYLOAD_MAX_LENGTH,
 			 log_file_checkpoint = ?LOG_FILE_CHECKPOINT,
 			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
+			 log_file_path = ?LOG_FILE_PATH,
+			 log_file_archive_path = ?LOG_FILE_ARCHIVE_PATH,
 			 rest_default_querystring = [],
 			 java_jar_path = ?JAR_PATH,
 			 java_home = ems_util:get_java_home(),
