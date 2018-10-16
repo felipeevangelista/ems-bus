@@ -249,7 +249,7 @@
 -endif.
 
 
--define(SUFIXO_EMAIL_INSTITUCIONAL, "@unb.br").
+-define(SUFIXO_EMAIL_INSTITUCIONAL, <<"@unb.br">>).
 
 -define(RESULT_CACHE_MAX_SIZE_ENTRY, 524288). % 512KB
 -define(RESULT_CACHE_SHARED, true). 

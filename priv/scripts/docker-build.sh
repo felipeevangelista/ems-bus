@@ -589,47 +589,33 @@ check_push_registry(){
 		if [ ! -z "$REGISTRY" ]; then
 			push_registry		
 		else
-			# Check with user if push images to Docker Registry
-			DO_PUSH="y"
-			printf 'Push the generated image to the Docker Registry servers: [Y/n] '
-			while true; do
-				read DO_PUSH
-				if [[ ! $DO_PUSH =~ [yYnN] ]]; then
-					printf 'Ops, push the generated image to the Docker Registry servers: [Y/n] '
+			PUSH_MESSAGE='\tEnter the IP of the Registry server (Example: 164.41.106.30:5000): '
+			CANCEL_PUSH="n"
+			while [[ ! "$CANCEL_PUSH" = "Y" && ! "$CANCEL_PUSH" = "y" ]]; do
+				echo
+				echo "---------------------------------------------------------------------------------------------------"
+				printf "$PUSH_MESSAGE"
+				read REGISTRY
+				if [ ! -z "$REGISTRY" ]; then
+					REGISTRY_PORT="5000"
+					if [[ "$REGISTRY" =~ ^[0-9a-zA-Z_.]+:[0-9]+$ ]] ; then
+						REGISTRY_PORT=$(echo $REGISTRY | awk -F: '{ print $2; }')
+						REGISTRY_SERVER=$REGISTRY
+					elif [[ $REGISTRY =~ ^[0-9a-zA-Z_-.]+$ ]] ; then
+						REGISTRY_SERVER=$REGISTRY:$REGISTRY_PORT
+					else
+						REGISTRY_SERVER=$REGISTRY
+					fi
+					REGISTRY_IP="$(echo $REGISTRY_SERVER | cut -d: -f1)"
+					push_registry
+					PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
 				else
-					break
+					printf '\tDo you want cancel push images? [Y/n] '
+					read CANCEL_PUSH
+					echo
+					PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
 				fi
 			done
-
-			if [[ "$DO_PUSH" = "Y" || "$DO_PUSH" = "y" ]]; then
-				PUSH_MESSAGE='\tEnter the IP or DNS of the Registry server (Example: desenvservicos.unb.br): '
-				CANCEL_PUSH="n"
-				while [[ ! "$CANCEL_PUSH" = "Y" && ! "$CANCEL_PUSH" = "y" ]]; do
-					echo
-					echo "---------------------------------------------------------------------------------------------------"
-					printf "$PUSH_MESSAGE"
-					read REGISTRY
-					if [ ! -z "$REGISTRY" ]; then
-						REGISTRY_PORT="5000"
-						if [[ "$REGISTRY" =~ ^[0-9a-zA-Z_.]+:[0-9]+$ ]] ; then
-							REGISTRY_PORT=$(echo $REGISTRY | awk -F: '{ print $2; }')
-							REGISTRY_SERVER=$REGISTRY
-						elif [[ $REGISTRY =~ ^[0-9a-zA-Z_-.]+$ ]] ; then
-							REGISTRY_SERVER=$REGISTRY:$REGISTRY_PORT
-						else
-							die "\tIP or DNS of server is invalid. Example: 127.0.0.1 or localhost"
-						fi
-						REGISTRY_IP="$(echo $REGISTRY_SERVER | cut -d: -f1)"
-						push_registry
-						PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
-					else
-						printf '\tDo you want cancel push images? [Y/n] '
-						read CANCEL_PUSH
-						echo
-						PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
-					fi
-				done
-			fi
 		fi
 		
 	else
@@ -639,29 +625,11 @@ check_push_registry(){
 
 push_registry(){
 			PUSH_TAG="$REGISTRY_SERVER/$APP_NAME"
+			echo "sudo docker tag $APP_NAME $PUSH_TAG"
 			sudo docker tag $APP_NAME $PUSH_TAG
-			echo
-			echo "Push $PUSH_TAG to $REGISTRY_SERVER"
+			echo "sudo docker push $REGISTRY_SERVER/$APP_NAME"
 			sudo docker push $REGISTRY_SERVER/$APP_NAME
-
 			echo
-			
-			# Check if deploy
-			#DO_DEPLOY="y"
-			#printf '\n\tYou want to deploy the app in this environment: [Y/n] '
-			#while true; do
-			#	read DO_DEPLOY
-			#	if [[ ! $DO_DEPLOY =~ [yYnN] ]]; then
-			#		printf '\tOps, You want to deploy the app in this environment: [Y/n] '
-			#	else
-			#		break
-			#	fi
-			#done
-
-			#if [[ "$DO_DEPLOY" = "Y" || "$DO_DEPLOY" = "y" ]]; then
-			#	echo deploy...
-			#fi
-			
 }
 
 # IMPORTANTE
