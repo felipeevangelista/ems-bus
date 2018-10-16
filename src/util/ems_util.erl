@@ -1741,6 +1741,24 @@ encode_request_cowboy(CowboyReq, WorkerSend, #encode_request_state{http_header_d
 		Uri = iolist_to_binary(cowboy_req:uri(CowboyReq)),
 		Url = binary_to_list(cowboy_req:path(CowboyReq)),
 		case Url of
+			"/dados/erl.ms/" ++ UrlEncoded -> 
+				UrlMasked = true,
+				Url1 = binary_to_list(base64:decode(UrlEncoded)),
+				case Url1 of
+					"/dados" ++ UrlRest -> UrlSemPrefix = UrlRest;
+					_ -> UrlSemPrefix = Url1
+				end,
+				case string:find(UrlSemPrefix, "?") of
+					nomatch -> 
+						Url2 = remove_ult_backslash_url(UrlSemPrefix),
+						QuerystringBin = <<>>,
+						QuerystringMap0 = #{};
+					"?" ++ Querystring -> 
+						PosInterrogacao = string:chr(UrlSemPrefix, $?),
+						Url2 = remove_ult_backslash_url(string:slice(UrlSemPrefix, 0, PosInterrogacao-1)),
+						QuerystringBin = list_to_binary(Querystring),
+						QuerystringMap0 = parse_querystring([Querystring])
+				end;
 			"/erl.ms/" ++ UrlEncoded -> 
 				UrlMasked = true,
 				Url1 = binary_to_list(base64:decode(UrlEncoded)),

@@ -730,7 +730,7 @@ do_log_request(Request = #request{rid = RID,
 					   <<" {\n\t\033[0;32mRID\033[0m: ">>, integer_to_binary(RID), 
 					   <<"  (\033[0;32mReqHash\033[0m: ">>, integer_to_binary(ReqHash), <<")">>, 
 					   case UrlMasked of
-							true -> [<<"\n\t\033[0;32mUrl\033[0m: ">>, Url];
+							true -> [<<"\n\t\033[0;32mUrlMasked\033[0m: ">>, Url];
 							false -> <<>>
 					   end,
 					   <<"\n\t\033[0;32mAccept\033[0m: ">>, Accept,
