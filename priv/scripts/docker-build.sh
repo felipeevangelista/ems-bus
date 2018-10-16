@@ -13,7 +13,7 @@
 # -----------------------------------------------------------------------------------------------------
 # 28/06/2017  Everton Agilar     Initial release
 # 11/08/2018  Everton Agilar     Suporte para compilar projetos no formato docker-compose
-#
+# 16/10/2018  Everton Agilar     Melhorias ao fazer push e baixar o projeto
 #
 #
 #
