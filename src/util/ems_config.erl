@@ -154,16 +154,16 @@ load_config() ->
 					case parse_config(Data, Filename) of
 						{ok, Result} -> Result;
 						{error, Reason} -> 
-							ems_logger:format_warn("\nems_config cannot parse configuration file \033[01;34m\"~s\"\033[0m\033[00;33m. Reason: ~p. Data; ~p.\nRunning with default settings.\n", [Filename, Reason, Data]),
-							get_default_config()
+							ems_logger:format_error("\nems_config cannot parse configuration file \033[01;34m\"~s\"\033[0m\033[00;33m. Reason: ~p. Data; ~p.\n", [Filename, Reason, Data]),
+							erlang:error(einvalid_configuration)
 					end;
 				{error, Reason2} -> 
-					ems_logger:format_warn("\nems_config cannot decode configuration file \033[01;34m\"~s\"\033[0m\033[00;33m as json. Reason: ~p\n. Running with default settings.\n", [Filename, Reason2]),
-					get_default_config()
+					ems_logger:format_error("\nems_config cannot decode configuration file \033[01;34m\"~s\"\033[0m\033[00;33m as json. Reason: ~p.\n", [Filename, Reason2]),
+					erlang:error(einvalid_configuration)
 			end;
 		{error, enofile_config} ->
-			ems_logger:format_warn("ems_config cannnot read configuration file emsbus.conf, using default settings.\n"),
-			get_default_config()
+			ems_logger:format_error("ems_config cannnot read configuration file emsbus.conf, using default settings.\n"),
+			erlang:error(einvalid_configuration)
 	end.
 
 
@@ -295,7 +295,7 @@ parse_jar_path(Path) ->
 	Path2 = ems_util:replace_all_vars_and_custom_variables(Path, [{<<"PRIV_PATH">>, ?PRIV_PATH}]),
 	case filelib:is_dir(Path2) of
 		true -> Path2;
-		false -> erlang:error(einvalid_jar_path)
+		false -> erlang:error(enoent)
 	end.
 
 parse_java_home(<<>>) -> ems_util:get_java_home();
@@ -606,92 +606,9 @@ parse_config(Json, Filename) ->
 		{ok, Conf}
 	catch
 		_:Reason -> 
-			ems_logger:format_warn("\nems_config cannot parse ~p in configuration file ~p. Reason: ~p.\nRunning with default settings.\n", [get(parse_step), Filename, Reason]),
-			get_default_config()
+			ems_logger:format_error("ems_config cannot parse ~p in configuration file ~p. Reason: ~p.", [get(parse_step), Filename, Reason]),
+			erlang:error(einvalid_configuration)
 	end.
-
-% It generates a default configuration if there is no configuration file
--spec get_default_config() -> #config{}.
-get_default_config() ->
-	{ok, Hostname} = inet:gethostname(),
-	HostnameBin = list_to_binary(Hostname),
-	TcpListenAddress = [<<"0.0.0.0">>],
-	TcpListenAddress_t = ems_util:parse_tcp_listen_address(TcpListenAddress),
- 	{TcpListenMainIp, TcpListenMainIp_t} = get_tcp_listen_main_ip(TcpListenAddress_t),
- 	Conf = #config{ 
-			 cat_host_alias				= #{<<"local">> => HostnameBin},
-			 cat_host_search			= <<>>,							
-			 cat_node_search			= <<>>,
-			 cat_path_search			= [{<<"ems-bus">>, ?CATALOGO_ESB_PATH}],
-			 cat_disable_services		= [],
-			 cat_enable_services		= [],
-			 cat_disable_services_owner	= [],
-			 cat_enable_services_owner	= [],
-			 cat_restricted_services_owner = [],
-			 cat_restricted_services_admin = [],
-			 static_file_path_probing  = ?STATIC_FILE_PATH_PROBING,
-			 static_file_path			= [],
-			 ems_hostname 				= HostnameBin,
-			 ems_host	 				= list_to_atom(Hostname),
-			 ems_file_dest				= "",
-			 ems_debug					= false,
-			 ems_result_cache			= ?TIMEOUT_DISPATCHER_CACHE,
-			 ems_result_cache_shared	= ?RESULT_CACHE_SHARED,
-			 ems_datasources			= #{},
-			 show_debug_response_headers		= false,
-			 tcp_listen_address			= TcpListenAddress,
-			 tcp_listen_address_t		= TcpListenAddress_t,
-			 tcp_listen_main_ip 		= TcpListenMainIp,
-			 tcp_listen_main_ip_t 		= TcpListenMainIp_t,
-			 tcp_listen_prefix_interface_names = ems_util:binlist_to_list(?TCP_LISTEN_PREFIX_INTERFACE_NAMES),
-			 tcp_allowed_address		= all,
-			 authorization				= ?OAUTH2_DEFAULT_AUTHORIZATION,
-			 oauth2_with_check_constraint = false,
-			 oauth2_refresh_token 		= ?OAUTH2_DEFAULT_TOKEN_EXPIRY,
-			 auth_allow_user_inative_credentials = true,
-			 config_file			    = undefined,
-			 params						= #{},
-			 client_path_search			= ?CLIENT_PATH,
-			 user_path_search			= ?USER_PATH,
-			 user_dados_funcionais_path_search = ?USER_DADOS_FUNCIONAIS_PATH,
-			 user_perfil_path_search	= ?USER_PERFIL_PATH,
-			 user_permission_path_search	= ?USER_PERMISSION_PATH,
-			 user_email_path_search	= ?USER_EMAIL_PATH,
-			 user_endereco_path_search	= ?USER_ENDERECO_PATH,
-			 user_telefone_path_search	= ?USER_TELEFONE_PATH,
-			 http_max_content_length = ?HTTP_MAX_CONTENT_LENGTH,
-			 http_headers = ?HTTP_HEADERS_DEFAULT,
-			 http_headers_options = ?HTTP_HEADERS_DEFAULT,
-			 ssl_cacertfile = undefined,
-			 ssl_certfile = undefined,
-			 ssl_keyfile = undefined,
-			 sufixo_email_institucional = ?SUFIXO_EMAIL_INSTITUCIONAL, 
-	 		 log_show_response = ?LOG_SHOW_RESPONSE,
-			 log_show_payload = ?LOG_SHOW_PAYLOAD,
-	 		 log_show_response_max_length = ?LOG_SHOW_RESPONSE_MAX_LENGTH,
-			 log_show_payload_max_length = ?LOG_SHOW_PAYLOAD_MAX_LENGTH,
-			 log_file_checkpoint = ?LOG_FILE_CHECKPOINT,
-			 log_file_max_size = ?LOG_FILE_MAX_SIZE,
-			 log_file_path = ?LOG_FILE_PATH,
-			 log_file_archive_path = ?LOG_FILE_ARCHIVE_PATH,
-			 rest_default_querystring = [],
-			 java_jar_path = ?JAR_PATH,
-			 java_home = ems_util:get_java_home(),
-			 java_thread_pool = 12,
-			 smtp_passwd = "",
-			 smtp_from = "",
-			 smtp_mail = "",
-			 smtp_port = 587,
-			 ldap_url = "",
-			 ldap_admin = "",
-			 ldap_password_admin = "",
-			 ldap_password_admin_crypto = "",
-			 ldap_base_search = "",
-			 custom_variables = []
-		},
-	ems_db:set_param(config_variables, Conf),
-	{ok, Conf}.
-	
 
 -spec select_config_file(binary() | string(), binary() | string()) -> {ok, string()} | {error, enofile_config}.
 select_config_file(ConfigFile, ConfigFileDefault) ->
