@@ -18,66 +18,154 @@
 	"source_type" : "user_aluno_inativo_db",
 	"sql_load_packet_length" : 4000,
 	"sql_load" : 
-				"select al.AluMatricula as Id, 
-					   p.PesCodigoPessoa as Codigo, 
-					   lower(cast(al.AluRA as varchar(100))) as Login,
-					   rtrim(p.PesNome) as Nome,  
-					   cast(coalesce(p.PesCpf, cast(al.AluCPF as varchar(11))) as varchar(14)) as Cpf,
-					   cast(al.AluSenha as varchar(60)) as Password, 
-					   null as PasswdCryptoPessoa, 
-					   rtrim(coalesce(p.PesEndereco, al.AluEndereco)) as Endereco,
-					   rtrim(p.PesComplementoEndereco) as ComplementoEndereco,
-					   rtrim(p.PesBairro) as Bairro,
-					   rtrim(p.PesCidade) as Cidade, 
-					   coalesce(p.PesUf, al.AluEndUf) as Uf,
-					   p.PesCep as Cep, 
-					   p.PesRg as Rg, 
-					   coalesce(p.PesDataNascimento, al.AluDtNasc) as DataNascimento,
-					   p.PesSexo as Sexo, 
-					   coalesce(p.PesTelefone, al.AluTelefone) as Telefone,
-					   coalesce(p.PesCelular, al.AluCelular) as Celular,
-					   rtrim(p.PesDDD) as DDD,
-					   p.PesNomePai,
-					   p.PesNomeMae,
-					   cast(p.PesNacionalidade as int) as nacionalidade,
-					   3 as Type,  
-					   al.AluNivel as SubType,	
-					   0 as ActivePessoa,
-					   null as DtExpirePassword    
+				"select al.AluMatricula as id, 
+				p.PesCodigoPessoa as Codigo, 
+				lower(rtrim(cast(al.AluRA as varchar(100)))) as Login,
+				rtrim(p.PesNome) as Nome,  
+				cast(coalesce(p.PesCpf, cast(al.AluCPF as varchar(11))) as varchar(14)) as Cpf,
+				rtrim(cast(al.AluSenha as varchar(60))) as Password, 
+				null as PasswdCryptoPessoa, 
+				rtrim(coalesce(addr.endereco, p.PesEndereco)) as Endereco, 
+				rtrim(coalesce(addr.complemento, p.PesComplementoEndereco)) as ComplementoEndereco, 
+				rtrim(coalesce(addr.bairro, p.PesBairro)) as Bairro, 
+				rtrim(coalesce(addr.cidade, p.PesCidade)) as Cidade, 
+				rtrim(coalesce(addr.uf, p.PesUf)) as Uf, 
+				rtrim(coalesce(addr.cep, p.PesCep)) as Cep, 
+				p.PesRg as Rg, 
+				coalesce(p.PesDataNascimento, al.AluDtNasc) as DataNascimento,
+				p.PesSexo as Sexo, 
+				(select top 1 t.TelNumero 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
+						join BDPessoa.dbo.TB_Telefone t 
+						on pft.PFTTelCodigo = t.TelCodigo 
+				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as Telefone, 
+				(select top 1 t.TelNumero 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
+						join BDPessoa.dbo.TB_Telefone t 
+						on pft.PFTTelCodigo = t.TelCodigo 
+				where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as Celular, 
+				(select top 1 cast(t.TelDDD as varchar(3)) 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
+						join BDPessoa.dbo.TB_Telefone t 
+						on pft.PFTTelCodigo = t.TelCodigo 
+				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as DDD,
+				p.PesNomePai,
+				p.PesNomeMae,
+				cast(p.PesNacionalidade as int) as nacionalidade,
+				(select top 1 * 
+				from (select lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+							join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
+						and em.EmaTipo = 1 
+						and em.EmaEmail LIKE '_%@__%.__%' 
+					union all 
+					select lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+							join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
+						and em.EmaEmail LIKE '_%@__%.__%' 
+					) tab_email 
+				) as email, 
+				3 as Type,  
+				al.AluNivel as SubType,	
+				0 as ActivePessoa,
+				(select u.UsuId from BDAcesso.dbo.TB_Usuario u 
+				where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
+				null as DtExpirePassword    
 				from BDSiac.dbo.TB_Aluno al join BDPessoa.dbo.TB_Pessoa p 
-					   on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
+						on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
+						left join (select distinct 
+									pfe.PFEPesCodigoPessoa, 
+									e.EndLogradouro as endereco, 
+									e.EndComplemento as complemento, 
+									e.EndBairro as bairro, 
+									e.EndUf as uf, 
+									mu.MunDenominacao as cidade, 
+									e.EndCep as cep 
+							from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe 
+									join BDPessoa.dbo.TB_Endereco e 
+										on pfe.PFeEndCodigo = e.EndCodigo 
+									join BDTabelaApoio.dbo.TB_Municipio mu 
+										on e.EndLocalidade = mu.MunCodigo 
+							where e.EndTipo = 1) addr 
+					on addr.PFEPesCodigoPessoa = al.AluPesCodigoPessoa 
 				where al.AluPerSaiUnB <> 99999 and al.alunivel not in  (9,10,11) and al.AluSenha is not null and p.PesDataNascimento >= '1980-01-01'
 				",
 
 	"sql_update" :
-				"select al.AluMatricula as Id, 
-					   p.PesCodigoPessoa as Codigo, 
-					   lower(cast(al.AluRA as varchar(100))) as Login,
-					   rtrim(p.PesNome) as Nome,  
-					   cast(coalesce(p.PesCpf, cast(al.AluCPF as varchar(11))) as varchar(14)) as Cpf,
-					   cast(al.AluSenha as varchar(60)) as Password, 
-					   null as PasswdCryptoPessoa, 
-					   rtrim(coalesce(p.PesEndereco, al.AluEndereco)) as Endereco,
-					   rtrim(p.PesComplementoEndereco) as ComplementoEndereco,
-					   rtrim(p.PesBairro) as Bairro,
-					   rtrim(p.PesCidade) as Cidade, 
-					   coalesce(p.PesUf, al.AluEndUf) as Uf,
-					   p.PesCep as Cep, 
-					   p.PesRg as Rg, 
-					   coalesce(p.PesDataNascimento, al.AluDtNasc) as DataNascimento,
-					   p.PesSexo as Sexo, 
-					   coalesce(p.PesTelefone, al.AluTelefone) as Telefone,
-					   coalesce(p.PesCelular, al.AluCelular) as Celular,
-					   rtrim(p.PesDDD) as DDD,
-					   p.PesNomePai,
-					   p.PesNomeMae,
-					   cast(p.PesNacionalidade as int) as nacionalidade,
-					   3 as Type,  
-					   al.AluNivel as SubType,	
-					   0 as ActivePessoa,
-					   null as DtExpirePassword     
+				"select al.AluMatricula as id, 
+				p.PesCodigoPessoa as Codigo, 
+				lower(rtrim(cast(al.AluRA as varchar(100)))) as Login,
+				rtrim(p.PesNome) as Nome,  
+				cast(coalesce(p.PesCpf, cast(al.AluCPF as varchar(11))) as varchar(14)) as Cpf,
+				rtrim(cast(al.AluSenha as varchar(60))) as Password, 
+				null as PasswdCryptoPessoa, 
+				rtrim(coalesce(addr.endereco, p.PesEndereco)) as Endereco, 
+				rtrim(coalesce(addr.complemento, p.PesComplementoEndereco)) as ComplementoEndereco, 
+				rtrim(coalesce(addr.bairro, p.PesBairro)) as Bairro, 
+				rtrim(coalesce(addr.cidade, p.PesCidade)) as Cidade, 
+				rtrim(coalesce(addr.uf, p.PesUf)) as Uf, 
+				rtrim(coalesce(addr.cep, p.PesCep)) as Cep, 
+				p.PesRg as Rg, 
+				coalesce(p.PesDataNascimento, al.AluDtNasc) as DataNascimento,
+				p.PesSexo as Sexo, 
+				(select top 1 t.TelNumero 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
+						join BDPessoa.dbo.TB_Telefone t 
+						on pft.PFTTelCodigo = t.TelCodigo 
+				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as Telefone, 
+				(select top 1 t.TelNumero 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
+						join BDPessoa.dbo.TB_Telefone t 
+						on pft.PFTTelCodigo = t.TelCodigo 
+				where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as Celular, 
+				(select top 1 cast(t.TelDDD as varchar(3)) 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
+						join BDPessoa.dbo.TB_Telefone t 
+						on pft.PFTTelCodigo = t.TelCodigo 
+				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as DDD,
+				p.PesNomePai,
+				p.PesNomeMae,
+				cast(p.PesNacionalidade as int) as nacionalidade,
+				(select top 1 * 
+				from (select lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+							join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
+						and em.EmaTipo = 1 
+						and em.EmaEmail LIKE '_%@__%.__%' 
+					union all 
+					select lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+							join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
+						and em.EmaEmail LIKE '_%@__%.__%' 
+					) tab_email 
+				) as email, 
+				3 as Type,  
+				al.AluNivel as SubType,	
+				0 as ActivePessoa,
+				(select u.UsuId from BDAcesso.dbo.TB_Usuario u 
+				where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
+				null as DtExpirePassword    
 				from BDSiac.dbo.TB_Aluno al join BDPessoa.dbo.TB_Pessoa p 
-					   on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
+						on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
+						left join (select distinct 
+									pfe.PFEPesCodigoPessoa, 
+									e.EndLogradouro as endereco, 
+									e.EndComplemento as complemento, 
+									e.EndBairro as bairro, 
+									e.EndUf as uf, 
+									mu.MunDenominacao as cidade, 
+									e.EndCep as cep 
+							from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe 
+									join BDPessoa.dbo.TB_Endereco e 
+										on pfe.PFeEndCodigo = e.EndCodigo 
+									join BDTabelaApoio.dbo.TB_Municipio mu 
+										on e.EndLocalidade = mu.MunCodigo 
+							where e.EndTipo = 1) addr 
+					on addr.PFEPesCodigoPessoa = al.AluPesCodigoPessoa 
 				where (al.AluDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
 					   al.AluDataCadastramento >= ? or p.PesDataCadastramento >= ?) 
 					  and al.AluPerSaiUnB <> 99999 and al.alunivel not in  (9,10,11) and al.AluSenha is not null and p.PesDataNascimento >= '1980-01-01'
@@ -87,6 +175,6 @@
 				"passwd_crypto", "endereco", "complemento_endereco", 
 				"bairro", "cidade", "uf", "cep", "rg", "data_nascimento", 
 				"sexo", "telefone", "celular", "ddd", "nome_pai", "nome_mae", "nacionalidade", 
-				"type", "subtype", "active", "dt_expire_password"]
+				"email", "type", "subtype", "active", "dt_expire_password"]
 				
 }

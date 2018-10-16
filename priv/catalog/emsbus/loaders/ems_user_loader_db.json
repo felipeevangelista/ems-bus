@@ -70,7 +70,7 @@
 				   ) as email, 
 				   1 as Type, 
 				   0 as SubType, 
-				   1 as Active, 
+				   case UsuSituacao when 1 then 1 else 0 end as Active, 
 				   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword 
 			from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 					 on u.UsuPesIdPessoa = p.PesCodigoPessoa 
@@ -144,7 +144,7 @@
 				   ) as email, 
 				   1 as Type, 
 				   0 as SubType, 
-				   1 as Active, 
+				   case UsuSituacao when 1 then 1 else 0 end as Active, 
 				   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword 
 			from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 					 on u.UsuPesIdPessoa = p.PesCodigoPessoa 
