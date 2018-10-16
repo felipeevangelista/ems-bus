@@ -135,7 +135,7 @@ select_count(#service_datasource{id = Id, owner = Owner, timeout = Timeout}, Sql
 			{error, eunavailable_odbc_connection}
 	end.
 
-select(#service_datasource{id = Id, owner = Owner, timeout = Timeout}, Offset, Limit) ->
+select(#service_datasource{id = Id, owner = Owner}, Offset, Limit) ->
 	try
 		gen_server:call(Owner, {select, Offset, Limit})
 	catch

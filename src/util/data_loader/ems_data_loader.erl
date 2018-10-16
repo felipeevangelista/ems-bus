@@ -31,7 +31,7 @@
 				last_update,
 				last_update_param_name,
 				sql_load,
-				sql_load_limit,
+				sql_load_packet_length,
 				sql_update,
 				sql_count,
 				sql_ids,
@@ -125,7 +125,7 @@ init(#service{name = Name,
 		false -> CheckRemoveRecordsCheckpoint = CheckRemoveRecordsCheckpoint0 + rand:uniform(30000)
 	end,
 	SqlLoad = string:trim(binary_to_list(maps:get(<<"sql_load">>, Props, <<>>))),
-	SqlLoadLimit = maps:get(<<"sql_load_limit">>, Props, 5000),
+	SqlLoadPacketLength = maps:get(<<"sql_load_packet_length">>, Props, 4000),
 	SqlUpdate = string:trim(binary_to_list(maps:get(<<"sql_update">>, Props, <<>>))),
 	SqlCount = re:replace(SqlLoad, "select (.+)( from.+)( order by.+)?","select count(1)\\2", [{return,list}]),
 	SqlIds = re:replace(SqlLoad, "select ([^,]+),(.+)( from.+)( order by.+)?", "select \\1 \\3", [{return,list}]),
@@ -157,7 +157,7 @@ init(#service{name = Name,
 				   last_update = LastUpdate,
 				   check_remove_records_checkpoint = CheckRemoveRecordsCheckpoint,
 				   sql_load = SqlLoad,
-				   sql_load_limit = SqlLoadLimit,
+				   sql_load_packet_length = SqlLoadPacketLength,
 				   sql_update = SqlUpdate,
 				   sql_count = SqlCount,
 				   sql_ids = SqlIds,
@@ -481,16 +481,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 -spec do_load(tuple(), #config{}, #state{}) -> ok | {error, atom()}.
 do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 										 name = Name,
-										 middleware = Middleware,
-										 sql_load = SqlLoad,
-										 fields = Fields,
-										 load_checkpoint_metric_name = LoadCheckpointMetricName,
-										 insert_metric_name = InsertMetricName,
-										 error_metric_name = ErrorsMetricName,
-										 disable_metric_name = DisabledMetricName,
-										 skip_metric_name = SkipMetricName,
-										 source_type = SourceType,
-										 allow_clear_table_full_sync = AllowClearTableFullSync}) -> 
+										 load_checkpoint_metric_name = LoadCheckpointMetricName}) -> 
 	try
 		?DEBUG("~s do_load execute.", [Name]),
 		case ems_odbc_pool:get_connection(Datasource) of
@@ -509,18 +500,12 @@ do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 			{error, Reason4}
 	end.
 
-do_load_table(CtrlInsert, Conf, State = #state{datasource = Datasource,
-										 name = Name,
-										 middleware = Middleware,
-										 sql_load = SqlLoad,
-										 fields = Fields,
-										 load_checkpoint_metric_name = LoadCheckpointMetricName,
-										 insert_metric_name = InsertMetricName,
-										 error_metric_name = ErrorsMetricName,
-										 disable_metric_name = DisabledMetricName,
-										 skip_metric_name = SkipMetricName,
-										 source_type = SourceType,
-										 allow_clear_table_full_sync = AllowClearTableFullSync}) -> 
+do_load_table(CtrlInsert, Conf, State = #state{name = Name,
+											   insert_metric_name = InsertMetricName,
+											   error_metric_name = ErrorsMetricName,
+											   disable_metric_name = DisabledMetricName,
+											   skip_metric_name = SkipMetricName,
+											   allow_clear_table_full_sync = AllowClearTableFullSync}) -> 
 	try
 		case AllowClearTableFullSync of
 			true ->
@@ -567,20 +552,23 @@ do_load_data_pump(CtrlInsert,
 								 name = Name,
 								 middleware = Middleware,
 								 sql_load = SqlLoad,
-								 sql_load_limit = SqlLoadLimit,
+								 sql_load_packet_length = SqlLoadPacketLength,
 								 fields = Fields,
-								 load_checkpoint_metric_name = LoadCheckpointMetricName,
-								 insert_metric_name = InsertMetricName,
-								 error_metric_name = ErrorsMetricName,
-								 disable_metric_name = DisabledMetricName,
-								 skip_metric_name = SkipMetricName,
-								 source_type = SourceType,
-								 allow_clear_table_full_sync = AllowClearTableFullSync}, 
+								 source_type = SourceType}, 
 				 Offset, InsertCount, ErrorCount, DisabledCount, SkipCount) -> 
 	try
-		case Offset > 1 of
-			true ->	SqlLoad2 = io_lib:format("select * from ( select *, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlLoad, Offset, Offset+SqlLoadLimit-1]);
-			false -> SqlLoad2 = io_lib:format("select top ~p * from ( ~s ) _t_sql", [Offset+SqlLoadLimit-1, SqlLoad])
+		case SqlLoadPacketLength == 0 of
+			true -> 
+				% Quando SqlLoadPacketLength é 0, o load incremental por pacotes é desligado
+				SqlLoad2 = SqlLoad;
+			false ->
+				case Offset > 1 of
+					true ->	
+						SqlLoad2 = io_lib:format("select * from ( select *, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
+					false -> 
+						% Quando o offset é 1, usamos select top para obter um pouco mais de performance na primeira query
+						SqlLoad2 = io_lib:format("select top ~p * from ( ~s ) _t_sql order by Id", [Offset+SqlLoadPacketLength-1, SqlLoad])
+				end
 		end,
 		SqlLoad3 = re:replace(SqlLoad2, "\\s+", " ", [global,{return,list}]),
 		SqlLoad4 = re:replace(SqlLoad3, "\\s+$", "", [global,{return,list}]),
@@ -588,9 +576,14 @@ do_load_data_pump(CtrlInsert,
 			{_, _, []} -> 
 				{ok, InsertCount, ErrorCount, DisabledCount, SkipCount};
 			{_, _, Records} ->
-				io:format("buscando ~s de ~p ate ~p\n", [Name, Offset, Offset+SqlLoadLimit-1]),
-				{ok, InsertCount2, _, ErrorCount2, DisabledCount2, SkipCount2} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
-				do_load_data_pump(CtrlInsert, Conf, State, Offset + SqlLoadLimit, InsertCount + InsertCount2, ErrorCount + ErrorCount2, DisabledCount + DisabledCount2, SkipCount + SkipCount2);
+				case SqlLoadPacketLength == 0 of
+					true -> 
+						{ok, InsertCount2, _, ErrorCount2, DisabledCount2, SkipCount2} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
+						{ok, InsertCount2, ErrorCount2, DisabledCount2, SkipCount2};
+					false ->
+						{ok, InsertCount2, _, ErrorCount2, DisabledCount2, SkipCount2} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
+						do_load_data_pump(CtrlInsert, Conf, State, Offset + SqlLoadPacketLength, InsertCount + InsertCount2, ErrorCount + ErrorCount2, DisabledCount + DisabledCount2, SkipCount + SkipCount2)
+				end;
 			{error, Reason} = Error -> 
 				?DEBUG("~s do_load_data_pump fetch exception. Reason: ~p.", [Name, Reason]),
 				Error
