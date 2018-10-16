@@ -17,7 +17,7 @@
 	"enable" : false,
 	"sql_load" : 
 				"select 
-				   CSECodigo,
+				   CSECodigo as id,
 				   CSEName,
 				   CSEUrl,  
 				   CSEUseRE,
@@ -59,7 +59,7 @@
 
 	"sql_update" : 
 				"select 
-				   CSECodigo,
+				   CSECodigo as id,
 				   CSEName,
 				   CSEUrl,  
 				   CSEUseRE,

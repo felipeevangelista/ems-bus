@@ -18,7 +18,7 @@
 	"source_type" : "user_aluno_ativo_db",
 	"sql_load_packet_length" : 4000,
 	"sql_load" : 
-				"select al.AluMatricula as Id, 
+				"select al.AluMatricula as id, 
 					   p.PesCodigoPessoa as Codigo, 
 					   lower(rtrim(cast(al.AluRA as varchar(100)))) as Login,
 					   rtrim(p.PesNome) as Nome,  
@@ -52,7 +52,7 @@
 				",
 
 	"sql_update" :
-				"select al.AluMatricula as Id, 
+				"select al.AluMatricula as id, 
 					   p.PesCodigoPessoa as Codigo, 
 					   lower(rtrim(cast(al.AluRA as varchar(100)))) as Login,
 					   rtrim(p.PesNome) as Nome,  

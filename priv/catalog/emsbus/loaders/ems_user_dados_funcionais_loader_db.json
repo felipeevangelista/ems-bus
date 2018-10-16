@@ -17,7 +17,7 @@
 	"enable" : false,
 	"sql_load" : 
 				"select 
-					df.MatSipes as id,
+					df.MatSipes as Id,
 					u.UsuId as user_id, 
 					Isnull(ca.categocargo, 4) as type, 
 					0 as subtype,
@@ -38,7 +38,7 @@
                 ",
 	"sql_update" : 
 				"select 
-					df.MatSipes as id,
+					df.MatSipes as Id,
 					u.UsuId as user_id, 
 					Isnull(ca.categocargo, 4) as type, 
 					0 as subtype,

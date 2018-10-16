@@ -17,7 +17,7 @@
 	"enable" : false,
 	"sql_load_packet_length" : 0,
 	"sql_load" :
-			"select s.SisId as Id,
+			"select s.SisId as id,
 			   rtrim(s.SisSistema) as Name,
 			   coalesce(s.SisAuthSecret, 'CPD') as Secret,
 			   rtrim(s.SisUrl) as RedirectUri,
@@ -30,7 +30,7 @@
 			from BDAcesso.dbo.TB_Sistemas s
 			",
 	"sql_update" :
-			"select s.SisId as Id,
+			"select s.SisId as id,
 			   rtrim(s.SisSistema) as Name,
 			   coalesce(s.SisAuthSecret, 'CPD') as Secret,
 			   rtrim(s.SisUrl) as RedirectUri,
