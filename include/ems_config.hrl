@@ -256,6 +256,52 @@
 
 
 
+% Código de cores
+-ifdef(win32_plataform).
+
+-define(WARN_MESSAGE,   		<<"\033[01;33mWARN  \033[0m">>).
+-define(INFO_MESSAGE,   		<<"\033[01;33mINFO  \033[0m">>).
+-define(ERROR_MESSAGE,  		<<"\033[01;33mERROR \033[0m">>).
+-define(DEBUG_MESSAGE,  		<<"\033[01;33mDEBUG  \033[0m">>).
+-define(ALERT_MESSAGE,  		<<"\033[01;33mINFO  \033[0m">>).
+-define(LIGHT_GREEN_COLOR,    	<<"\033[01;32m">>).
+-define(GREEN_COLOR, 			<<"\033[0;32m">>).
+-define(TAB_GREEN_COLOR, 		<<"\n\t\033[0;32m">>).
+-define(SPACE_GREEN_COLOR, 		<<" \033[0;32m">>).
+-define(WHITE_COLOR, 			<<"\033[0m">>).
+-define(WHITE_SPACE_COLOR, 		<<"\033[0m  ">>).
+-define(WHITE_BRK_COLOR,		<<"\033[0m\n">>).
+-define(WHITE_PARAM_COLOR,		<<"\033[0m: ">>).
+-define(RED_COLOR, 				<<"\033[0;31m">>).
+-define(WARN_COLOR, 			<<"\033[0;33m">>).
+-define(DEBUG_COLOR, 			<<"\033[0;36m">>).
+-define(BLUE_COLOR, 			<<"\033[01;34m">>).
+-define(BLUE_SPACE_COLOR, 		<<"\033[01;34m ">>).
+
+-else.
+
+-define(WARN_MESSAGE,   		<<"\033[01;33mWARN  \033[0m">>).
+-define(INFO_MESSAGE,   		<<"\033[01;33mINFO  \033[0m">>).
+-define(ERROR_MESSAGE,  		<<"\033[01;33mERROR \033[0m">>).
+-define(DEBUG_MESSAGE,  		<<"\033[01;33mDEBUG  \033[0m">>).
+-define(ALERT_MESSAGE,  		<<"\033[01;33mINFO  \033[0m">>).
+-define(LIGHT_GREEN_COLOR,    	<<"\033[01;32m">>).
+-define(GREEN_COLOR, 			<<"\033[0;32m">>).
+-define(TAB_GREEN_COLOR, 		<<"\n\t\033[0;32m">>).
+-define(SPACE_GREEN_COLOR, 		<<" \033[0;32m">>).
+-define(WHITE_COLOR, 			<<"\033[0m">>).
+-define(WHITE_SPACE_COLOR, 		<<"\033[0m  ">>).
+-define(WHITE_BRK_COLOR,		<<"\033[0m\n">>).
+-define(WHITE_PARAM_COLOR,		<<"\033[0m: ">>).
+-define(RED_COLOR, 				<<"\033[0;31m">>).
+-define(WARN_COLOR, 			<<"\033[0;33m">>).
+-define(DEBUG_COLOR, 			<<"\033[0;36m">>).
+-define(BLUE_COLOR, 			<<"\033[01;34m">>).
+-define(BLUE_SPACE_COLOR, 		<<"\033[01;34m ">>).
+
+-endif.
+
+
 %  Definição para o arquivo de configuração
 -record(config, {cat_host_alias :: map(),							%% Lista (Chave-Valor) com os names alternativos para os hosts. Ex.: ["negocio01", "192.168.0.103", "negocio02", "puebla"]
 				 cat_host_search,									%% Lista de hosts para pesquisar os serviços

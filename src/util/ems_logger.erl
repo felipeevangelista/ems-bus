@@ -228,56 +228,56 @@ checkpoint() ->
 format_info(Message) when is_list(Message) ->	
 	format_info(list_to_binary(Message));
 format_info(Message) ->	
-	Message2 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message, <<"\n">>]),
+	Message2 = iolist_to_binary([?INFO_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message, <<"\n">>]),
 	io:format(Message2).
 
 format_info(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	Message3 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message2, <<"\n">>]),
+	Message3 = iolist_to_binary([?INFO_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message2, <<"\n">>]),
 	io:format(Message3).
 
 format_warn(Message) when is_list(Message) ->	
 	format_warn(list_to_binary(Message));
 format_warn(Message) ->	
-	Message2 = iolist_to_binary([<<"\033[01;33mWARN  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;33m">>, Message, <<"\033[0m\n">>]),
+	Message2 = iolist_to_binary([?WARN_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?WARN_COLOR, Message, ?WHITE_BRK_COLOR]),
 	io:format(Message2).
 
 format_warn(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	Message3 = iolist_to_binary([<<"\033[01;33mWARN  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;33m">>, Message2, <<"\033[0m\n">>]),
+	Message3 = iolist_to_binary([?WARN_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?WARN_COLOR, Message2, ?WHITE_BRK_COLOR]),
 	io:format(Message3).
 
 format_error(Message) when is_list(Message) ->	
 	format_error(list_to_binary(Message));
 format_error(Message) ->	
-	Message2 = iolist_to_binary([<<"\033[01;33mERROR \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;31m">>, Message, <<"\033[0m\n">>]),
-	io:format(Message2).
+	Message2 = iolist_to_binary([?ERROR_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?RED_COLOR, Message, ?WHITE_BRK_COLOR]),
+	io:format(Message2).																							
 
 format_error(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	Message3 = iolist_to_binary([<<"\033[01;33mERROR \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;31m">>, Message2, <<"\033[0m\n">>]),
+	Message3 = iolist_to_binary([?ERROR_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?RED_COLOR, Message2, ?WHITE_BRK_COLOR]),
 	io:format(Message3).
 
 format_debug(Message) when is_list(Message) ->	
 	format_debug(list_to_binary(Message));
 format_debug(Message) ->	
-	Message2 = iolist_to_binary([<<"\033[01;33mDEBUG  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;36m">>, Message, <<"\033[0m\n">>]),
+	Message2 = iolist_to_binary([?DEBUG_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?DEBUG_COLOR, Message, ?WHITE_BRK_COLOR]),
 	io:format(Message2).
 
 format_debug(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	Message3 = iolist_to_binary([<<"\033[01;33mDEBUG  \033[0m">>,  <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, <<"\033[00;36m">>, Message2, <<"\033[0m\n">>]),
+	Message3 = iolist_to_binary([?DEBUG_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?DEBUG_COLOR, Message2, ?WHITE_BRK_COLOR]),
 	io:format(Message3).
 
 format_alert(Message) when is_list(Message) ->	
 	format_alert(list_to_binary(Message));
 format_alert(Message) ->	
-	Message2 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message, <<"\n">>]),
+	Message2 = iolist_to_binary([?ALERT_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message, <<"\n">>]),
 	io:format(Message2).
 
 format_alert(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	Message3 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_util:timestamp_binary(), <<"\033[0m  ">>, Message2, <<"\n">>]),
+	Message3 = iolist_to_binary([?ALERT_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message2, <<"\n">>]),
 	io:format(Message3).
 
 
@@ -530,16 +530,16 @@ write_msg(Tipo, Msg, State = #state{log_level = Level, log_ult_msg = UltMsg})  -
 			case Tipo of
 				info  -> 
 					ems_db:inc_counter(ems_logger_write_info),
-					Msg1 = iolist_to_binary([<<"\033[01;33mINFO  \033[0m">>,   <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, Msg, <<"\n">>]);
+					Msg1 = iolist_to_binary([?INFO_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, Msg, <<"\n">>]);
 				error -> 
 					ems_db:inc_counter(ems_logger_write_error),
-					Msg1 = iolist_to_binary([<<"\033[01;33mERROR \033[0m">>, <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, <<"\033[0;31m">>, Msg, <<"\033[0m\n">>]);
+					Msg1 = iolist_to_binary([?ERROR_MESSAGE, ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?RED_COLOR, Msg, ?WHITE_BRK_COLOR]);
 				warn  -> 
 					ems_db:inc_counter(ems_logger_write_warn),
-					Msg1 = iolist_to_binary([<<"\033[01;33mWARN  \033[0m">>,  <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, <<"\033[00;33m">>, Msg, <<"\033[0m\n">>]);
+					Msg1 = iolist_to_binary([?WARN_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?WARN_COLOR, Msg, ?WHITE_BRK_COLOR]);
 				debug -> 
 					ems_db:inc_counter(ems_logger_write_debug),
-					Msg1 = iolist_to_binary([<<"\033[01;33mDEBUG \033[0m">>, <<"\033[01;32m">>, ems_clock:local_time_str(), <<"\033[0m  ">>, <<"\033[0;36m">>, Msg, <<"\033[0m\n">>])
+					Msg1 = iolist_to_binary([?DEBUG_MESSAGE, ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?DEBUG_COLOR, Msg, ?WHITE_BRK_COLOR])
 			end,
 			case (Level == error andalso Tipo /= error) andalso (Tipo /= debug) of
 				true ->
@@ -724,26 +724,25 @@ do_log_request(Request = #request{rid = RID,
 				end,
 				TextData = 
 					[
-					   <<"\033[01;34m">>, Type, <<"\033[0m ">>,
-					   Uri, <<" ">>,
-					   atom_to_binary(Version, utf8), <<" ">>,
-					   <<" {\n\t\033[0;32mRID\033[0m: ">>, integer_to_binary(RID), 
-					   <<"  (\033[0;32mReqHash\033[0m: ">>, integer_to_binary(ReqHash), <<")">>, 
+					   ?BLUE_COLOR, Type, ?WHITE_SPACE_COLOR, Uri, <<" ">>, atom_to_binary(Version, utf8), <<" ">>,
+					   ?TAB_GREEN_COLOR, <<"RID">>, ?WHITE_PARAM_COLOR, integer_to_binary(RID), 
+					   <<"  (">>, ?GREEN_COLOR, <<"ReqHash">>, ?WHITE_PARAM_COLOR, integer_to_binary(ReqHash), <<")">>, 
 					   case UrlMasked of
-							true -> [<<"\n\t\033[0;32mUrlMasked\033[0m: ">>, Url];
+							true -> [?TAB_GREEN_COLOR, <<"UrlMasked">>, ?WHITE_PARAM_COLOR, Url];
 							false -> <<>>
 					   end,
-					   <<"\n\t\033[0;32mAccept\033[0m: ">>, Accept,
-					   <<"\n\t\033[0;32mContent-Type in\033[0m: ">>, ContentTypeIn, <<"   \033[0;32mout\033[0m: ">>, ContentTypeOut,
-						<<"\n\t\033[0;32mHost\033[0m: ">>, Host, <<"  \033[0;32mPeer\033[0m: ">>, IpBin, 
-							<<"  \033[0;32mReferer\033[0m: ">>, case Referer of
+					   ?TAB_GREEN_COLOR, <<"Accept">>, ?WHITE_PARAM_COLOR, Accept,
+					   ?TAB_GREEN_COLOR, <<"Content-Type in">>, ?WHITE_PARAM_COLOR, ContentTypeIn, ?SPACE_GREEN_COLOR, <<"out">>, ?WHITE_PARAM_COLOR, ContentTypeOut,
+					   ?TAB_GREEN_COLOR, <<"Host">>, ?WHITE_PARAM_COLOR, Host, ?SPACE_GREEN_COLOR, <<"Peer">>, ?WHITE_PARAM_COLOR, IpBin, 
+					   ?SPACE_GREEN_COLOR, <<"Referer">>, ?WHITE_PARAM_COLOR, 
+												case Referer of
 													undefined -> <<>>;
 													_ -> Referer
 												end,
-						<<"\n\t\033[0;32mUser-Agent\033[0m: ">>, ems_util:user_agent_atom_to_binary(UserAgent), <<"  \033[0;32mVersion\033[0m: ">>, UserAgentVersion,	
-						<<"\n\t\033[0;32mService\033[0m: ">>, ServiceService,
-						<<"\n\t\033[0;32mParams\033[0m: ">>, list_to_binary(io_lib:format("~p", [Params])), 
-						<<"\n\t\033[0;32mQuery\033[0m: ">>, list_to_binary(io_lib:format("~p", [Query])), 
+						?TAB_GREEN_COLOR, <<"User-Agent">>, ?WHITE_PARAM_COLOR, ems_util:user_agent_atom_to_binary(UserAgent), ?SPACE_GREEN_COLOR, <<"Version">>, ?WHITE_PARAM_COLOR, UserAgentVersion,	
+						?TAB_GREEN_COLOR, <<"Service">>, ?WHITE_PARAM_COLOR, ServiceService,
+						?TAB_GREEN_COLOR, <<"Params">>, ?WHITE_PARAM_COLOR, list_to_binary(io_lib:format("~p", [Params])), 
+						?TAB_GREEN_COLOR, <<"Query">>, ?WHITE_PARAM_COLOR, list_to_binary(io_lib:format("~p", [Query])), 
 						case (ShowPayload orelse 
 							   Reason =/= ok orelse 
 							   ShowPayloadService orelse 
@@ -756,13 +755,13 @@ do_log_request(Request = #request{rid = RID,
 														true -> Payload;
 														false -> iolist_to_binary(io_lib:format("~p",[Payload]))
 										  		    end,
-									     [<<"\n\t\033[0;32mPayload\033[0m: ">>, integer_to_list(ContentLength), 
-									      <<" bytes  \033[0;32mContent\033[0m: \033[1;34m">>, Payload2, <<"\033[0m">>,
+									     [?TAB_GREEN_COLOR, <<"Payload">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLength), 
+									      <<" bytes ">>, ?GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, Payload2, ?WHITE_COLOR,
 											 case Reason =/= ok of
-												true -> <<"\033[0;31m">>;
+												true -> ?RED_COLOR;
 												false -> <<>>
 											 end]; 
-									false -> [<<"\n\t\033[0;32mPayload\033[0m: ">>, integer_to_list(ContentLength), <<" bytes  \033[0;32mContent\033[0m: large content">>]
+									false -> [?TAB_GREEN_COLOR, <<"Payload">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLength), <<" bytes">>, ?SPACE_GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, <<"large content">>]
 								end;
 							false -> <<>>
 						end,
@@ -780,13 +779,13 @@ do_log_request(Request = #request{rid = RID,
 							     case ContentLengthResponse > 0 of
 									true ->
 										case ContentLengthResponse =< ShowResponseMaxLength of
-											true -> [<<"\n\t\033[0;32mResponse\033[0m: ">>, integer_to_list(ContentLengthResponse), 
-													 <<" bytes  \033[0;32mContent\033[0m: \033[1;34m">>, ResponseData2, <<"\033[0m">>,
+											true -> [?TAB_GREEN_COLOR, <<"Response">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLengthResponse), 
+													 <<" bytes  ">>, ?GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, ResponseData2, ?WHITE_COLOR,
 													 case Reason =/= ok of
-														true -> <<"\033[0;31m">>;
+														true -> ?RED_COLOR;
 														false -> <<>>
 													 end]; 
-											false -> [<<"\n\t\033[0;32mResponse\033[0m: ">>, integer_to_list(ContentLengthResponse), <<" bytes  \033[0;32mContent\033[0m: Large content">>]
+											false -> [?TAB_GREEN_COLOR, <<"Response">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLengthResponse), <<" bytes  ">>, ?GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, <<"Large content">>]
 										end;
 									false -> <<>>
 								end;
@@ -802,39 +801,39 @@ do_log_request(Request = #request{rid = RID,
 							   case ResultCacheMin > 0 of
 									true -> 
 									   case ResultCache of 
-											true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  \033[0;33m<<RID: ">>, integer_to_binary(ResultCacheRid), <<">>\033[0m">>];
-											false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)">>] 
+											true ->  [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  ">>, ?WARN_COLOR, <<" <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>, ?WHITE_COLOR];
+											false -> [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)">>] 
 										end;
 									false ->
 									   case ResultCacheSec > 0 of
 											true -> 
 											   case ResultCache of 
-													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  \033[0;33m<<RID: ">>, integer_to_binary(ResultCacheRid), <<">>\033[0m">>];
-													false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)">>] 
+													true ->  [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  ">>, ?WARN_COLOR, <<" <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>, ?WHITE_COLOR];
+													false -> [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)">>] 
 												end;
 											false ->
 											   case ResultCache of 
-													true ->  [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms \033[0;33m<<RID: ">>, integer_to_binary(ResultCacheRid), <<">>\033[0m">>];
-													false -> [<<"\n\t\033[0;32mResult-Cache\033[0m: ">>, integer_to_list(ResultCacheService), <<"ms">>]
+													true ->  [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms ">>, ?WARN_COLOR, <<" <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>, ?WHITE_COLOR];
+													false -> [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms">>]
 												end
 										end
 								end;
 							false -> <<>>
 						end,
-					    <<"\n\t\033[0;32mCache-Control In\033[0m: ">>, CacheControl,
-						<<"  \033[0;32mETag\033[0m: ">>, case Etag of
+					    ?TAB_GREEN_COLOR, <<"Cache-Control In">>, ?WHITE_PARAM_COLOR, CacheControl,
+						?SPACE_GREEN_COLOR, <<"ETag">>, ?WHITE_PARAM_COLOR, case Etag of
 											undefined -> <<>>;
 											_ -> Etag
 										end,
-						<<"\n\t\033[0;32mIf-Modified-Since\033[0m: ">>, case IfModifiedSince of
+						?TAB_GREEN_COLOR, <<"If-Modified-Since">>, ?WHITE_PARAM_COLOR, case IfModifiedSince of
 															undefined -> <<>>;
 															_ -> IfModifiedSince
 												   end,
-					   <<"  \033[0;32mIf-None-Match\033[0m: ">>, case IfNoneMatch of
+					   ?SPACE_GREEN_COLOR, <<"If-None-Match">>, ?WHITE_PARAM_COLOR, case IfNoneMatch of
 													undefined -> <<>>;
 													_ -> IfNoneMatch
 										   end,
-					   <<"\n\t\033[0;32mAuthorization type\033[0m: ">>, case AuthorizationService of
+					   ?TAB_GREEN_COLOR, <<"Authorization type">>, ?WHITE_PARAM_COLOR, case AuthorizationService of
 															basic -> 
 																case Authorization of
 																	<<>> -> <<"basic, oauth2">>;
@@ -845,47 +844,50 @@ do_log_request(Request = #request{rid = RID,
 													   end,
 					   case Authorization of
 							<<>> -> <<>>;
-							_ -> [<<" <<">>, Authorization, <<">>">>]
+							_ -> [?WARN_COLOR, <<" <<">>, Authorization, <<">>">>, ?WHITE_COLOR]
 					   end,
 					   case GrantType of
 									undefined -> <<>>;
-									_ -> [<<"\n\t\033[0;32mOAuth2\033[0m  \033[0;32mgrant-type\033[0m: ">>, GrantType]
+									_ -> [?TAB_GREEN_COLOR, <<"OAuth2">>, <<" ">>, ?GREEN_COLOR, <<"grant-type">>, ?WHITE_PARAM_COLOR, GrantType]
 					   end,
 					   case AccessToken of
 							undefined -> <<>>;
-							_ ->  [<<"  \033[0;32mtoken\033[0m: ">>, AccessToken]
+							_ ->  [?SPACE_GREEN_COLOR, <<"token">>, ?WHITE_PARAM_COLOR, AccessToken]
 					   end,
 					   case RefreshToken of
 							undefined -> <<>>;
-							_ ->  [<<"  \033[0;32mrefresh token\033[0m: ">>, RefreshToken]
+							_ ->  [?SPACE_GREEN_COLOR, <<"refresh token">>, ?WHITE_PARAM_COLOR, RefreshToken]
 					   end,
 					   case Scope of
 							undefined -> <<>>;
-							_ -> [<<"  \033[0;32mscope\033[0m: ">>, Scope]
+							_ -> [?SPACE_GREEN_COLOR, <<"scope">>, ?WHITE_PARAM_COLOR, Scope]
 					   end,
-					  <<"\n\t\033[0;32mClient\033[0m: ">>, case Client of
+					  ?TAB_GREEN_COLOR, <<"Client">>, ?WHITE_PARAM_COLOR, 
+									  case Client of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ -> [integer_to_binary(Client#client.id), <<" ">>, Client#client.name]
 									   end,
-					   <<"   \033[0;32mUser\033[0m: ">>, case User of
+					   ?SPACE_GREEN_COLOR, <<"User">>, ?WHITE_PARAM_COLOR, 
+										case User of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
 										 end,
-					   <<"\n\t\033[0;32mNode\033[0m: ">>, case Node of
+					   ?TAB_GREEN_COLOR, <<"Node">>, ?WHITE_PARAM_COLOR, 
+										case Node of
 											undefined -> <<>>;
 											_ -> Node
 										 end,
 					   case Filename of
 							undefined -> <<>>;
-							_ -> [<<"\n\t\033[0;32mFilename\033[0m: ">>, Filename]
+							_ -> [?TAB_GREEN_COLOR, <<"Filename">>, ?WHITE_PARAM_COLOR, Filename]
 						end,
 						case Code of
-							302 ->  [<<"\n\t\033[0;32mRedirect-to\033[0m: ">>, maps:get(<<"location">>, ResponseHeader, <<>>)];
+							302 ->  [?TAB_GREEN_COLOR, <<"Redirect-to">>, ?WHITE_PARAM_COLOR, maps:get(<<"location">>, ResponseHeader, <<>>)];
 							_ -> <<>>
 						end,
-					   <<"\n\t\033[0;32mStatus\033[0m: ">>, StatusText, <<"\n}">>],
+					   ?TAB_GREEN_COLOR, <<"Status">>, ?WHITE_PARAM_COLOR, StatusText, <<"\n}">>],
 					   
 				TextBin = iolist_to_binary(TextData),
 				NewState = case Code >= 400 of
