@@ -58,7 +58,7 @@
 							ON c.codcargo = ca.codcargo 
 				where df.MatSipes is not null and (u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
 					  u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?) 
-				order by .PesDataAlteracao desc, u.UsuDataAlteracao desc
+				order by p.PesDataAlteracao desc, u.UsuDataAlteracao desc
                 ",
 
 			
