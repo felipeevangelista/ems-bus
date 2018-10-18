@@ -7,7 +7,7 @@
 	"url": "/emsbus/ems_user_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 60000,
+	"update_checkpoint" : 20000,
 	"datasource" : "ds_ems_user_loader",
 	"start_timeout" : 3000,
 	"middleware" : "ems_user_loader_middleware",
@@ -53,21 +53,18 @@
 				   p.PesNomePai, 
 				   p.PesNomeMae, 
 				   cast(p.PesNacionalidade as int) as nacionalidade, 
-				   (select top 1 * 
-					from (select lower(rtrim(em.EmaEmail)) as email 
-						  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-								 join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-						  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
-							and em.EmaTipo = 1 
-							and em.EmaEmail LIKE '_%@__%.__%' 
-						  union all 
-						  select lower(rtrim(em.EmaEmail)) as email 
-						  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-								 join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-						  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
-							and em.EmaEmail LIKE '_%@__%.__%' 
-						 ) tab_email 
-				   ) as email, 
+				   coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
+							  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+								   join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+						  	  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
+							    and em.EmaTipo = 1 
+							    and em.EmaEmail LIKE '_%@__%.__%') 
+							, 
+							 (select top 1 lower(rtrim(em.EmaEmail)) as email 
+							  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+								   join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+							  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
+							    and em.EmaEmail LIKE '_%@__%.__%') ) as email, 
 				   1 as Type, 
 				   0 as SubType, 
 				   case UsuSituacao when 1 then 1 else 0 end as Active, 
@@ -127,21 +124,18 @@
 				   p.PesNomePai, 
 				   p.PesNomeMae, 
 				   cast(p.PesNacionalidade as int) as nacionalidade, 
-				   (select top 1 * 
-					from (select lower(rtrim(em.EmaEmail)) as email 
-						  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-								 join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-						  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
-							and em.EmaTipo = 1 
-							and em.EmaEmail LIKE '_%@__%.__%' 
-						  union all 
-						  select lower(rtrim(em.EmaEmail)) as email 
-						  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-								 join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-						  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
-							and em.EmaEmail LIKE '_%@__%.__%' 
-						 ) tab_email 
-				   ) as email, 
+				   coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
+							  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+								   join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+						  	  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
+							    and em.EmaTipo = 1 
+							    and em.EmaEmail LIKE '_%@__%.__%') 
+							, 
+							 (select top 1 lower(rtrim(em.EmaEmail)) as email 
+							  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+								   join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+							  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
+							    and em.EmaEmail LIKE '_%@__%.__%') ) as email, 
 				   1 as Type, 
 				   0 as SubType, 
 				   case UsuSituacao when 1 then 1 else 0 end as Active, 
@@ -181,7 +175,8 @@
 	"fields" : ["id", "codigo", "login", "name", "cpf", "password", 
 				"passwd_crypto", "endereco", "complemento_endereco", 
 				"bairro", "cidade", "uf", "cep", "rg", "data_nascimento", 
-				"sexo", "telefone", "celular", "ddd", "nome_pai", "nome_mae", "nacionalidade", 
-				"email", "type", "subtype", "active", "dt_expire_password"]
+				"sexo", "telefone", "celular", "ddd", "nome_pai", "nome_mae", 
+				"nacionalidade", "email", "type", "subtype", 
+				"active", "dt_expire_password"]
 				
 }

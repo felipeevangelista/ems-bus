@@ -57,31 +57,6 @@ get_filename() ->
 	Conf = ems_config:getConfig(),
 	Conf#config.user_endereco_path_search.
 	
-
-update_endereco_tabela_users(Endereco, SourceType, CodigoPessoa) ->
-	UserTable = ems_user:get_table(SourceType),
-	case ems_user:find_by_codigo_pessoa(UserTable, CodigoPessoa) of
-		{ok, Users} -> 
-			update_endereco_tabela_users_(Users, Endereco, UserTable);
-		_ -> ok
-	end.
-
-
--spec update_endereco_tabela_users_(list(#user{}), #user_endereco{}, atom()) -> ok.
-update_endereco_tabela_users_([], _, _) -> ok;
-update_endereco_tabela_users_([User|UserT], 
-							   Endereco, 
-							   UserTable) -> 
-	User2 = User#user{endereco = Endereco#user_endereco.endereco,
-					  complemento_endereco = Endereco#user_endereco.complemento,
-					  bairro = Endereco#user_endereco.bairro,
-					  cidade = Endereco#user_endereco.cidade,
-					  uf = Endereco#user_endereco.uf,
-					  cep = Endereco#user_endereco.cep},
-	mnesia:dirty_write(UserTable, User2),
-	ems_db:delete(user_cache_lru, User2#user.id),
-	update_endereco_tabela_users_(UserT, Endereco, UserTable).
-	
 	
 -spec insert_or_update(map() | tuple(), tuple(), #config{}, atom(), insert | update) -> {ok, #service{}, atom(), insert | update} | {ok, skip} | {error, atom()}.
 insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
@@ -92,10 +67,6 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 				case ems_user_endereco:find(Table, Id) of
 					{error, enoent} -> 
 						Record = NewRecord#user_endereco{ctrl_insert = CtrlDate},
-						update_endereco_tabela_users(Record, case SourceType of
-																db -> user_db;
-																fs -> user_fs
-															end, CodigoPessoa),
 						{ok, Record, Table, insert};
 					{ok, CurrentRecord = #user_endereco{ctrl_hash = CurrentCtrlHash}} ->
 						case CtrlHash =/= CurrentCtrlHash of
@@ -116,18 +87,12 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_modified = NewRecord#user_endereco.ctrl_modified,
 												 ctrl_hash = NewRecord#user_endereco.ctrl_hash
 											},
-								update_endereco_tabela_users(Record, case SourceType of
-																db -> user_db;
-																fs -> user_fs
-														  end, CodigoPessoa),
-
 								{ok, Record, Table, update};
 							false -> {ok, skip}
 						end
 				end;
 			Error -> Error
 		end
-
 	catch
 		_Exception:Reason -> {error, Reason}
 	end.
