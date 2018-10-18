@@ -52,20 +52,18 @@
 				p.PesNomePai,
 				p.PesNomeMae,
 				cast(p.PesNacionalidade as int) as nacionalidade,
-				(select top 1 * 
-				 from (select lower(rtrim(em.EmaEmail)) as email 
-					   from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-							  join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-					   where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
-						 and em.EmaTipo = 1 
-						 and em.EmaEmail LIKE '_%@__%.__%' 
-					   union all 
-					   select lower(rtrim(em.EmaEmail)) as email 
-					   from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-							  join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-					   where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
-						 and em.EmaEmail LIKE '_%@__%.__%' 
-					  ) tab_email 
+				coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
+					and em.EmaTipo = 1 
+					and em.EmaEmail LIKE '_%@__%.__%') 
+				, 
+				(select top 1 lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
+					and em.EmaEmail LIKE '_%@__%.__%') 
 				) as email, 
 				3 as Type,  
 				al.AluNivel as SubType,	
@@ -128,21 +126,19 @@
 				p.PesNomePai,
 				p.PesNomeMae,
 				cast(p.PesNacionalidade as int) as nacionalidade,
-				(select top 1 * 
-				 from (select lower(rtrim(em.EmaEmail)) as email 
-					   from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-							  join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-					   where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
-						 and em.EmaTipo = 1 
-						 and em.EmaEmail LIKE '_%@__%.__%' 
-					   union all 
-					   select lower(rtrim(em.EmaEmail)) as email 
-					   from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-							  join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
-					   where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
-						 and em.EmaEmail LIKE '_%@__%.__%' 
-					  ) tab_email 
-				) as email, 
+				coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
+					and em.EmaTipo = 1 
+					and em.EmaEmail LIKE '_%@__%.__%') 
+				, 
+					(select top 1 lower(rtrim(em.EmaEmail)) as email 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
+						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
+					and em.EmaEmail LIKE '_%@__%.__%') 
+				) as email,
 				3 as Type,  
 				al.AluNivel as SubType,	
 				1 as ActivePessoa,
@@ -168,7 +164,14 @@
 			   			on addr.PFEPesCodigoPessoa = al.AluPesCodigoPessoa 
 				where (al.AluDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
 					   al.AluDataCadastramento >= ? or p.PesDataCadastramento >= ?) and
-					   al.AluPerSaiUnB = 99999 and al.alunivel not in  (9,10,11) and al.AluSenha is not null
+					   al.AluPerSaiUnB = 99999 and al.alunivel not in  (9,10,11) and al.AluSenha is not null 
+					and exists ( select 1 
+					   from BDPessoa.dbo.TB_PessoaFisicaEmail pfe  
+						   join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo  
+					   where em.EmaTipo = 1 
+						 and em.EmaEmail LIKE '_%@__%.__%' 
+						 and pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 
+						 and (em.EmaDataAlteracao >= ? or em.EmaDataCadastramento >= ?) ) 
 				",
 			
 	"fields" : ["id", "codigo", "login", "name", "cpf", "password", 
