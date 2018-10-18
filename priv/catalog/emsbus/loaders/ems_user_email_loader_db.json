@@ -7,7 +7,7 @@
 	"url": "/emsbus/ems_user_email_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 3600000,
+	"update_checkpoint" : 120000,
 	"check_remove_records" : true,
 	"check_remove_records_checkpoint" : 14400000,
 	"datasource" : "ds_ems_user_loader",
@@ -17,7 +17,7 @@
 	"pool_size" : 1,
 	"pool_max" : 1,
 	"enable" : false,
-	"sql_load_packet_length" : 4000,
+	"sql_load_packet_length" : 3000,
 	"sql_load" : 
 				"select 
 				   em.EmaCodigo as id,
@@ -36,7 +36,9 @@
 				from BDPessoa.dbo.TB_PessoaFisicaEmail pfe  
 					join BDPessoa.dbo.TB_Email em 
 						on pfe.PFmEmaCodigo = em.EmaCodigo 
-				where (em.EmaDataAlteracao >= ? or em.EmaDataCadastramento >= ?) and em.EmaEmail LIKE '_%@__%.__%'",
+				where (em.EmaDataAlteracao >= ? or em.EmaDataCadastramento >= ?) and em.EmaEmail LIKE '_%@__%.__%' 
+				order by em.EmaDataAlteracao desc 
+				",
 	"fields" : ["id", "codigo", "email"]
 				
 }

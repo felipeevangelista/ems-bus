@@ -564,10 +564,10 @@ do_load_data_pump(CtrlInsert,
 			false ->
 				case Offset > 1 of
 					true ->	
-						SqlLoad2 = io_lib:format("select * from ( select *, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
+						SqlLoad2 = io_lib:format("select distinct * from ( select *, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
 					false -> 
 						% Quando o offset é 1, usamos select top para obter um pouco mais de performance na primeira query
-						SqlLoad2 = io_lib:format("select top ~p * from ( ~s ) _t_sql order by Id", [Offset+SqlLoadPacketLength-1, SqlLoad])
+						SqlLoad2 = io_lib:format("select distinct  top ~p * from ( ~s ) _t_sql order by Id", [Offset+SqlLoadPacketLength-1, SqlLoad])
 				end
 		end,
 		SqlLoad3 = re:replace(SqlLoad2, "\\s+", " ", [global,{return,list}]),
@@ -619,6 +619,7 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 						{{Year, Month, Day}, {Hour, Min, _}} = LastUpdate,
 						DateInitial = {{Year, Month, Day}, {Hour, Min, 0}},
 						Params = [{sql_timestamp, [DateInitial]},
+								  {sql_timestamp, [DateInitial]},
 								  {sql_timestamp, [DateInitial]},
 								  {sql_timestamp, [DateInitial]},
 								  {sql_timestamp, [DateInitial]},

@@ -16,7 +16,7 @@
 	"pool_max" : 1,
 	"enable" : false,
 	"source_type" : "user_aluno_inativo_db",
-	"sql_load_packet_length" : 4000,
+	"sql_load_packet_length" : 2000,
 	"sql_load" : 
 				"select al.AluMatricula as id, 
 				p.PesCodigoPessoa as Codigo, 

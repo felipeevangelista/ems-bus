@@ -7,7 +7,7 @@
 	"url": "/emsbus/ems_user_endereco_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",    
-	"update_checkpoint" : 3600000,
+	"update_checkpoint" : 120000,
 	"check_remove_records" : true,
 	"check_remove_records_checkpoint" : 14400000,
 	"datasource" : "ds_ems_user_loader",
@@ -17,7 +17,7 @@
 	"pool_size" : 1,
 	"pool_max" : 1,
 	"enable" : false,
-	"sql_load_packet_length" : 4000,
+	"sql_load_packet_length" : 2000,
 	"sql_load" : 
 				"select 
 				   e.EndCodigo as id,
@@ -51,7 +51,8 @@
 					   on pfe.PFeEndCodigo = e.EndCodigo 
 					join BDTabelaApoio.dbo.TB_Municipio mu 
 					   on e.EndLocalidade = mu.MunCodigo 
-				where e.EndDataAlteracao >= ? or e.EndDataCadastramento >= ?",
+				where e.EndDataAlteracao >= ? or e.EndDataCadastramento >= ? 
+				order by e.EndDataAlteracao desc",
 
 			
 	"fields" : ["id", "codigo", "endereco", "complemento", "bairro", "uf", "cidade", "cep", "type"]

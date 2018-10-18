@@ -7,14 +7,15 @@
 	"url": "/emsbus/ems_user_dados_funcionais_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 3600000,
+	"update_checkpoint" : 120000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 10000,
+	"start_timeout" : 12000,
 	"middleware" : "ems_user_dados_funcionais_loader_middleware",
 	"group" : [],
 	"pool_size" : 1,
 	"pool_max" : 1,
 	"enable" : false,
+	"sql_load_packet_length" : 3000,
 	"sql_load" : 
 				"select 
 					df.MatSipes as Id,
@@ -56,7 +57,8 @@
 					left join sipes.dbo.cargos ca 
 							ON c.codcargo = ca.codcargo 
 				where df.MatSipes is not null and (u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
-					  u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?)
+					  u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?) 
+				order by .PesDataAlteracao desc, u.UsuDataAlteracao desc
                 ",
 
 			
