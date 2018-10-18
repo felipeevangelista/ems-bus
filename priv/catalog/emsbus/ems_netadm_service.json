@@ -20,7 +20,6 @@
 		"service" : "ems_netadm_service:restart",
 		"url": "/netadm/restart",
 		"async": "false",
-		"result_cache" : 0,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -35,7 +34,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -49,7 +47,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -63,7 +60,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -77,7 +73,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -91,7 +86,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -105,7 +99,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -119,7 +112,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -133,7 +125,6 @@
 		"async": "false",
 		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -145,8 +136,8 @@
 		"service" : "ems_netadm_service:hostfile",
 		"url": "/netadm/hostfile",
 		"async": "false",
+		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -158,8 +149,8 @@
 		"service" : "ems_netadm_service:hostname",
 		"url": "/netadm/hostname",
 		"async": "false",
+		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -171,8 +162,8 @@
 		"service" : "ems_netadm_service:localhost",
 		"url": "/netadm/localhost",
 		"async": "false",
+		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -184,8 +175,8 @@
 		"service" : "ems_netadm_service:memory",
 		"url": "/netadm/memory",
 		"async": "false",
+		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -199,7 +190,6 @@
 		"result_cache" : 0,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -213,7 +203,6 @@
 		"result_cache" : 0,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -227,7 +216,6 @@
 		"result_cache" : 0,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -241,7 +229,6 @@
 		"result_cache" : 0,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -255,7 +242,6 @@
 		"result_cache" : 0,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -267,7 +253,7 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/netadm/datasource/:id",
 		"type": "GET",
-		"authorization": "basic",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "service_datasource",
@@ -285,7 +271,7 @@
 		"service" : "ems_api_query_service:find",
 		"url": "/netadm/datasource",
 		"type": "GET",
-		"authorization": "basic",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "service_datasource",
@@ -336,7 +322,6 @@
 		"url": "/netadm/loader/stat",
 		"type": "GET",
 		"result_cache" : 0,
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -379,8 +364,8 @@
 		"version": "1.0.0",
 		"service" : "ems_netadm_service:stat_counter",
 		"url": "/netadm/stat/counter",
+		"result_cache" : 0,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -392,7 +377,6 @@
 		"service" : "ems_netadm_service:stat_collect",
 		"url": "/netadm/stat/collect",
 		"type": "POST",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -404,8 +388,8 @@
 		"service" : "ems_api_query_service:find",
 		"url": "/netadm/stat/history",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "stat_counter_hist"

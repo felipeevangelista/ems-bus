@@ -8,6 +8,7 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/client/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
@@ -26,6 +27,7 @@
 		"url": "/auth/client",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
@@ -75,6 +77,7 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/client/fs/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],
@@ -93,6 +96,7 @@
 		"url": "/auth/client/fs",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],

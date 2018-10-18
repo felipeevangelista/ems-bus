@@ -7,6 +7,7 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/netadm/auth/user/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
@@ -37,6 +38,7 @@
 		"url": "/netadm/auth/user",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
@@ -90,6 +92,7 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/netadm/auth/user/lru/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_cache_lru",
@@ -120,6 +123,7 @@
 		"url": "/netadm/auth/user/lru",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_cache_lru",
@@ -173,6 +177,7 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/netadm/auth/user/fs/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_fs",
@@ -203,6 +208,7 @@
 		"url": "/netadm/auth/user/fs",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_fs",
@@ -256,6 +262,7 @@
 		"url": "/netadm/auth/user/:id/history",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_history"],
@@ -306,6 +313,7 @@
 		"url": "/netadm/auth/user/history",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_history"
