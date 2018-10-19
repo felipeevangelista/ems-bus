@@ -81,6 +81,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 				case ems_user:find(SourceType, Id) of
 					{error, enoent} -> 
 						User = NewUser#user{ctrl_insert = CtrlDate},
+						ems_db:delete(user_cache_lru, Id),
 						{ok, User, SourceType, insert};
 					{ok, CurrentUser = #user{ctrl_hash = CurrentCtrlHash}} ->
 						case CtrlHash =/= CurrentCtrlHash of

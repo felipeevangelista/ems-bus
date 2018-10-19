@@ -88,11 +88,12 @@ find_by_codigo_pessoa(Table, Codigo) ->
 	end.
 
 
-find_index_by_login_and_password([], _LoginBin, _LoginSemBarraBin, _PasswordBin, _PassowrdBinCrypto, _PassowrdBinLowerCrypto, _PassowrdBinUpperCrypto, _PasswordStrLower, _PasswordStrUpper) ->
+find_index_by_login_and_password([], _LoginBin, _LoginSemBarraBin, _PasswordBin, _PassowrdBinCrypto, _PassowrdBinLowerCrypto, _PassowrdBinUpperCrypto, _PasswordStrLower, _PasswordStrUpper, _Client) ->
+	ems_data_loader:sync(ems_user_loader_db),
 	{error, access_denied, enoent};
-find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper) ->
+find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client) ->
 	case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
-		[User = #user{password = PasswordUser}|_] -> 
+		[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
 			case PasswordUser =:= PassowrdBinCrypto 
 				 orelse PasswordUser =:= PasswordBin 
 				 orelse PasswordUser =:= PassowrdBinLowerCrypto 
@@ -100,14 +101,35 @@ find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, Password
 				 orelse PasswordUser =:= PassowrdBinUpperCrypto 
 				 orelse PasswordUser =:= PasswordStrUpper of
 					true -> 
-						mnesia:dirty_write(Table, User),
-						{ok, User};
+						ClientName = case Client of
+										undefined -> undefined;
+										_ -> Client#client.name
+									 end,
+						case Table of
+							user_cache_lru ->
+								User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+												  ctrl_login_count = User#user.ctrl_login_count + 1,
+												  ctrl_last_login_client = ClientName},
+								mnesia:dirty_write(user_cache_lru, User2),
+								case CtrlLoginScope of
+									undefined -> ok; % não deveria se está no cache lru
+									_ -> mnesia:dirty_write(CtrlLoginScope, User2)
+								end;
+							_ -> 
+								User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+												  ctrl_login_count = User#user.ctrl_login_count + 1,
+												  ctrl_last_login_scope = Table,
+												  ctrl_last_login_client = ClientName},
+								mnesia:dirty_write(user_cache_lru, User2),
+								mnesia:dirty_write(Table, User2)
+						end,	
+						{ok, User2};
 					false -> 
-						find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper)
+						find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
 			end;
 		_ -> 
 			case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
-				[User = #user{password = PasswordUser}|_] -> 
+				[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
 					case PasswordUser =:= PassowrdBinCrypto 
 						 orelse PasswordUser =:= PasswordBin 
 						 orelse PasswordUser =:= PassowrdBinLowerCrypto 
@@ -115,12 +137,33 @@ find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, Password
 						 orelse PasswordUser =:= PassowrdBinUpperCrypto 
 						 orelse PasswordUser =:= PasswordStrUpper of
 							true -> 
-								mnesia:dirty_write(user_cache_lru, User),
-								{ok, User};
+								ClientName = case Client of
+												undefined -> undefined;
+												_ -> Client#client.name
+											 end,
+								case Table of
+									user_cache_lru ->
+										User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+														  ctrl_login_count = User#user.ctrl_login_count + 1,
+														  ctrl_last_login_client = ClientName},
+										mnesia:dirty_write(user_cache_lru, User2),
+										case CtrlLoginScope of
+											undefined -> ok; % não deveria se está no cache lru
+											_ -> mnesia:dirty_write(CtrlLoginScope, User2)
+										end;
+									_ -> 
+										User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+														  ctrl_login_count = User#user.ctrl_login_count + 1,
+														  ctrl_last_login_scope = Table,
+														  ctrl_last_login_client = ClientName},
+										mnesia:dirty_write(user_cache_lru, User2),
+										mnesia:dirty_write(Table, User2)
+								end,	
+								{ok, User2};
 							false -> 
-								find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper)
+								find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
 					end;
-				_ -> find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper)
+				_ -> find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
 			end
 	end.
 
@@ -155,11 +198,15 @@ find_by_login_and_password(Login, Password, Client)  ->
 			PassowrdBinLowerCrypto = ems_util:criptografia_sha1(PasswordStrLower),
 			PassowrdBinUpperCrypto = ems_util:criptografia_sha1(PasswordStrUpper),
 			case Client of
-				undefined -> LoadersFind = [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
+				undefined -> LoadersFind = ?CLIENT_DEFAULT_SCOPE;
 				_ -> LoadersFind = Client#client.scope
 			end,
 			find_index_by_login_and_password(LoadersFind, 
-											 LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper);
+											 LoginBin, LoginSemBarraBin, 
+											 PasswordBin, PassowrdBinCrypto, 
+											 PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, 
+											 PasswordStrLower, PasswordStrUpper,
+											 Client);
 		false -> 
 			{error, access_denied, einvalid_password_size}
 	end.
@@ -195,7 +242,9 @@ find_by_login(Login) ->
 					case IndexFind(user_aluno_inativo_db) of
 						{error, enoent} -> 
 							case IndexFind(user_fs) of
-								{error, enoent} -> {error, access_denied, enoent};
+								{error, enoent} -> 
+									ems_data_loader:sync(ems_user_loader_db),
+									{error, access_denied, enoent};
 								{ok, Record} -> {ok, Record}
 							end;
 						{ok, Record} -> {ok, Record}
@@ -591,7 +640,11 @@ new_from_map(Map, Conf) ->
 					ctrl_path = CtrlPath,
 					ctrl_file = CtrlFile,
 					ctrl_modified = CtrlModified,
-					ctrl_hash = CtrlHash
+					ctrl_hash = CtrlHash,
+					ctrl_last_login = undefined,
+					ctrl_login_count = 0,
+					ctrl_last_login_scope = undefined,
+					ctrl_last_login_client = undefined
 			}
 		}
 	catch

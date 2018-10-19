@@ -1103,8 +1103,8 @@ replace_vars_with(Subject, Value) -> re:replace(Subject, "{{.+}}", Value, [globa
 
 
 -spec parse_oauth2_scope(binary()) -> list(atom()).
-parse_oauth2_scope(<<>>) -> [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
-parse_oauth2_scope(undefined) -> [user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs];
+parse_oauth2_scope(<<>>) -> ?CLIENT_DEFAULT_SCOPE;
+parse_oauth2_scope(undefined) -> ?CLIENT_DEFAULT_SCOPE;
 parse_oauth2_scope(ScopeBin) ->
 	try
 		Result0 = list_to_atomlist_with_trim(string:tokens(binary_to_list(ScopeBin), ",")),

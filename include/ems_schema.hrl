@@ -50,13 +50,17 @@
 			   nome_mae :: binary(),						%% 27 - nome_ae
 			   nacionalidade :: non_neg_integer(),			%% 28 - nacionalidade
 			   remap_user_id :: non_neg_integer(),			%% 29 - remap_user_id
-			   admin :: boolean(),							%% 30 - admin					-> alguns web services podem ser acedidos somente por admins
+			   admin = false :: boolean(),					%% 30 - admin					-> alguns web services podem ser acedidos somente por admins
 			   ctrl_path :: string(),						%% 31 - ctrl_path
 			   ctrl_file :: string(),						%% 32 - ctrl_file
 			   ctrl_insert :: binary(),						%% 33 - ctrl_insert				-> Data que foi inserido no banco mnesia
 			   ctrl_update :: binary(), 					%% 34 - ctrl_update				-> Data que foi atualiado no banco mnesia			
 			   ctrl_modified :: binary(),					%% 35 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-			   ctrl_hash :: non_neg_integer()				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+			   ctrl_hash :: non_neg_integer(),				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+			   ctrl_last_login :: binary(),					%% 37 - ctrl_last_login			-> Atualizado toda vez que ems_user:find_index_by_login_and_password é executado
+			   ctrl_login_count = 0 :: non_neg_integer(),	%% 38 - ctrl_login_count		-> Incrementado toda vez que ems_user:find_index_by_login_and_password é executado
+			   ctrl_last_login_scope :: atom(),				%% 39 - ctrl_last_login_scope		-> Qual tabela que encontrou o usuário
+			   ctrl_last_login_client :: binary()			%% 40 - ctrl_last_login_client		-> Em qual cliente logou
 		}).
 		
 -define(USER_SCHEMA_DESCRIPTOR, {
@@ -96,7 +100,11 @@
 			   binary_type,									%% 33 - ctrl_insert
 			   binary_type, 								%% 34 - ctrl_update
 			   binary_type,									%% 35 - ctrl_modified
-			   non_neg_integer_type							%% 36 - ctrl_hash 	
+			   non_neg_integer_type,						%% 36 - ctrl_hash 	
+			   binary_type,									%% 37 - ctrl_last_login
+			   non_neg_integer_type, 						%% 38 - ctrl_login_count
+			   atom_type,									%% 39 - ctrl_last_login_scope
+			   binary_type									%% 37 - ctrl_last_login_client
 			}).		
 		
 %

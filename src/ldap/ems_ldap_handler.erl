@@ -749,7 +749,7 @@ do_find_by_filter(Filter,
 
 % Autentica o admin a partir da base de usuários de users com flag admin = true	
 do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, Ip, Port, TimestampBin) ->
-	case ems_user:find_by_login_and_password(UserLogin, UserPassword) of
+	case ems_user:find_by_login_and_password(UserLogin, UserPassword, #client{name = <<"ldap">>, scope = ?CLIENT_DEFAULT_SCOPE}) of
 		{ok, User = #user{active = Active, admin = Admin}} -> 
 			case Active orelse AuthAllowUserInativeCredentials of
 				true -> 
