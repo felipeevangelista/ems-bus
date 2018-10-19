@@ -32,6 +32,11 @@
 	{
 		"catalog": "/samples/catalogo_hackathon", 
 		"file": "catalogo_hackathon.json"
+	},
+	
+	{
+		"catalog": "/samples/catalogo_daemon_service", 
+		"file": "catalogo_daemon_service.json"
 	}	
 	
 ]

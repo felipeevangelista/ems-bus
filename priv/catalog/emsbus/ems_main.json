@@ -83,12 +83,6 @@
 	{
 		"catalog": "/emsbus/ems_correios_service", 
 		"file": "ems_correios_service.json"
-	},
-	
-	{
-		"catalog": "/emsbus/ems_unb_servicos", 
-		"file": "ems_unb_servicos.json"
-	}
-	
+	}	
 	
 ]

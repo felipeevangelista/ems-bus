@@ -1,18 +1,18 @@
 [
 	{
-		"name": "unb_servicos",
+		"name": "unb_servicos_samples",
 		"comment": "Catalog for ems_unb_servicos",
-		"owner": "unb_servicos",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:start",
-		"url": "/unb/unb_servicos/daemon",
+		"url": "/samples/unb_servicos/daemon",
 		"port" : 5555,
 		"filename" : "{{JAVA_JAR_PATH}}/unb_sevicos-1.0.0-SNAPSHOT-exec.jar",
 		"logfile" : "{{JAVA_JAR_PATH}}/server.log",
 		"start_cmd" : "{{JAVA_HOME}}/bin/java -jar  {{FILENAME}} -Dems_daemon_id={{DAEMON_ID}} -Dems_daemon_service={{DAEMON_SERVICE}} -Dems_pidfile={{PIDFILE}} -Dems_pidfile_watchdog_timer={{PIDFILE_WATCHDOG_TIMER}}  --server.port={{PORT}} -Dems_daemon_params={{DAEMON_PARAMS}} >> {{LOGFILE}}",
 		"stop_cmd" : "kill {{DAEMON_PID}}",
 		"kill_cmd" : "kill -9 {{DAEMON_PID}}",
-		"pidfile" : "{{JAVA_JAR_PATH}}/unb_servicos_port_{{PORT}}.pid",
+		"pidfile" : "{{JAVA_JAR_PATH}}/samples/unb_servicos_port_{{PORT}}.pid",
 		"pidfile_watchdog_timer" : 30000,
 		"daemon_watchdog" : true,
 		"daemon_watchdog_policy" : "link",
@@ -54,86 +54,87 @@
 	},
 	
 	{
-		"name": "/unb_servicos/restart",
+		"name": "/samples/unb_servicos/restart",
 		"comment": "Restart unb_servicos.",
-		"owner": "unb_servicos",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:restart_daemon",
-		"url": "/unb_servicos/restart",
+		"url": "/samples/unb_servicos/restart",
 		"type": "POST",
 		"lang" : "erlang",
 		"restricted" : true
 	},
 	
 	{
-		"name": "/unb_servicos/start",
+		"name": "/samples/unb_servicos/start",
 		"comment": "Start unb_servicos.",
-		"owner": "unb_servicos",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:start_daemon",
-		"url": "/unb_servicos/start",
+		"url": "/samples/unb_servicos/start",
 		"type": "POST",
 		"lang" : "erlang",
 		"restricted" : true
 	},
 	
 	{
-		"name": "/unb_servicos/stop",
+		"name": "/samples/unb_servicos/stop",
 		"comment": "Stop unb_servicos.",
-		"owner": "unb_servicos",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:stop_daemon",
-		"url": "/unb_servicos/stop",
+		"url": "/samples/unb_servicos/stop",
 		"type": "POST",
 		"lang" : "erlang",
 		"restricted" : true
 	},
 	
 	{
-		"name": "/unb_servicos/kill",
+		"name": "/samples/unb_servicos/kill",
 		"comment": "Stop unb_servicos.",
-		"owner": "unb_servicos",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:kill_daemon",
-		"url": "/unb_servicos/kill",
+		"url": "/samples/unb_servicos/kill",
 		"type": "POST",
 		"lang" : "erlang",
 		"restricted" : true
 	},
 
 	{
-		"name": "/unb_servicos/watchdog",
+		"name": "/samples/unb_servicos/watchdog",
 		"comment": "watchdog unb_servicos.",
-		"owner": "unb_servicos",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_daemon_service:watchdog_daemon",
-		"url": "/unb_servicos/watchdog",
+		"url": "/samples/unb_servicos/watchdog",
 		"type": "POST",
 		"lang" : "erlang",
 		"restricted" : true
 	},
 	
 	{
-		"name": "/unb_servicos/log",
+		"name": "/samples/unb_servicos/log",
 		"comment": "Retorna o arquivo de log completo",
-		"owner": "netadm",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_static_file_service:execute",
-		"url": "/unb_servicos/log",
+		"url": "/samples/unb_servicos/log",
 		"filename" : "{{JAVA_JAR_PATH}}/server.log",
 		"content_type":"text/plain",
+		"result_cache" : 0,
 		"type": "GET",
 		"lang" : "erlang",
 		"restricted" : true
 	},
 	
 	{
-		"name": "/unb_servicos/log/head",
+		"name": "/samples/unb_servicos/log/head",
 		"comment": "Show log head.",
-		"owner": "netadm",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_logger_os_service:log_file_head",
-		"url": "/unb_servicos/log/head",
+		"url": "/samples/unb_servicos/log/head",
 		"filename" : "{{JAVA_JAR_PATH}}/server.log",
 		"async": "false",
 		"result_cache" : 0,
@@ -143,12 +144,12 @@
 	},
 	
 	{
-		"name": "/unb_servicos/log/tail",
+		"name": "/samples/unb_servicos/log/tail",
 		"comment": "Show log head.",
-		"owner": "netadm",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_logger_os_service:log_file_tail",
-		"url": "/unb_servicos/log/tail",
+		"url": "/samples/unb_servicos/log/tail",
 		"filename" : "{{JAVA_JAR_PATH}}/server.log",
 		"async": "false",
 		"result_cache" : 0,
@@ -158,12 +159,12 @@
 	},
 
 	{
-		"name": "/unb_servicos/log/filename",
+		"name": "/samples/unb_servicos/log/filename",
 		"comment": "Show log head.",
-		"owner": "netadm",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_logger_os_service:log_file_name",
-		"url": "/unb_servicos/log/filename",
+		"url": "/samples/unb_servicos/log/filename",
 		"filename" : "{{JAVA_JAR_PATH}}/server.log",
 		"async": "false",
 		"result_cache" : 0,
@@ -173,18 +174,17 @@
 	},
 	
 	{
-		"name": "/unb_servicos/ps",
+		"name": "/samples/unb_servicos/ps",
 		"comment": "Exibe o comando ps em relação ao unb_servicos",
-		"owner": "netadm",
+		"owner": "samples",
 		"version": "1.0.0",
 		"service" : "ems_cmd_service:execute",
-		"url": "/unb_servicos/ps",
+		"url": "/samples/unb_servicos/ps",
 		"script" : [ "ps aux | grep unb_servicos" ],
 		"content_type" : "text/plain",
+		"result_cache" : 0,
 		"type": "GET",
 		"lang" : "erlang",
 		"restricted" : true
 	}
-	
-	
 ]

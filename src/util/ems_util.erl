@@ -3509,8 +3509,6 @@ parse_ldap_attributes_([<<"supportedSASLmechanisms">>|T], Result) ->
 parse_ldap_attributes_([_|T], Result) -> 
 	parse_ldap_attributes_(T, Result).
 
-
-
 					
 is_value_field_type(Value, binary_type) ->
 	try
@@ -3570,7 +3568,8 @@ is_value_field_type(_, _) -> false.
 -spec get_host_list() -> binary().
 get_host_list() ->
 	case net_adm:host_file() of 
-		{error, enoent} -> list_to_binary(net_adm:localhost()); 
+		{error, enoent} -> 
+			list_to_binary(net_adm:localhost()); 
 		Hosts -> 
 			Hosts2 = [atom_to_list(R) || R <- Hosts],
 			list_to_binary(lists:flatten(lists:join(",", Hosts2)))
@@ -3660,7 +3659,9 @@ get_pid_from_port(Port) ->
 			_ -> {error, enoent}
 		end
 	catch
-		_:_ -> {error, enoent}
+		_:Reason -> 
+			ems_logger:error("ems_util get_pid_from_port failed with port ~p. Reason: ~p.", [Port, Reason]),
+			{error, enoent}
 	end.
 	
 	
@@ -3670,7 +3671,9 @@ os_command(Cmd, Options) ->
 		Result = os:cmd(Cmd, Options),
 		{ok, Result}
 	catch
-		_:_ -> {error, einvaid_command}
+		_:Reason -> 
+			ems_logger:error("ems_util os_command execute failed: ~p. Reason: ~p.", [Cmd, Reason]),
+			{error, einvalid_command}
 	end.
 
 -spec get_java_home() -> string().
