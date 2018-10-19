@@ -3668,9 +3668,15 @@ get_pid_from_port(Port) ->
 -spec os_command(string(), list()) -> {ok, any()} | {error, einvalid_command}.
 os_command(Cmd, Options) ->
 	try
-		Result = os:cmd(Cmd, Options),
+		case Options of
+			undefined -> Result = os:cmd(Cmd);
+			_ -> Result = os:cmd(Cmd, Options)
+		end,
 		{ok, Result}
 	catch
+		_:undef -> 
+			% na versão 21 em diante que existe a função os:cmd com arity 2
+			os:cmd(Cmd, undefined);
 		_:Reason -> 
 			ems_logger:error("ems_util os_command execute failed: ~p. Reason: ~p.", [Cmd, Reason]),
 			{error, einvalid_command}
