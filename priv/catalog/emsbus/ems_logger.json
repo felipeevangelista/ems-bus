@@ -21,6 +21,7 @@
 		"service" : "ems_logger_service:log_file_name",
 		"url": "/logger/filename",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -34,6 +35,7 @@
 		"url": "/logger/head",
 		"content_type" : "text/file",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -47,6 +49,7 @@
 		"url": "/logger/head/:id",
 		"content_type" : "text/file",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -60,6 +63,7 @@
 		"url": "/logger/tail",
 		"content_type" : "text/file",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -73,6 +77,7 @@
 		"url": "/logger/tail/:id",
 		"content_type" : "text/file",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -84,6 +89,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:check_debug_mode",
 		"url": "/logger/debug",
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -95,6 +101,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:set_debug_mode",
 		"url": "/logger/debug/true",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -106,6 +113,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:unset_debug_mode",
 		"url": "/logger/debug/false",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -117,6 +125,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:sync",
 		"url": "/logger/sync",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -128,6 +137,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:set_level_info",
 		"url": "/logger/level/info",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -139,6 +149,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:set_level_error",
 		"url": "/logger/level/error",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -150,6 +161,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:checkpoint",
 		"url": "/logger/checkpoint",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -161,6 +173,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:show_response",
 		"url": "logger/response/true",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -172,6 +185,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:hide_response",
 		"url": "logger/response/false",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -183,6 +197,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:print_info_log",
 		"url": "/logger/print/info",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -194,6 +209,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:print_warn_log",
 		"url": "/logger/print/warn",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -205,6 +221,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:print_error_log",
 		"url": "/logger/print/error",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -216,6 +233,7 @@
 		"version": "1.0.0",
 		"service" : "ems_logger_service:print_debug_log",
 		"url": "/logger/print/debug",
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	}

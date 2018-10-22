@@ -9,6 +9,7 @@
 		"filename" : "/var/log/syslog",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -23,6 +24,7 @@
 		"filename" : "/var/log/syslog",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	},
@@ -37,6 +39,7 @@
 		"filename" : "/var/log/syslog",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
 		"lang" : "erlang"
 	}			

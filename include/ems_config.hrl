@@ -41,7 +41,7 @@
 -define(LOG_FILE_PATH, filename:join(?PRIV_PATH, "log")).
 
 % Caminho da pasta para arquivar o server.log
--define(LOG_FILE_ARCHIVE_PATH, filename:join([?PRIV_PATH, "log", "archive"])).
+-define(LOG_FILE_ARCHIVE_PATH, filename:join([?PRIV_PATH, "archive", "log"])).
 
 
 % Caminho do favicon

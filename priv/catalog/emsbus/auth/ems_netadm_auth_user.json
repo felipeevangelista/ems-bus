@@ -15,11 +15,13 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"ctrl_insert", "ctrl_update"]
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
 		"lang" : "erlang",
+		"restricted" : true,
 		"querystring": [
 				{
 					"name": "fields",
@@ -39,6 +41,7 @@
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
@@ -46,7 +49,8 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"ctrl_insert", "ctrl_update"]
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -93,6 +97,7 @@
 		"url": "/netadm/auth/user/lru/:id",
 		"type": "GET",
 		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_cache_lru",
@@ -100,7 +105,8 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"ctrl_insert", "ctrl_update"]
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -124,6 +130,7 @@
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_cache_lru",
@@ -131,7 +138,8 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"ctrl_insert", "ctrl_update"]
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -178,6 +186,7 @@
 		"url": "/netadm/auth/user/fs/:id",
 		"type": "GET",
 		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_fs",
@@ -185,7 +194,8 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"ctrl_insert", "ctrl_update"]
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -209,6 +219,7 @@
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_fs",
@@ -216,7 +227,8 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"ctrl_insert", "ctrl_update"]
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -263,6 +275,7 @@
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_history"],
@@ -314,6 +327,7 @@
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_history"
