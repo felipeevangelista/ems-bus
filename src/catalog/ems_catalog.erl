@@ -659,7 +659,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 				SslKeyFile = parse_ssl_path(get_p(<<"keyfile">>, Ssl, SslKeyFileDefault), SslKeyFileDefault, StaticFilePathDefault)
 		end,
 		
-		put(parse_step, lang),
+		put(parse_step, host),
 		case Lang of
 			<<"erlang">> -> 
 				Node = <<>>,
