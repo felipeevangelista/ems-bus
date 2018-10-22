@@ -49,6 +49,7 @@ scan_files([{_NodeName, JsonFilename}|Rest], Result, Conf, FilterKey, FilterValu
 		
 -spec scan_file(string() | binary(), list(map()), binary(), #config{}, binary(), any()) -> list(map()) | {error, atom()}.
 scan_file(JsonFilename, Result, RootPath, Conf, FilterKey, FilterValue) ->
+	io:format("scan_file1  ~p\n", [JsonFilename]),
 	case parse_filename_path(JsonFilename, RootPath, Conf) of
 		{ok, Filename} ->
 			CurrentDir = filename:dirname(Filename),

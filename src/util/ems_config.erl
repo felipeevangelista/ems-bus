@@ -151,10 +151,8 @@ load_config() ->
 			ems_logger:format_info("ems_config loading configuration file \033[01;34m\"~s\"\033[0m.", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Data} -> 
-					ems_logger:format_info("ems_config parse configuration file..."),
 					case parse_config(Data, Filename) of
 						{ok, Result} -> 
-							io:format("parse ok\n"),
 							Result;
 						{error, Reason} -> 
 							ems_logger:format_error("\nems_config cannot parse configuration file \033[01;34m\"~s\"\033[0m\033[00;33m. Reason: ~p. Data; ~p.\n", [Filename, Reason, Data]),
@@ -321,12 +319,11 @@ get_p(ParamName, Map, DefaultValue) ->
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, Filename) ->
 	try
-		io:format("aqui1\n"),
 		% este primeiro parâmetro é usado em todos os demais que é do tipo string
 		put(parse_step, variables),
 		CustomVariables = parse_variables(maps:get(<<"custom_variables">>, Json, #{})),
 		ems_db:set_param(custom_variables, CustomVariables),
-io:format("aqui2\n"),
+
 		put(parse_step, hostname),
 		Hostname0 = ems_util:get_param_or_variable(<<"hostname">>, Json, <<>>),
 		% permite setar o hostname no arquivo de configuração ou obter o nome da máquina pelo inet
@@ -338,10 +335,10 @@ io:format("aqui2\n"),
 				Hostname = binary_to_list(Hostname0),
 				HostnameBin = Hostname0
 		end,
-io:format("aqui3\n"),
+
 		put(parse_step, tcp_listen_prefix_interface_names),
 		TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(get_p(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
-io:format("aqui4\n"),		
+
 		put(parse_step, tcp_listen_address),
 		TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
 
@@ -356,7 +353,7 @@ io:format("aqui4\n"),
 
 		put(parse_step, http_headers),
 		HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_p(<<"http_headers">>, Json, #{})),
-io:format("aqui5\n"),		
+
 		put(parse_step, http_headers_options),
 		HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_p(<<"http_headers_options">>, Json, #{})),
 
@@ -371,7 +368,7 @@ io:format("aqui5\n"),
 
 		put(parse_step, static_file_path_probing),
 		StaticFilePathProbing = ems_util:parse_bool(get_p(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
-io:format("aqui6\n"),		
+
 		put(parse_step, static_file_path),
 		StaticFilePath = parse_static_file_path(get_p(<<"static_file_path">>, Json, #{})),
 		StaticFilePathMap = maps:from_list(StaticFilePath),
@@ -387,7 +384,7 @@ io:format("aqui6\n"),
 			<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
 			RestBaseUrlValue -> RestBaseUrl = ems_util:remove_ult_backslash_url_binary(RestBaseUrlValue)
 		end,
-io:format("aqui7\n"),		
+
 		put(parse_step, rest_auth_url),
 		case ems_util:get_param_or_variable(<<"rest_auth_url">>, Json, <<>>) of
 		<<>> ->	
@@ -397,7 +394,7 @@ io:format("aqui7\n"),
 				end;
 			RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
 		end,
-io:format("aqui8\n"),		
+
 		put(parse_step, rest_login_url),
 		case ems_util:get_param_or_variable(<<"rest_login_url">>, Json, <<>>) of
 			<<>> ->	RestLoginUrl = iolist_to_binary([RestBaseUrl, <<"/login/index.html"/utf8>>]);
@@ -444,7 +441,7 @@ io:format("aqui8\n"),
 
 		put(parse_step, log_show_response),
 		LogShowResponse = ems_util:parse_bool(get_p(<<"log_show_response">>, Json, ?LOG_SHOW_RESPONSE)),
-io:format("aqui9\n"),				
+
 		put(parse_step, log_show_payload),
 		LogShowPayload = ems_util:parse_bool(get_p(<<"log_show_payload">>, Json, ?LOG_SHOW_PAYLOAD)),
 		
@@ -525,7 +522,7 @@ io:format("aqui9\n"),
 
 		put(parse_step, ldap_password_admin),
 		LdapPasswordAdmin = binary_to_list(get_p(<<"ldap_password_admin">>, Json, <<>>)),
-io:format("aqui10\n"),		
+
 		put(parse_step, config),
 		Conf = #config{ 
 				 cat_host_alias = HostAlias,
