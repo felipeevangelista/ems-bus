@@ -151,6 +151,7 @@ load_config() ->
 			ems_logger:format_info("ems_config loading configuration file \033[01;34m\"~s\"\033[0m.", [Filename]),
 			case ems_util:json_decode_as_map(ConfigData) of
 				{ok, Data} -> 
+					ems_logger:format_info("ems_config parse configuration file..."),
 					case parse_config(Data, Filename) of
 						{ok, Result} -> Result;
 						{error, Reason} -> 
@@ -318,11 +319,12 @@ get_p(ParamName, Map, DefaultValue) ->
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, Filename) ->
 	try
+		io:format("aqui1\n"),
 		% este primeiro parâmetro é usado em todos os demais que é do tipo string
 		put(parse_step, variables),
 		CustomVariables = parse_variables(maps:get(<<"custom_variables">>, Json, #{})),
 		ems_db:set_param(custom_variables, CustomVariables),
-
+io:format("aqui2\n"),
 		put(parse_step, hostname),
 		Hostname0 = ems_util:get_param_or_variable(<<"hostname">>, Json, <<>>),
 		% permite setar o hostname no arquivo de configuração ou obter o nome da máquina pelo inet
@@ -334,10 +336,10 @@ parse_config(Json, Filename) ->
 				Hostname = binary_to_list(Hostname0),
 				HostnameBin = Hostname0
 		end,
-
+io:format("aqui3\n"),
 		put(parse_step, tcp_listen_prefix_interface_names),
 		TcpListenPrefixInterfaceNames = ems_util:binlist_to_list(get_p(<<"tcp_listen_prefix_interface_names">>, Json, ?TCP_LISTEN_PREFIX_INTERFACE_NAMES)),
-		
+io:format("aqui4\n"),		
 		put(parse_step, tcp_listen_address),
 		TcpListenAddress = ems_util:get_param_or_variable(<<"tcp_listen_address">>, Json, [<<"0.0.0.0">>]),
 
