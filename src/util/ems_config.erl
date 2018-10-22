@@ -354,7 +354,7 @@ io:format("aqui4\n"),
 
 		put(parse_step, http_headers),
 		HttpHeaders0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_p(<<"http_headers">>, Json, #{})),
-
+io:format("aqui5\n"),		
 		put(parse_step, http_headers_options),
 		HttpHeadersOptions0 = maps:merge(?HTTP_HEADERS_DEFAULT, get_p(<<"http_headers_options">>, Json, #{})),
 
@@ -369,7 +369,7 @@ io:format("aqui4\n"),
 
 		put(parse_step, static_file_path_probing),
 		StaticFilePathProbing = ems_util:parse_bool(get_p(<<"static_file_path_probing">>, Json, ?STATIC_FILE_PATH_PROBING)),
-
+io:format("aqui6\n"),		
 		put(parse_step, static_file_path),
 		StaticFilePath = parse_static_file_path(get_p(<<"static_file_path">>, Json, #{})),
 		StaticFilePathMap = maps:from_list(StaticFilePath),
@@ -385,7 +385,7 @@ io:format("aqui4\n"),
 			<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
 			RestBaseUrlValue -> RestBaseUrl = ems_util:remove_ult_backslash_url_binary(RestBaseUrlValue)
 		end,
-
+io:format("aqui7\n"),		
 		put(parse_step, rest_auth_url),
 		case ems_util:get_param_or_variable(<<"rest_auth_url">>, Json, <<>>) of
 		<<>> ->	
@@ -395,7 +395,7 @@ io:format("aqui4\n"),
 				end;
 			RestAuthUrlValue -> RestAuthUrl = RestAuthUrlValue
 		end,
-
+io:format("aqui8\n"),		
 		put(parse_step, rest_login_url),
 		case ems_util:get_param_or_variable(<<"rest_login_url">>, Json, <<>>) of
 			<<>> ->	RestLoginUrl = iolist_to_binary([RestBaseUrl, <<"/login/index.html"/utf8>>]);
@@ -442,7 +442,7 @@ io:format("aqui4\n"),
 
 		put(parse_step, log_show_response),
 		LogShowResponse = ems_util:parse_bool(get_p(<<"log_show_response">>, Json, ?LOG_SHOW_RESPONSE)),
-		
+io:format("aqui9\n"),				
 		put(parse_step, log_show_payload),
 		LogShowPayload = ems_util:parse_bool(get_p(<<"log_show_payload">>, Json, ?LOG_SHOW_PAYLOAD)),
 		
@@ -523,7 +523,7 @@ io:format("aqui4\n"),
 
 		put(parse_step, ldap_password_admin),
 		LdapPasswordAdmin = binary_to_list(get_p(<<"ldap_password_admin">>, Json, <<>>)),
-
+io:format("aqui10\n"),		
 		put(parse_step, config),
 		Conf = #config{ 
 				 cat_host_alias = HostAlias,
