@@ -760,11 +760,11 @@ add_history(#user{id = UserId,
 					   filename = RequestFilename,
 					   referer = RequestReferer,
 					   access_token = RequestAccessToken}) ->
-	RequestTimestamp2 =	case is_list(RequestTimestamp) of
+	RequestTimestamp2 =	case is_binary(RequestTimestamp) of
 							true -> RequestTimestamp;
-							false -> ems_util:timestamp_str(RequestTimestamp)
-						end,
-	[RequestDate, RequestTime] = string:tokens(RequestTimestamp2, " "),
+							false -> ems_util:timestamp_binary(RequestTimestamp)
+						end,	
+	[RequestDate, RequestTime] = string:tokens(binary_to_list(RequestTimestamp2), " "),
 	UserHistory = #user_history{
 					   %% dados do usuário
 					   user_id = UserId,
