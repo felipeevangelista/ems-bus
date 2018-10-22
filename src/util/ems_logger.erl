@@ -428,8 +428,9 @@ checkpoint_arquive_log(State = #state{log_file_handle = CurrentIODevice,
 				% Renomear o arquivo atual para arquivar com outro nome
 				case filelib:ensure_dir(ArchiveLogFilename) of
 					ok ->
-						case file:rename(CurrentLogFilename, ArchiveLogFilename) of
-							ok ->
+						case file:copy(CurrentLogFilename, ArchiveLogFilename) of
+							{ok, _BytesCopied} ->
+								file:delete(CurrentLogFilename),
 								case Immediate of
 									true -> 
 										ems_db:inc_counter(ems_logger_immediate_archive_log_checkpoint),
