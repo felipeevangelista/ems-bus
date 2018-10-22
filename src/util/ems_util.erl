@@ -1094,8 +1094,8 @@ replace_all_vars_(Subject, [{Key, Value}|VarTail]) ->
 							false -> Value
 						end
 			   end,
-	NewSubject = replace(Subject, "{{.?"++ string:uppercase(KeyStr) ++ ".?}}", ValueStr),
-	NewSubject2 = replace(NewSubject, "{{.?"++ string:lowercase(KeyStr) ++ ".?}}", ValueStr),
+	NewSubject = replace(Subject, "{{.?"++ string:to_upper(KeyStr) ++ ".?}}", ValueStr),
+	NewSubject2 = replace(NewSubject, "{{.?"++ string:to_lower(KeyStr) ++ ".?}}", ValueStr),
 	replace_all_vars_(NewSubject2, VarTail).
 
 
@@ -3598,7 +3598,7 @@ get_param_or_variable(ParamName, ParamsMap, DefaultValue) ->
 	ParanNameStr = binary_to_list(ParamName),
 	case os:getenv(ParanNameStr) of % variável de ambiente em minúsculo, igual ao parâmetro
 		false -> 
-			case os:getenv(string:uppercase(ParanNameStr)) of % variável de ambiente em maiúsculo, padrão Linux
+			case os:getenv(string:to_upper(ParanNameStr)) of % variável de ambiente em maiúsculo, padrão Linux
 				false -> Result1;
 				Result2 -> list_to_binary(Result2)
 			end;
@@ -3614,7 +3614,7 @@ get_environment_variable(ParamNameBin, DefaultValue) when is_binary(ParamNameBin
 get_environment_variable(ParanNameStr, DefaultValue) ->
 	case os:getenv(ParanNameStr) of % variável de ambiente em minúsculo, igual ao parâmetro
 		false -> 
-			case os:getenv(string:uppercase(ParanNameStr)) of % variável de ambiente em maiúsculo, padrão Linux
+			case os:getenv(string:to_upper(ParanNameStr)) of % variável de ambiente em maiúsculo, padrão Linux
 				false -> 
 					case is_binary(DefaultValue) of
 						true -> DefaultValue;
