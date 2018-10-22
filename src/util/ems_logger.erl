@@ -414,11 +414,9 @@ checkpoint_arquive_log(State = #state{log_file_handle = CurrentIODevice,
 									  log_file_name = CurrentLogFilename,
 									  log_file_archive_path = LogFileArchivePath}, Immediate) ->
 	try
-	io:format("checkpoint_arquive_log1\n"),		
 		% Fecha o arquivo atual se existir
 		case CurrentLogFilename =/= undefined andalso CurrentIODevice =/= undefined andalso filelib:is_regular(CurrentLogFilename) of
 			true ->
-	io:format("checkpoint_arquive_log2\n"),		
 				?DEBUG("ems_logger close current log file \033[01;34m~p\033[0m.", [CurrentLogFilename]),
 				file:close(CurrentIODevice),
 
@@ -426,14 +424,12 @@ checkpoint_arquive_log(State = #state{log_file_handle = CurrentIODevice,
 				{{Ano,Mes,Dia},{Hora,Min,_}} = calendar:local_time(),
 				MesAbrev = ems_util:mes_abreviado(Mes),
 				ArchiveLogFilename = lists:flatten(io_lib:format("~s/~p/~s/~s_~s_~2..0w~2..0w~4..0w_~2..0w~2..0w.log", [LogFileArchivePath, Ano, MesAbrev, "server", MesAbrev, Dia, Mes, Ano, Hora, Min])),
-io:format("checkpoint_arquive_log3\n"),		
+
 				% Renomear o arquivo atual para arquivar com outro nome
 				case filelib:ensure_dir(ArchiveLogFilename) of
 					ok ->
-					io:format("checkpoint_arquive_log5\n"),		
 						case file:copy(CurrentLogFilename, ArchiveLogFilename) of
 							{ok, _BytesCopied} ->
-								io:format("checkpoint_arquive_log5\n"),		
 								file:delete(CurrentLogFilename),
 								case Immediate of
 									true -> 
@@ -451,7 +447,6 @@ io:format("checkpoint_arquive_log3\n"),
 						ems_db:inc_counter(ems_logger_create_archive_path_failed),
 						ems_logger:error("ems_logger archive log file failed on create archive path \033[01;34m~p\033[0m.", [LogFileArchivePath])
 				end,
-				io:format("checkpoint_arquive_log6\n"),		
 				% Mesmo que possa ocorrer arquivo ao arquivar, precisamos criar o novo arquivo de log
 				State2 = create_new_logfile(State);
 			false -> 
@@ -472,12 +467,9 @@ io:format("checkpoint_arquive_log3\n"),
 
    
 create_new_logfile(State = #state{log_file_path = LogFilePath}) -> 
-	io:format("create_new_logfile1\n"),		
 	LogFilename = filename:join([LogFilePath, "server.log"]),
-	io:format("create_new_logfile1.1\n"),		
 	case filelib:ensure_dir(LogFilename) of
 		ok ->
-		io:format("create_new_logfile2\n"),		
 			case file:open(LogFilename, [append]) of
 				{ok, IODevice} -> 
 					ems_logger:info("ems_logger open new logfile \033[01;34m~p\033[0m.", [LogFilename]),
@@ -534,7 +526,6 @@ set_timeout_archive_log_checkpoint() ->
 
 write_msg(Tipo, Msg, State = #state{log_level = Level, log_ult_msg = UltMsg})  ->
 	%% test overflow duplicated messages
-	io:format("write_msg...\n"),
 	case UltMsg == undefined orelse UltMsg =/= Msg of
 		true ->
 			case Tipo of

@@ -49,7 +49,6 @@ scan_files([{_NodeName, JsonFilename}|Rest], Result, Conf, FilterKey, FilterValu
 		
 -spec scan_file(string() | binary(), list(map()), binary(), #config{}, binary(), any()) -> list(map()) | {error, atom()}.
 scan_file(JsonFilename, Result, RootPath, Conf, FilterKey, FilterValue) ->
-	io:format("scan_file1  ~p\n", [JsonFilename]),
 	case parse_filename_path(JsonFilename, RootPath, Conf) of
 		{ok, Filename} ->
 			CurrentDir = filename:dirname(Filename),
@@ -72,10 +71,8 @@ scan_file(JsonFilename, Result, RootPath, Conf, FilterKey, FilterValue) ->
 -spec scan_file_entry(list(), string(), string(), list(), binary(), #config{}, binary(), any()) -> list().
 scan_file_entry([], _, _, Result, _, _, _, _) -> Result;
 scan_file_entry([Map|MapTail], CurrentDir, CurrentFilenameMap, Result, RootPath, Conf, FilterKey, FilterValue) ->
-	io:format("scan_entry1  ~p\n", [Map]),
 	case maps:is_key(<<"file">>, Map) of
 		true -> 
-			io:format("scan_entry2\n"),			
 			case parse_filename_path(maps:get(<<"file">>, Map), CurrentDir, Conf) of
 				{ok, FilenameMap} ->
 					?DEBUG("ems_json_scan scan \033[01;34m~p\033[0m.", [FilenameMap]),
@@ -87,7 +84,6 @@ scan_file_entry([Map|MapTail], CurrentDir, CurrentFilenameMap, Result, RootPath,
 					scan_file_entry(MapTail, CurrentDir, CurrentFilenameMap, Result, RootPath, Conf, FilterKey, FilterValue)
 			end;
 		false -> 
-			io:format("scan_entry2\n"),			
 			case FilterKey =/= undefined andalso maps:is_key(FilterKey, Map) andalso maps:get(FilterKey, Map) =/= FilterValue of
 				true ->
 					scan_file_entry(MapTail, CurrentDir, CurrentFilenameMap, Result, RootPath, Conf, FilterKey, FilterValue);

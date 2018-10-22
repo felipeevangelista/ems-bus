@@ -22,9 +22,7 @@ start_link(Args) ->
 %% ===================================================================
 
 init([]) ->
-	io:format("sup1\n"),
 	KernelServices = ems_catalog_lookup:list_kernel_catalog(),
-	io:format("sup2 kernelservices ~p\n", [KernelServices]),
     PoolSpecs = lists:map(
 		fun(S = #service{name = WorkerName, 
 						  pool_size = PoolSize, 
@@ -51,15 +49,12 @@ init([]) ->
 							}
 					end
 		end, KernelServices),
-		io:format("sup3\n"),
 	{ok, {{one_for_one, 10, 10}, PoolSpecs}}.
 	
 
 start_process([Module, Function, Service = #service{name = WorkerName}]) ->
-	io:format("start_process1\n"),
 	ems_logger:info("\033[0;33mStart\033[0m ~s.", [binary_to_list(WorkerName)]),
 	Reply = apply(Module, Function, [Service]),
-	io:format("start_process2\n"),
 	Reply.
 	
 start_process_sup([Module, Function, Args = [[_,
@@ -68,9 +63,7 @@ start_process_sup([Module, Function, Args = [[_,
 											  {size, PoolSize}, 
 											  {max_overflow, PoolMax}], 
 											_]]) ->
-	io:format("start_process_sup1\n"),
 	ems_logger:info("\033[0;33mStart\033[0m ~p with ~p workers \033[0;34m(Max ~p workers)\033[0m.", [WorkerNameAtom, PoolSize, PoolMax]),
 	Reply = apply(Module, Function, Args),
-	io:format("start_process_sup2\n"),
 	Reply.
 
