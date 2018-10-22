@@ -27,11 +27,13 @@ start(_StartType, StartArgs) ->
 			io:format("start link...\n"),
 			Ret = ems_bus_sup:start_link(StartArgs),
 			io:format("start link ok...\n"),
+			io:format("AuthorizationMode ~p\n", [Conf#config.authorization]),
 			AuthorizationMode = case Conf#config.authorization of
 									basic -> <<"basic, oauth2">>;
 									oauth2 -> <<"oauth2">>;
 									public -> <<"public">>
 								end,
+			io:format("param1\n"),
 			ems_logger:info("Parameters:"),
 			ems_logger:info("  \033[0;32mconfig_file\033[0m: \033[01;34m~p\033[0m.", [Conf#config.config_file]),
 			ems_logger:info("  \033[0;32mhost_search\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_host_search]),
@@ -82,6 +84,7 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mssl_certfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_certfile]),
 			ems_logger:info("  \033[0;32mssl_keyfile\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ssl_keyfile]),
 			ems_logger:info("  \033[0;32mcustom_variables\033[0m: \033[01;34m~p\033[0m.", [Conf#config.custom_variables]),
+			io:format("param 2\n"),
 			Ret;
 		{error, Reason} ->
 			ems_logger:format_error("Error processing configuration file. Reason: ~p. Terminate...\n", [Reason]),
