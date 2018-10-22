@@ -135,7 +135,7 @@ mode_debug(false) ->
 
 sync() ->
 	info("ems_logger sync log_buffer."),
-	gen_server:call(?SERVER, sync_log_buffer). 		
+	gen_server:cast(?SERVER, sync_log_buffer). 
 
 log_request(Request = #request{content_length = ContentLength}) -> 
 	case ContentLength > ?LOG_SHOW_PAYLOAD_MAX_LENGTH of
@@ -526,6 +526,7 @@ set_timeout_archive_log_checkpoint() ->
 
 write_msg(Tipo, Msg, State = #state{log_level = Level, log_ult_msg = UltMsg})  ->
 	%% test overflow duplicated messages
+	io:format("write_msg...\n"),
 	case UltMsg == undefined orelse UltMsg =/= Msg of
 		true ->
 			case Tipo of
