@@ -24,7 +24,7 @@ start_link(Args) ->
 init([]) ->
 	io:format("sup1\n"),
 	KernelServices = ems_catalog_lookup:list_kernel_catalog(),
-	io:format("sup2\n"),
+	io:format("sup2 kernelservices ~p\n", [KernelServices]),
     PoolSpecs = lists:map(
 		fun(S = #service{name = WorkerName, 
 						  pool_size = PoolSize, 
