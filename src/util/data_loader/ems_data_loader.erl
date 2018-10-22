@@ -124,9 +124,9 @@ init(#service{name = Name,
 		true -> CheckRemoveRecordsCheckpoint = UpdateCheckpoint + 5000 + rand:uniform(30000);
 		false -> CheckRemoveRecordsCheckpoint = CheckRemoveRecordsCheckpoint0 + rand:uniform(30000)
 	end,
-	SqlLoad = string:trim(binary_to_list(maps:get(<<"sql_load">>, Props, <<>>))),
+	SqlLoad = ems_util:str_trim(binary_to_list(maps:get(<<"sql_load">>, Props, <<>>))),
 	SqlLoadPacketLength = maps:get(<<"sql_load_packet_length">>, Props, 4000),
-	SqlUpdate = string:trim(binary_to_list(maps:get(<<"sql_update">>, Props, <<>>))),
+	SqlUpdate = ems_util:str_trim(binary_to_list(maps:get(<<"sql_update">>, Props, <<>>))),
 	SqlCount = re:replace(SqlLoad, "select (.+)( from.+)( order by.+)?","select count(1)\\2", [{return,list}]),
 	SqlIds = re:replace(SqlLoad, "select ([^,]+),(.+)( from.+)( order by.+)?", "select \\1 \\3", [{return,list}]),
 	Fields = maps:get(<<"fields">>, Props, <<>>),

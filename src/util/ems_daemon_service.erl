@@ -533,7 +533,7 @@ fica_em_loop_ate_encerrar_pid(Port, Pid, Tentativas) ->
 % com a execução do comando
 parse_start_cmd(<<>>) -> "";
 parse_start_cmd(Cmd) -> 
-	CmdStr = string:trim(binary_to_list(Cmd)),
+	CmdStr = ems_util:str_trim(binary_to_list(Cmd)),
 	case CmdStr =/= "" of
 		true ->
 			case lists:reverse(CmdStr) of

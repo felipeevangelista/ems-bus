@@ -195,7 +195,8 @@
 		 list_tuple_to_list_map/1,
 		 format_rest_status/5,
 		 os_command/2,
-		 integer_to_list_def/2
+		 integer_to_list_def/2,
+		 str_trim/1
 		]).
 
 -spec version() -> string().
@@ -2534,10 +2535,10 @@ parse_tcp_listen_address([H|_] = ListenAddress, TcpListenPrefixInterfaceNames) w
 parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) when is_binary(ListenAddress) ->
 	parse_tcp_listen_address(binary_to_list(ListenAddress), TcpListenPrefixInterfaceNames);
 parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) ->
-	ListenAddress2 = string:trim(ListenAddress),
+	ListenAddress2 = ems_util:str_trim(ListenAddress),
 	case ListenAddress2 =/= "" of
 		true ->	
-			ListenAddress3 = [string:trim(IP) || IP <- string:tokens(ListenAddress2, ",")],
+			ListenAddress3 = [ems_util:str_trim(IP) || IP <- string:tokens(ListenAddress2, ",")],
 			parse_tcp_listen_address_t(ListenAddress3, TcpListenPrefixInterfaceNames, []);
 		false -> []
 	end.
@@ -2596,10 +2597,10 @@ parse_allowed_address(null) -> all;
 parse_allowed_address(AllowedAddress) when is_binary(AllowedAddress) ->
 	parse_allowed_address(binary_to_list(AllowedAddress));
 parse_allowed_address(AllowedAddress) when is_list(AllowedAddress) ->
-	AllowedAddress2 = string:trim(AllowedAddress),
+	AllowedAddress2 = ems_util:str_trim(AllowedAddress),
 	case AllowedAddress2 =/= "" of
 		true ->	
-			AllowedAddress3 = [string:trim(IP) || IP <- string:tokens(AllowedAddress2, ",")],
+			AllowedAddress3 = [ems_util:str_trim(IP) || IP <- string:tokens(AllowedAddress2, ",")],
 			parse_allowed_address_t(AllowedAddress3);
 		false -> []
 	end;
@@ -2927,7 +2928,7 @@ print_str_map(Map, [Key|TKey], [Value|TValue], Sep, Result) ->
 
 list_to_atomlist_with_trim([], Result) -> lists:reverse(Result);
 list_to_atomlist_with_trim([H|T], Result) ->
-	list_to_atomlist_with_trim(T, [list_to_atom(string:trim(H))|Result]).
+	list_to_atomlist_with_trim(T, [list_to_atom(ems_util:str_trim(H))|Result]).
 
 list_to_atomlist_with_trim([]) -> [];
 list_to_atomlist_with_trim(<<>>) -> [];
@@ -2938,7 +2939,7 @@ list_to_atomlist_with_trim(L) ->
 
 binlist_to_atomlist_with_trim([], Result) -> lists:reverse(Result);
 binlist_to_atomlist_with_trim([H|T], Result) ->
-	binlist_to_atomlist_with_trim(T, [list_to_atom(string:trim(binary_to_list(H)))|Result]).
+	binlist_to_atomlist_with_trim(T, [list_to_atom(ems_util:str_trim(binary_to_list(H)))|Result]).
 
 binlist_to_atomlist_with_trim([]) -> [];
 binlist_to_atomlist_with_trim(<<>>) -> [];
@@ -3679,7 +3680,7 @@ os_command(Cmd, Options) ->
 		{ok, Result}
 	catch
 		_:undef -> 
-			% na versão 21 em diante que existe a função os:cmd com arity 2
+			% na versão 21 em diante é que existe a função os:cmd com arity 2
 			os:cmd(Cmd, undefined);
 		_:Reason -> 
 			ems_logger:error("ems_util os_command execute failed: ~p. Reason: ~p.", [Cmd, Reason]),
@@ -3697,4 +3698,10 @@ integer_to_list_def(Value, Default) ->
 		_:_ ->	Default
 	end.
 	
+-spec str_trim(string()) -> string().
+str_trim(S) -> 
+	case erlang:system_info(otp_release) of
+		"19" -> string:strip(S);
+		_ -> string:trim(S)
+	end.
 
