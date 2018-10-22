@@ -764,7 +764,7 @@ add_history(#user{id = UserId,
 							true -> RequestTimestamp;
 							false -> ems_util:timestamp_binary(RequestTimestamp)
 						end,
-	[RequestDate, RequestTime] = string:split(RequestTimestamp2, " "),
+	[RequestDate, RequestTime] = string:tokens(RequestTimestamp2, " "),
 	UserHistory = #user_history{
 					   %% dados do usuário
 					   user_id = UserId,

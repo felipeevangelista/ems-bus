@@ -1350,7 +1350,7 @@ parse_service_service(Service) when is_binary(Service) ->
 	parse_service_service(binary_to_list(Service));
 parse_service_service(Service) ->
 	try
-		[ModuleName, FunctionName] = string:split(Service, ":"),
+		[ModuleName, FunctionName] = string:tokens(Service, ":"),
 		ModuleName2 = ModuleName,
 		FunctionName2 = FunctionName,
 		ModuleNameCanonical = lists:last(string:tokens(ModuleName2, ".")),
@@ -2312,10 +2312,9 @@ parse_basic_authorization_header(<<Basic:5/binary, _:1/binary, Secret/binary>>) 
 		case Basic =:= <<"Basic">> of
 			true ->
 				Secret2 = base64:decode_to_string(binary_to_list(Secret)),
-				case string:split(Secret2, ":") of
+				case string:tokens(Secret2, ":") of
 					[Login, Password] -> {ok, Login, Password};
 					[_Login] -> {error, access_denied, epassword_empty};
-					[[]] -> {error, ebasic_authorization_empty};
 					_ -> {error, access_denied, einvalid_basic_authorization_header}
 				end;
 			false -> {error, access_denied, ebasic_authorization_header_required}
@@ -2538,7 +2537,7 @@ parse_tcp_listen_address(ListenAddress, TcpListenPrefixInterfaceNames) ->
 	ListenAddress2 = string:trim(ListenAddress),
 	case ListenAddress2 =/= "" of
 		true ->	
-			ListenAddress3 = [string:trim(IP) || IP <- string:split(ListenAddress2, ",")],
+			ListenAddress3 = [string:trim(IP) || IP <- string:tokens(ListenAddress2, ",")],
 			parse_tcp_listen_address_t(ListenAddress3, TcpListenPrefixInterfaceNames, []);
 		false -> []
 	end.
@@ -2600,7 +2599,7 @@ parse_allowed_address(AllowedAddress) when is_list(AllowedAddress) ->
 	AllowedAddress2 = string:trim(AllowedAddress),
 	case AllowedAddress2 =/= "" of
 		true ->	
-			AllowedAddress3 = [string:trim(IP) || IP <- string:split(AllowedAddress2, ",")],
+			AllowedAddress3 = [string:trim(IP) || IP <- string:tokens(AllowedAddress2, ",")],
 			parse_allowed_address_t(AllowedAddress3);
 		false -> []
 	end;
