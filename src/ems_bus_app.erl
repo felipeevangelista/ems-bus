@@ -24,7 +24,9 @@ start(_StartType, StartArgs) ->
 			Conf = ems_config:getConfig(),
 			ems_logger:set_level(info),
 			ems_dispatcher:start(),
+			io:format("start link...\n"),
 			Ret = ems_bus_sup:start_link(StartArgs),
+			io:format("start link ok...\n"),
 			AuthorizationMode = case Conf#config.authorization of
 									basic -> <<"basic, oauth2">>;
 									oauth2 -> <<"oauth2">>;

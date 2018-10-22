@@ -153,7 +153,9 @@ load_config() ->
 				{ok, Data} -> 
 					ems_logger:format_info("ems_config parse configuration file..."),
 					case parse_config(Data, Filename) of
-						{ok, Result} -> Result;
+						{ok, Result} -> 
+							io:format("parse ok\n"),
+							Result;
 						{error, Reason} -> 
 							ems_logger:format_error("\nems_config cannot parse configuration file \033[01;34m\"~s\"\033[0m\033[00;33m. Reason: ~p. Data; ~p.\n", [Filename, Reason, Data]),
 							erlang:error(einvalid_configuration)
