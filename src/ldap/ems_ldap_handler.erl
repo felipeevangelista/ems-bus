@@ -152,7 +152,7 @@ handle_request({'LDAPMessage', _,
 			case ems_user:find_by_login(UserLogin) of
 				{error, Reason, ReasonDetail} ->
 					ems_db:inc_counter(SearchInvalidCredentialMetricName),
-					ems_logger:error("ems_ldap_handler search ~p does not exist from ~p.", [UserLogin, Ip]),
+					ems_logger:error("ems_ldap_handler handle_request search ~p does not exist from ~p.", [UserLogin, Ip]),
 					ems_user:add_history(#user{login = UserLogin}, 
 										 #service{}, 
 										 #request{timestamp = TimestampBin,
@@ -169,7 +169,7 @@ handle_request({'LDAPMessage', _,
 						case Active orelse AuthAllowUserInativeCredentials of
 							true -> 
 								ems_db:inc_counter(SearchSuccessMetricName),
-								ems_logger:info("ems_ldap_handler search ~p ~p success from ~p.", [UserLogin, User#user.name, Ip]),
+								ems_logger:info("ems_ldap_handler handle_request search ~p ~p success from ~p.", [UserLogin, User#user.name, Ip]),
 								{ok, ListaPerfil} = ems_user_perfil:find_by_user(User#user.id, [id, name]),
 								ListaPerfil2 = [ maps:get(<<"name">>, R) || R <- ListaPerfil ],
 								ResultEntry = {searchResEntry, #'SearchResultEntry'{objectName = ObjectName,
@@ -188,7 +188,7 @@ handle_request({'LDAPMessage', _,
 								ResultDone = make_result_done(success),
 								{ok, [ResultEntry, ResultDone]};
 							false -> 
-								ems_logger:error("ems_ldap_handler search ~p does not exist from ~p.", [UserLogin, Ip]),
+								ems_logger:error("ems_ldap_handler handle_request search ~p does not exist from ~p.", [UserLogin, Ip]),
 								ems_user:add_history(User, 
 													 #service{}, 
 													 #request{timestamp = TimestampBin,
@@ -204,7 +204,7 @@ handle_request({'LDAPMessage', _,
 						end
 			end;
 		{error, Reason} -> 
-			ems_logger:error("ems_ldap_handler handle_request_search_login parse invalid name ~p from ~p.", [ObjectName, Ip]),
+			ems_logger:error("ems_ldap_handler handle_request parse invalid name ~p from ~p.", [ObjectName, Ip]),
 			ems_user:add_history(#user{login = ObjectName},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
@@ -310,7 +310,7 @@ handle_request({'LDAPMessage', _,
 handle_request({'LDAPMessage', _, 
 					_UnknowMsg,
 				 _} = LdapMsg, _State, Ip, _Port, _TimestampBin) ->
-	ems_logger:warn("ems_ldap_handler received unknow msg ~p from ~p.", [LdapMsg, Ip]),
+	ems_logger:warn("ems_ldap_handler handle_request received unknow msg ~p from ~p.", [LdapMsg, Ip]),
 	{ok, unbindRequest}.
 	
 
@@ -519,7 +519,7 @@ handle_bind_request(Name,
 	case (Name =:= <<>>) orelse (NameSize < 4) orelse (NameSize > 100) orelse 
 		 (Password =:= <<>>) orelse (PasswordSize < 4) orelse (PasswordSize > 100) of
 		true ->
-			ems_logger:error("ems_ldap_handler handle_request parse invalid message from ~p.", [Ip]),
+			ems_logger:error("ems_ldap_handler handle_bind_request parse invalid message from ~p.", [Ip]),
 			BindResponse = make_bind_response(invalidCredentials, Name);
 		false ->
 			case ems_util:parse_ldap_name(Name) of
@@ -528,23 +528,23 @@ handle_bind_request(Name,
 						{ok, Admin} -> 
 							BindReqHash = erlang:phash2([Ip, Port]),
 							put(BindReqHash, {Admin, AdminLogin}),
-							ems_logger:info("ems_ldap_handler bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
+							ems_logger:info("ems_ldap_handler handle_bind_request bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
 							BindResponse = make_bind_response(success, Name);
 						_ ->
 						  case do_authenticate_admin_with_list_users(AdminLogin, Password, State, Ip, Port, TimestampBin) of
 							  {ok, Admin} -> 
 								 BindReqHash = erlang:phash2([Ip, Port]),
 								 put(BindReqHash, {Admin, AdminLogin}),
-								 ems_logger:info("ems_ldap_handler bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
+								 ems_logger:info("ems_ldap_handler handle_bind_request bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
 								 BindResponse = make_bind_response(success, Name);
 							  _-> 
-								 ems_logger:error("ems_ldap_handler bind_~s ~p invalid credential from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
+								 ems_logger:error("ems_ldap_handler handle_bind_request bind_~s ~p invalid credential from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
 								 BindResponse = make_bind_response(insufficientAccessRights, Name)
 						   end
 					end,
 					BindResponse;
 				{error, Reason} -> 
-					ems_logger:error("ems_ldap_handler handle_request parse invalid bind request name ~p from ~p.", [Name, Ip]),
+					ems_logger:error("ems_ldap_handler handle_bind_request parse invalid bind request name ~p from ~p.", [Name, Ip]),
 					ems_user:add_history(#user{login = Name},  
 										 #service{}, 
 										 #request{timestamp = TimestampBin,
@@ -578,7 +578,7 @@ handle_request_search_login(Name,
 							ems_db:inc_counter(SearchInvalidCredentialMetricName),
 							case Attribute of
 								<<>> ->
-									ems_logger:error("ems_ldap_handler search ~p does not exist from ~p.", [UserLogin, Ip]),
+									ems_logger:error("ems_ldap_handler handle_request_search_login search ~p does not exist from ~p.", [UserLogin, Ip]),
 									ems_user:add_history(#user{login = UserLogin}, 
 														 #service{}, 
 														 #request{timestamp = TimestampBin,
@@ -596,7 +596,7 @@ handle_request_search_login(Name,
 										{ok, Field} -> 
 											do_find_by_filter([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn);
 										{error, einvalid_field} ->
-											ems_logger:error("ems_ldap_handler search ~p does not exist from ~p.", [UserLogin, Ip]),
+											ems_logger:error("ems_ldap_handler handle_request_search_login search ~p does not exist from ~p.", [UserLogin, Ip]),
 											ems_user:add_history(#user{login = UserLogin}, 
 																 #service{}, 
 																 #request{timestamp = TimestampBin,
@@ -613,7 +613,7 @@ handle_request_search_login(Name,
 							end;
 						{ok, User} -> 
 							ems_db:inc_counter(SearchSuccessMetricName),
-							ems_logger:info("ems_ldap_handler search ~p ~p success from ~p.", [UserLogin, User#user.name, Ip]),
+							ems_logger:info("ems_ldap_handler handle_request_search_login search ~p ~p success from ~p.", [UserLogin, User#user.name, Ip]),
 							ResultEntry = make_result_entry(User, AdminLdap, AttributesToReturn),
 							ResultDone = make_result_done(success),
 							ems_user:add_history(User, 
@@ -628,7 +628,7 @@ handle_request_search_login(Name,
 							{ok, [ResultEntry, ResultDone]}
 					end;
 				false ->
-					ems_logger:error("ems_ldap_handler handle_request_search insufficient access rights ~p from ~p.", [Name, Ip]),
+					ems_logger:error("ems_ldap_handler handle_request_search_login insufficient access rights ~p from ~p.", [Name, Ip]),
 					ems_user:add_history(#user{login = Name},  
 										 #service{}, 
 										 #request{timestamp = TimestampBin,
@@ -665,7 +665,7 @@ handle_request_search_filter(FilterLdap, State, Ip, Port, TimestampBin, Attribut
 		{ok, Filter} -> 
 			do_find_by_filter(Filter, State, Ip, Port, TimestampBin, AttributesToReturn);
 		{error, Reason} -> 
-			ems_logger:error("ems_ldap_handler handle_request parse invalid filter or ~p from ~p.", [FilterLdap, Ip]),
+			ems_logger:error("ems_ldap_handler handle_request_search_filter parse invalid filter or ~p from ~p.", [FilterLdap, Ip]),
 			ems_user:add_history(#user{},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
@@ -689,7 +689,7 @@ do_find_by_filter(Filter,
 		true ->
 			case ems_user:find_by_filter([], Filter) of
 				{error, Reason, ReasonDetail} ->
-					ems_logger:error("ems_ldap_handler search filter_or ~p does not exist from ~p.", [Filter, Ip]),
+					ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
 					ems_user:add_history(#user{}, 
 										 #service{}, 
 										 #request{timestamp = TimestampBin,
@@ -703,7 +703,7 @@ do_find_by_filter(Filter,
 					ResultDone = make_result_done(noSuchObject),
 					{ok, [ResultDone]};
 				{ok, [User|_]} -> 
-					ems_logger:info("ems_ldap_handler search filter_or ~p success from ~p.", [Filter, Ip]),
+					ems_logger:info("ems_ldap_handler do_find_by_filter search filter_or ~p success from ~p.", [Filter, Ip]),
 					ResultEntry = make_result_entry(User, AdminLdap, AttributesToReturn),
 					ResultDone = make_result_done(success),
 					ems_user:add_history(User, 
@@ -717,7 +717,7 @@ do_find_by_filter(Filter,
 												  port = Port}),
 					{ok, [ResultEntry, ResultDone]};
 				{ok, []} -> 
-					ems_logger:error("ems_ldap_handler search filter_or ~p does not exist from ~p.", [Filter, Ip]),
+					ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
 					ems_user:add_history(#user{}, 
 										 #service{}, 
 										 #request{timestamp = TimestampBin,
@@ -732,7 +732,7 @@ do_find_by_filter(Filter,
 					{ok, [ResultDone]}
 			end;
 		false ->
-			ems_logger:error("ems_ldap_handler handle_request_search insufficient access rights ~p from ~p.", [Filter, Ip]),
+			ems_logger:error("ems_ldap_handler do_find_by_filter insufficient access rights ~p from ~p.", [Filter, Ip]),
 			ems_user:add_history(#user{}, 
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
@@ -802,6 +802,12 @@ do_authenticate_admin_with_admin_user(Name, LdapUser, PasswordUser, #state{ldap_
 																		   ldap_admin_password = PasswordAdminLdapConfig}, Ip, Port, TimestampBin) ->
 	LdapUserLower = list_to_binary(string:to_lower(binary_to_list(LdapUser))),
 	PasswordUserLower = list_to_binary(string:to_lower(binary_to_list(PasswordUser))),
+	
+io:format("Name is ~p\n", [Name]),	
+io:format("LdapUser is ~p\n", [LdapUser]),	
+io:format("PasswordUser is ~p\n", [PasswordUser]),	
+io:format("PasswordUserCrypto is ~p\n", [ems_util:criptografia_sha1(PasswordUser)]),	
+	
 	case (Name =:= AdminLdapConfig orelse 
 		  LdapUser =:= AdminLdapConfig orelse
 		  LdapUserLower =:= AdminLdapConfig orelse
@@ -812,6 +818,7 @@ do_authenticate_admin_with_admin_user(Name, LdapUser, PasswordUser, #state{ldap_
 		  ems_util:criptografia_sha1(PasswordUser) =:= PasswordAdminLdapConfig orelse
 		  ems_util:criptografia_sha1(PasswordUserLower) =:= PasswordAdminLdapConfig) of
 		true -> 
+			io:format("aqui1\n"),
 			ems_user:add_history(#user{login = LdapUser},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
@@ -823,6 +830,7 @@ do_authenticate_admin_with_admin_user(Name, LdapUser, PasswordUser, #state{ldap_
 										  port = Port}),
 			{ok, true};
 		false -> 
+			io:format("aqui2\n"),
 			ems_user:add_history(#user{login = LdapUser},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
