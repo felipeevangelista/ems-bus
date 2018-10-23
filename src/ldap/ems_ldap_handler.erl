@@ -793,9 +793,8 @@ do_authenticate_admin_with_list_users(UserLogin, UserPassword, #state{auth_allow
 do_authenticate_admin_with_admin_user(Name, LdapUser, PasswordUser, #state{ldap_admin = AdminLdapConfig, 
 																		   ldap_admin_cn = AdminLdapCnConfig, 
 																		   ldap_admin_password = PasswordAdminLdapConfig}, Ip, Port, TimestampBin) ->
-	io:format("name is ~\n", [Name]),
-	io:format("ldapuser is ~\n", [LdapUser]),
-	LdapUserLower = string:to_lower(LdapUser),
+	LdapUserLower = list_to_binary(string:to_lower(binary_to_list(LdapUser))),
+	PasswordUserLower = list_to_binary(string:to_lower(binary_to_list(PasswordUser))),
 	case (Name =:= AdminLdapConfig orelse 
 		  LdapUser =:= AdminLdapConfig orelse
 		  LdapUserLower =:= AdminLdapConfig orelse
@@ -804,7 +803,7 @@ do_authenticate_admin_with_admin_user(Name, LdapUser, PasswordUser, #state{ldap_
 		  andalso 
 		 (PasswordUser =:= PasswordAdminLdapConfig orelse 
 		  ems_util:criptografia_sha1(PasswordUser) =:= PasswordAdminLdapConfig orelse
-		  ems_util:criptografia_sha1(string:to_lower(PasswordUser)) =:= PasswordAdminLdapConfig) of
+		  ems_util:criptografia_sha1(PasswordUserLower) =:= PasswordAdminLdapConfig) of
 		true -> 
 			ems_user:add_history(#user{login = LdapUser},  
 								 #service{}, 
