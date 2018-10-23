@@ -108,10 +108,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 			loop(Socket, Transport, State);		
 		_ ->
 			io:format("close socket 2!!\n"),
-			{ok, {IpTuple, Port}} = inet:peername(Socket),
-			IpBin = list_to_binary(inet_parse:ntoa(IpTuple)),
-			BindReqHash = erlang:phash2([IpBin, Port]),
-			erase(BindReqHash),
 			Transport:close(Socket),
 			ok
 	end.
