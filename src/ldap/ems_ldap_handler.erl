@@ -70,6 +70,7 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 											BindReqHash = erlang:phash2([IpBin, Port]),
 											erase(BindReqHash),
 											Transport:close(Socket),
+											io:format("close socket\n"),
 											?DEBUG("ems_ldap_handler unbindRequest and close socket."),
 											ok;
 										{ok, Msg} -> 
@@ -528,6 +529,7 @@ handle_bind_request(Name,
 						{ok, Admin} -> 
 							BindReqHash = erlang:phash2([Ip, Port]),
 							put(BindReqHash, {Admin, AdminLogin}),
+							io:format("handle_bind_request 1 BindReqHash is ~p\n", [BindReqHash]),
 							ems_logger:info("ems_ldap_handler handle_bind_request bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
 							BindResponse = make_bind_response(success, Name);
 						_ ->
@@ -535,6 +537,7 @@ handle_bind_request(Name,
 							  {ok, Admin} -> 
 								 BindReqHash = erlang:phash2([Ip, Port]),
 								 put(BindReqHash, {Admin, AdminLogin}),
+								 io:format("handle_bind_request 2 BindReqHash is ~p\n", [BindReqHash]),
 								 ems_logger:info("ems_ldap_handler handle_bind_request bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
 								 BindResponse = make_bind_response(success, Name);
 							  _-> 
@@ -856,7 +859,9 @@ format_user_field(Value) when is_binary(Value) -> Value.
 
 -spec allow_requet_search(binary(), non_neg_integer(), binary()) -> boolean().
 allow_requet_search(Ip, Port, Name) -> 
+	io:format("Ip ~p, Port ~p, Name ~p", [Ip, Port, Name]),
 	BindReqHash = erlang:phash2([Ip, Port]),
+	io:format("allow_requet_search BindReqHash is ~p\n", [BindReqHash]),
 	case get(BindReqHash) of
 		undefined -> false;
 		{true, _} -> true;
