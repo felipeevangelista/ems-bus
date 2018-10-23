@@ -509,10 +509,10 @@ parse_config(Json, Filename) ->
 		SmtpPort = get_p(<<"smtp_port">>, Json, 587),
 
 		put(parse_step, ldap_url),
-		LdapUrl = binary_to_list(get_p(<<"ldap_url">>, Json, <<>>)),
+		LdapUrl = get_p(<<"ldap_url">>, Json, <<>>),
 
 		put(parse_step, ldap_admin),
-		LdapAdmin = binary_to_list(get_p(<<"ldap_admin">>, Json, <<>>)),
+		LdapAdmin = list_to_binary(string:to_lower(binary_to_list(get_p(<<"ldap_admin">>, Json, <<>>)))),
 				 
 		put(parse_step, ldap_password_admin_crypto),
 		LdapPasswdAdminCrypto = get_p(<<"ldap_password_admin_crypto">>, Json, <<>>),

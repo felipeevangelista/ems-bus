@@ -93,7 +93,7 @@ init({IpAddress,
 		{error, Reason} -> 
 			LdapAdminCn = Conf#config.ldap_admin,
 			LdapAdminBaseFilter = <<>>,
-			ems_logger:error("ems_ldap_listener parse ldap_admin failed. Reason: ~p.", [Reason])
+			ems_logger:error("ems_ldap_listener parse ldap_admin ~p failed. Reason: ~p.", [Conf#config.ldap_admin, Reason])
 	end,
     State = #state{ldap_admin = Conf#config.ldap_admin,
 				   ldap_admin_cn = LdapAdminCn,
