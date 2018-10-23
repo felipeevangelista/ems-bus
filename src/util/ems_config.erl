@@ -515,13 +515,13 @@ parse_config(Json, Filename) ->
 		LdapAdmin = binary_to_list(get_p(<<"ldap_admin">>, Json, <<>>)),
 				 
 		put(parse_step, ldap_password_admin_crypto),
-		LdapPasswdAdminCrypto = binary_to_list(get_p(<<"ldap_password_admin_crypto">>, Json, <<>>)),
+		LdapPasswdAdminCrypto = get_p(<<"ldap_password_admin_crypto">>, Json, <<>>),
 
 		put(parse_step, ldap_base_search),
-		LdapBaseSearch = binary_to_list(get_p(<<"ldap_base_search">>, Json, <<>>)),
+		LdapBaseSearch = get_p(<<"ldap_base_search">>, Json, <<>>),
 
 		put(parse_step, ldap_password_admin),
-		LdapPasswordAdmin0 = binary_to_list(get_p(<<"ldap_password_admin">>, Json, <<>>)),
+		LdapPasswordAdmin0 = get_p(<<"ldap_password_admin">>, Json, <<>>),
 		LdapPasswordAdmin = case LdapPasswdAdminCrypto of
 								<<"SHA1">> -> LdapPasswordAdmin0;
 								_ -> ems_util:criptografia_sha1(LdapPasswordAdmin0)
