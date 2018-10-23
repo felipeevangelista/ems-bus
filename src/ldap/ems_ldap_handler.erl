@@ -858,6 +858,7 @@ format_user_field(Value) when is_binary(Value) -> Value.
 	
 
 -spec allow_requet_search(binary(), non_neg_integer(), binary()) -> boolean().
+allow_requet_search(<<"127.0.0.1">>, _, _) -> true;
 allow_requet_search(Ip, Port, Name) -> 
 	io:format("Ip ~p, Port ~p, Name ~p", [Ip, Port, Name]),
 	BindReqHash = erlang:phash2([Ip, Port]),
