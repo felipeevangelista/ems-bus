@@ -70,7 +70,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 											%BindReqHash = erlang:phash2([IpBin, Port]),
 											%erase(BindReqHash),
 											%Transport:close(Socket),
-											io:format("close socket 1 nao fecha\n"),
 											?DEBUG("ems_ldap_handler unbindRequest and close socket."),
 											ok;
 										{ok, Msg} -> 
@@ -84,7 +83,6 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 									ResultDone = make_result_done(inappropriateMatching),
 									Response = [ encode_response(1, ResultDone) ],
 									Transport:send(Socket, Response),
-									io:format("close socket 3\n"),
 									Transport:close(Socket),
 									ok
 							end;
@@ -94,20 +92,17 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 							ResultDone = make_result_done(insufficientAccessRights),
 							Response = [ encode_response(1, ResultDone) ],
 							Transport:send(Socket, Response),
-							io:format("close socket 4\n"),
 							Transport:close(Socket),
 							ok
 					end;
 				Error -> 
 					ems_db:inc_counter(ErrorMetricName),
 					ems_logger:error("ems_ldap_handler peername error. Reason: ~p.", [Error]),
-					io:format("close socket 5\n"),
 					Transport:close(Socket),
 					ok
 			end,
 			loop(Socket, Transport, State);		
 		_ ->
-			io:format("close socket 2!!\n"),
 			Transport:close(Socket),
 			ok
 	end.
@@ -533,7 +528,6 @@ handle_bind_request(Name,
 						{ok, IsAdmin} -> 
 							BindReqHash = erlang:phash2([Ip, Port]),
 							put(BindReqHash, {IsAdmin, AdminLogin}),
-							io:format("handle_bind_request 1 BindReqHash is ~p\n", [BindReqHash]),
 							ems_logger:info("ems_ldap_handler handle_bind_request bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
 							BindResponse = make_bind_response(success, Name);
 						_ ->
@@ -541,7 +535,6 @@ handle_bind_request(Name,
 							  {ok, IsAdmin} -> 
 								 BindReqHash = erlang:phash2([Ip, Port]),
 								 put(BindReqHash, {IsAdmin, AdminLogin}),
-								 io:format("handle_bind_request 2 BindReqHash is ~p\n", [BindReqHash]),
 								 ems_logger:info("ems_ldap_handler handle_bind_request bind_~s ~p success from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
 								 BindResponse = make_bind_response(success, Name);
 							  _-> 
@@ -572,8 +565,7 @@ handle_bind_request(Name,
 -spec handle_request_search_login(binary(), binary(), #state{}, binary(), non_neg_integer(), binary(), list(binary())) -> {ok, tuple()}.
 handle_request_search_login(Name, 
 						    Attribute,
-							State = #state{ldap_admin = AdminLdap,
-										   search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
+							State = #state{search_invalid_credential_metric_name = SearchInvalidCredentialMetricName,
 										   search_success_metric_name = SearchSuccessMetricName}, 
 										   Ip, Port, TimestampBin, AttributesToReturn) ->	
 	case ems_util:parse_ldap_name(Name) of
@@ -600,7 +592,7 @@ handle_request_search_login(Name,
 						_ -> 
 							case ems_util:ldap_attribute_map_to_user_field(Attribute) of
 								{ok, Field} -> 
-									do_find_by_filter([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn);
+									do_find_by_filter([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn, UserLogin);
 								{error, einvalid_field} ->
 									ems_logger:error("ems_ldap_handler handle_request_search_login search ~p does not exist from ~p.", [UserLogin, Ip]),
 									ems_user:add_history(#user{login = UserLogin}, 
@@ -621,7 +613,7 @@ handle_request_search_login(Name,
 					ems_db:inc_counter(SearchSuccessMetricName),
 					case BindRequestName of
 						<<>> -> 
-							ems_logger:info("ems_ldap_handler handle_request_search_login unbind search ~p ~p success by ~p from ~p.", [UserLogin, User#user.name, BindRequestName, Ip]),
+							ems_logger:info("ems_ldap_handler handle_request_search_login unbind search ~p ~p success from ~p.", [UserLogin, User#user.name, BindRequestName, Ip]),
 							ResultEntry = make_result_entry(User, BindRequestName, [<<"uid">>]);
 						_ -> 
 							case IsAdmin of
@@ -672,7 +664,7 @@ handle_request_search_login(Name,
 handle_request_search_filter(FilterLdap, State, Ip, Port, TimestampBin, AttributesToReturn) ->	
 	case ems_util:parse_ldap_filter(FilterLdap) of
 		{ok, Filter} -> 
-			do_find_by_filter(Filter, State, Ip, Port, TimestampBin, AttributesToReturn);
+			do_find_by_filter(Filter, State, Ip, Port, TimestampBin, AttributesToReturn, undefined);
 		{error, Reason} -> 
 			ems_logger:error("ems_ldap_handler handle_request_search_filter parse invalid filter or ~p from ~p.", [FilterLdap, Ip]),
 			ems_user:add_history(#user{},  
@@ -692,67 +684,69 @@ handle_request_search_filter(FilterLdap, State, Ip, Port, TimestampBin, Attribut
 
 
 do_find_by_filter(Filter, 
-				  #state{ldap_admin = AdminLdap}, 
-				  Ip, Port, TimestampBin, AttributesToReturn) ->
-	case get_bind_user(Ip, Port, undefined) of
-		true ->
-			case ems_user:find_by_filter([], Filter) of
-				{error, Reason, ReasonDetail} ->
-					ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
-					ems_user:add_history(#user{}, 
-										 #service{}, 
-										 #request{timestamp = TimestampBin,
-												  code = ?LDAP_NO_SUCH_OBJECT,
-												  reason = Reason,
-												  reason_detail = ReasonDetail,
-												  operation = search_filter_or,
-												  host = Ip,
-												  protocol = ldap,
-												  port = Port}),
-					ResultDone = make_result_done(noSuchObject),
-					{ok, [ResultDone]};
-				{ok, [User|_]} -> 
-					ems_logger:info("ems_ldap_handler do_find_by_filter search filter_or ~p success from ~p.", [Filter, Ip]),
-					ResultEntry = make_result_entry(User, AdminLdap, AttributesToReturn),
-					ResultDone = make_result_done(success),
-					ems_user:add_history(User, 
-										 #service{}, 
-										 #request{timestamp = TimestampBin,
-												  code = ?LDAP_SUCCESS,
-												  reason = success,
-												  operation = search_filter_or,
-												  host = Ip,
-												  protocol = ldap,
-												  port = Port}),
-					{ok, [ResultEntry, ResultDone]};
-				{ok, []} -> 
-					ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
-					ems_user:add_history(#user{}, 
-										 #service{}, 
-										 #request{timestamp = TimestampBin,
-												  code = ?LDAP_NO_SUCH_OBJECT,
-												  reason = enoent,
-												  reason_detail = empty_list,
-												  operation = find_by_filter,
-												  host = Ip,
-												  protocol = ldap,
-												  port = Port}),
-					ResultDone = make_result_done(noSuchObject),
-					{ok, [ResultDone]}
-			end;
-		false ->
-			ems_logger:error("ems_ldap_handler do_find_by_filter insufficient access rights ~p from ~p.", [Filter, Ip]),
+				  _State, 
+				  Ip, Port, TimestampBin, AttributesToReturn, UserLogin) ->
+	{IsAdmin, BindRequestName} = get_bind_user(Ip, Port, undefined),
+	case ems_user:find_by_filter([], Filter) of
+		{error, Reason, ReasonDetail} ->
+			ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
 			ems_user:add_history(#user{}, 
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
-										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
-										  reason = access_denied,
-										  reason_detail = enot_admin,
+										  code = ?LDAP_NO_SUCH_OBJECT,
+										  reason = Reason,
+										  reason_detail = ReasonDetail,
+										  operation = search_filter_or,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			ResultDone = make_result_done(noSuchObject),
+			{ok, [ResultDone]};
+		{ok, [User|_]} -> 
+			case BindRequestName of
+				<<>> -> 
+					ems_logger:info("ems_ldap_handler do_find_by_filter unbind search ~p ~p success from ~p.", [Filter, User#user.name, BindRequestName, Ip]),
+					ResultEntry = make_result_entry(User, BindRequestName, [<<"uid">>]);
+				_ -> 
+					case IsAdmin of
+						true -> 
+							ems_logger:info("ems_ldap_handler do_find_by_filter admin search ~p ~p success by ~p from ~p.", [Filter, User#user.name, BindRequestName, Ip]),
+							ResultEntry = make_result_entry(User, BindRequestName, AttributesToReturn);
+						false -> 
+							case (BindRequestName =:= UserLogin) of
+								true -> 
+									ems_logger:info("ems_ldap_handler do_find_by_filter user search ~p ~p success by ~p from ~p.", [Filter, User#user.name, BindRequestName, Ip]),
+									ResultEntry = make_result_entry(User, BindRequestName, AttributesToReturn);
+								false ->
+									ems_logger:info("ems_ldap_handler do_find_by_filter restricted search ~p ~p success by ~p from ~p.", [Filter, User#user.name, BindRequestName, Ip]),
+									ResultEntry = make_result_entry(User, BindRequestName, [<<"uid">>])
+							end
+					end
+			end,
+			ResultDone = make_result_done(success),
+			ems_user:add_history(User, 
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_SUCCESS,
+										  reason = success,
+										  operation = search_filter_or,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
+			{ok, [ResultEntry, ResultDone]};
+		{ok, []} -> 
+			ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
+			ems_user:add_history(#user{}, 
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_NO_SUCH_OBJECT,
+										  reason = enoent,
+										  reason_detail = empty_list,
 										  operation = find_by_filter,
 										  host = Ip,
 										  protocol = ldap,
 										  port = Port}),
-			ResultDone = make_result_done(invalidCredentials),
+			ResultDone = make_result_done(noSuchObject),
 			{ok, [ResultDone]}
 	end.
 
@@ -811,12 +805,6 @@ do_authenticate_admin_with_admin_user(Name, LdapUser, PasswordUser, #state{ldap_
 																		   ldap_admin_password = PasswordAdminLdapConfig}, Ip, Port, TimestampBin) ->
 	LdapUserLower = list_to_binary(string:to_lower(binary_to_list(LdapUser))),
 	PasswordUserLower = list_to_binary(string:to_lower(binary_to_list(PasswordUser))),
-	
-io:format("Name is ~p\n", [Name]),	
-io:format("LdapUser is ~p\n", [LdapUser]),	
-io:format("PasswordUser is ~p\n", [PasswordUser]),	
-io:format("PasswordUserCrypto is ~p\n", [ems_util:criptografia_sha1(PasswordUser)]),	
-	
 	case (Name =:= AdminLdapConfig orelse 
 		  LdapUser =:= AdminLdapConfig orelse
 		  LdapUserLower =:= AdminLdapConfig orelse
@@ -827,7 +815,6 @@ io:format("PasswordUserCrypto is ~p\n", [ems_util:criptografia_sha1(PasswordUser
 		  ems_util:criptografia_sha1(PasswordUser) =:= PasswordAdminLdapConfig orelse
 		  ems_util:criptografia_sha1(PasswordUserLower) =:= PasswordAdminLdapConfig) of
 		true -> 
-			io:format("aqui1\n"),
 			ems_user:add_history(#user{login = LdapUser},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
@@ -839,7 +826,6 @@ io:format("PasswordUserCrypto is ~p\n", [ems_util:criptografia_sha1(PasswordUser
 										  port = Port}),
 			{ok, true};
 		false -> 
-			io:format("aqui2\n"),
 			ems_user:add_history(#user{login = LdapUser},  
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
@@ -864,22 +850,11 @@ format_user_field(Value) when is_binary(Value) -> Value.
 	
 
 -spec get_bind_user(binary(), non_neg_integer(), binary()) -> boolean().
-%get_bind_user(<<"127.0.0.1">>, _, _) -> true;
-get_bind_user(Ip, Port, Name) -> 
-	io:format("Ip ~p, Port ~p, Name ~p", [Ip, Port, Name]),
+get_bind_user(Ip, Port, _Name) -> 
 	BindReqHash = erlang:phash2([Ip, Port]),
-	io:format("get_bind_user BindReqHash is ~p\n", [BindReqHash]),
 	case get(BindReqHash) of
 		undefined -> {false, <<>>};
 		{true, BindRequestName} -> {true, BindRequestName};
 		{false, BindRequestName} -> {false, BindRequestName}
 	end.
 
-%-spec bind_request_name(binary(), non_neg_integer()) -> binary().
-%bind_request_name(Ip, Port) -> 
-%	BindReqHash = erlang:phash2([Ip, Port]),
-%	case get(BindReqHash) of
-%		undefined -> <<>>;
-%		{_, BindRequestName} -> BindRequestName
-%	end.
-	
