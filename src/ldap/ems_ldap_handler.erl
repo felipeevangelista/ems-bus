@@ -68,9 +68,9 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 									case Result of
 										{ok, unbindRequest} ->
 											BindReqHash = erlang:phash2([IpBin, Port]),
-											erase(BindReqHash),
-											Transport:close(Socket),
-											io:format("close socket\n"),
+											%erase(BindReqHash),
+											%Transport:close(Socket),
+											io:format("close socket 1 nao fecha\n"),
 											?DEBUG("ems_ldap_handler unbindRequest and close socket."),
 											ok;
 										{ok, Msg} -> 
@@ -84,6 +84,7 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 									ResultDone = make_result_done(inappropriateMatching),
 									Response = [ encode_response(1, ResultDone) ],
 									Transport:send(Socket, Response),
+									io:format("close socket 3\n"),
 									Transport:close(Socket),
 									ok
 							end;
@@ -93,17 +94,24 @@ loop(Socket, Transport, State = #state{tcp_allowed_address_t = AllowedAddress,
 							ResultDone = make_result_done(insufficientAccessRights),
 							Response = [ encode_response(1, ResultDone) ],
 							Transport:send(Socket, Response),
+							io:format("close socket 4\n"),
 							Transport:close(Socket),
 							ok
 					end;
 				Error -> 
 					ems_db:inc_counter(ErrorMetricName),
 					ems_logger:error("ems_ldap_handler peername error. Reason: ~p.", [Error]),
+					io:format("close socket 5\n"),
 					Transport:close(Socket),
 					ok
 			end,
 			loop(Socket, Transport, State);		
 		_ ->
+			io:format("close socket 2!!\n"),
+			{ok, {IpTuple, Port}} = inet:peername(Socket),
+			IpBin = list_to_binary(inet_parse:ntoa(IpTuple)),
+			BindReqHash = erlang:phash2([IpBin, Port]),
+			erase(BindReqHash),
 			Transport:close(Socket),
 			ok
 	end.
@@ -858,7 +866,7 @@ format_user_field(Value) when is_binary(Value) -> Value.
 	
 
 -spec allow_requet_search(binary(), non_neg_integer(), binary()) -> boolean().
-allow_requet_search(<<"127.0.0.1">>, _, _) -> true;
+%allow_requet_search(<<"127.0.0.1">>, _, _) -> true;
 allow_requet_search(Ip, Port, Name) -> 
 	io:format("Ip ~p, Port ~p, Name ~p", [Ip, Port, Name]),
 	BindReqHash = erlang:phash2([Ip, Port]),
