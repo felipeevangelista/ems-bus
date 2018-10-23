@@ -519,7 +519,18 @@ handle_bind_request(Name,
 	case (Name =:= <<>>) orelse (NameSize < 4) orelse (NameSize > 100) orelse 
 		 (Password =:= <<>>) orelse (PasswordSize < 4) orelse (PasswordSize > 100) of
 		true ->
-			ems_logger:error("ems_ldap_handler handle_bind_request parse invalid message from ~p.", [Ip]),
+			ems_logger:error("ems_ldap_handler handle_bind_request parse invalid bind request name ~p from ~p.", [Name, Ip]),
+			ems_user:add_history(#user{login = Name},  
+								 #service{}, 
+								 #request{timestamp = TimestampBin,
+										  code = ?LDAP_INSUFFICIENT_ACCESS_RIGHTS,
+										  reason = access_denied,
+										  reason_detail = einvalid_bind_request_name,
+										  reason_exception = einvalid_name,
+										  operation = bind_request,
+										  host = Ip,
+										  protocol = ldap,
+										  port = Port}),
 			BindResponse = make_bind_response(invalidCredentials, Name);
 		false ->
 			case ems_util:parse_ldap_name(Name) of
