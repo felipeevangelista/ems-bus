@@ -3269,6 +3269,9 @@ list_tuple_to_list_map([H|T], Result) ->
 -spec parse_ldap_name(binary()) -> {ok, cn | uid, binary(), binary()} | {error, einvalid_name}.
 parse_ldap_name(undefined) -> {error, einvalid_name};	
 parse_ldap_name(<<>>) -> {error, einvalid_name};	
+parse_ldap_name("") -> {error, einvalid_name};	
+parse_ldap_name(Name) when is_list(Name) -> 	
+	parse_ldap_name(list_to_binary(Name));
 parse_ldap_name(Name) -> 	
 	case binary:split(Name, <<",">>) of
 		[UserFilterValue, BaseFilterValue] ->

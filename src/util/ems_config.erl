@@ -521,7 +521,11 @@ parse_config(Json, Filename) ->
 		LdapBaseSearch = binary_to_list(get_p(<<"ldap_base_search">>, Json, <<>>)),
 
 		put(parse_step, ldap_password_admin),
-		LdapPasswordAdmin = binary_to_list(get_p(<<"ldap_password_admin">>, Json, <<>>)),
+		LdapPasswordAdmin0 = binary_to_list(get_p(<<"ldap_password_admin">>, Json, <<>>)),
+		LdapPasswordAdmin = case LdapPasswdAdminCrypto of
+								<<"SHA1">> -> LdapPasswordAdmin0;
+								_ -> ems_util:criptografia_sha1(LdapPasswordAdmin0)
+						  end,
 
 		put(parse_step, config),
 		Conf = #config{ 
@@ -599,7 +603,7 @@ parse_config(Json, Filename) ->
 				 ldap_url = LdapUrl,
 				 ldap_admin = LdapAdmin,
 				 ldap_password_admin = LdapPasswordAdmin,
-				 ldap_password_admin_crypto = LdapPasswdAdminCrypto,
+				 ldap_password_admin_crypto = <<"SHA1">>,
 				 ldap_base_search = LdapBaseSearch,
 				 custom_variables = CustomVariables
 			},
