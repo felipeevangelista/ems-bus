@@ -576,7 +576,10 @@ handle_request_search_login(Name,
 					ems_db:inc_counter(SearchInvalidCredentialMetricName),
 					case Attribute of
 						<<>> ->
-							ems_logger:error("ems_ldap_handler handle_request_search_login search ~p does not exist from ~p.", [UserLogin, Ip]),
+							case BindRequestName of
+								<<>> -> ems_logger:error("ems_ldap_handler handle_request_search_login unbind search ~p does not exist from ~p.", [UserLogin, Ip]);
+								_ -> ems_logger:error("ems_ldap_handler handle_request_search_login search ~p does not exist by ~p from ~p.", [UserLogin, BindRequestName, Ip])
+							end,
 							ems_user:add_history(#user{login = UserLogin}, 
 												 #service{}, 
 												 #request{timestamp = TimestampBin,
@@ -594,7 +597,10 @@ handle_request_search_login(Name,
 								{ok, Field} -> 
 									do_find_by_filter([{Field, <<"==">>, Name}], State, Ip, Port, TimestampBin, AttributesToReturn, UserLogin);
 								{error, einvalid_field} ->
-									ems_logger:error("ems_ldap_handler handle_request_search_login search ~p does not exist from ~p.", [UserLogin, Ip]),
+									case BindRequestName of
+										<<>> -> ems_logger:error("ems_ldap_handler handle_request_search_login unbind search ~p does not exist from ~p.", [UserLogin, Ip]);
+										_ -> ems_logger:error("ems_ldap_handler handle_request_search_login search ~p does not exist by ~p from ~p.", [UserLogin, BindRequestName, Ip])
+									end,
 									ems_user:add_history(#user{login = UserLogin}, 
 														 #service{}, 
 														 #request{timestamp = TimestampBin,
@@ -613,7 +619,7 @@ handle_request_search_login(Name,
 					ems_db:inc_counter(SearchSuccessMetricName),
 					case BindRequestName of
 						<<>> -> 
-							ems_logger:info("ems_ldap_handler handle_request_search_login unbind search ~p ~p success from ~p.", [UserLogin, User#user.name, BindRequestName, Ip]),
+							ems_logger:info("ems_ldap_handler handle_request_search_login unbind search ~p ~p success from ~p.", [UserLogin, User#user.name, Ip]),
 							ResultEntry = make_result_entry(User, BindRequestName, [<<"uid">>]);
 						_ -> 
 							case IsAdmin of
@@ -689,7 +695,10 @@ do_find_by_filter(Filter,
 	{IsAdmin, BindRequestName} = get_bind_user(Ip, Port, undefined),
 	case ems_user:find_by_filter([], Filter) of
 		{error, Reason, ReasonDetail} ->
-			ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
+			case BindRequestName of
+				<<>> ->	ems_logger:error("ems_ldap_handler do_find_by_filter unbind search ~p does not exist from ~p.", [Filter, Ip]);
+				_ -> ems_logger:error("ems_ldap_handler do_find_by_filter search ~p does not exist by ~p from ~p.", [Filter, BindRequestName, Ip])
+			end,
 			ems_user:add_history(#user{}, 
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
@@ -705,7 +714,7 @@ do_find_by_filter(Filter,
 		{ok, [User|_]} -> 
 			case BindRequestName of
 				<<>> -> 
-					ems_logger:info("ems_ldap_handler do_find_by_filter unbind search ~p ~p success from ~p.", [Filter, User#user.name, BindRequestName, Ip]),
+					ems_logger:info("ems_ldap_handler do_find_by_filter unbind search ~p ~p success from ~p.", [Filter, User#user.name, Ip]),
 					ResultEntry = make_result_entry(User, BindRequestName, [<<"uid">>]);
 				_ -> 
 					case IsAdmin of
@@ -735,7 +744,10 @@ do_find_by_filter(Filter,
 										  port = Port}),
 			{ok, [ResultEntry, ResultDone]};
 		{ok, []} -> 
-			ems_logger:error("ems_ldap_handler do_find_by_filter search filter_or ~p does not exist from ~p.", [Filter, Ip]),
+			case BindRequestName of
+				<<>> ->	ems_logger:error("ems_ldap_handler do_find_by_filter unbind search ~p does not exist from ~p.", [Filter, Ip]);
+				_ -> ems_logger:error("ems_ldap_handler do_find_by_filter search ~p does not exist by ~p from ~p.", [Filter, BindRequestName, Ip])
+			end,
 			ems_user:add_history(#user{}, 
 								 #service{}, 
 								 #request{timestamp = TimestampBin,
