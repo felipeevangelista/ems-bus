@@ -194,6 +194,7 @@
 		 list_map_to_list_tuple/1,
 		 list_tuple_to_list_map/1,
 		 format_rest_status/5,
+		 os_command/1,
 		 os_command/2,
 		 integer_to_list_def/2,
 		 str_trim/1
@@ -3677,19 +3678,24 @@ get_pid_from_port(Port) ->
 			{error, enoent}
 	end.
 	
+
+-spec os_command(string()) -> {ok, any()} | {error, einvalid_command}.
+os_command(Cmd) -> os_command(Cmd, undefined).
 	
 -spec os_command(string(), list()) -> {ok, any()} | {error, einvalid_command}.
+os_command(Cmd, Options) when is_binary(Cmd) ->
+	os_command(binary_to_list(Cmd), Options);
 os_command(Cmd, Options) ->
 	try
-		case Options of
-			undefined -> Result = os:cmd(Cmd);
-			_ -> Result = os:cmd(Cmd, Options)
+		case Options == undefined orelse Options == [] of
+			true -> Result = os:cmd(Cmd);
+			false -> Result = os:cmd(Cmd, Options)
 		end,
 		{ok, Result}
 	catch
 		_:undef -> 
 			% na versão 21 em diante é que existe a função os:cmd com arity 2
-			os:cmd(Cmd, undefined);
+			os_command(Cmd, undefined);
 		_:Reason -> 
 			ems_logger:error("ems_util os_command execute failed: ~p. Reason: ~p.", [Cmd, Reason]),
 			{error, einvalid_command}
