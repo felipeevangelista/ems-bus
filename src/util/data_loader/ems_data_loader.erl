@@ -568,10 +568,10 @@ do_load_data_pump(CtrlInsert,
 			false ->
 				case Offset > 1 of
 					true ->	
-						SqlLoad2 = io_lib:format("select distinct ~s from ( select ~s, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlFields, SqlFields, SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
+						SqlLoad2 = io_lib:format("select distinct ~s from ( select ~s, row_number() over (order by id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlFields, SqlFields, SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
 					false -> 
 						% Quando o offset é 1, usamos select top para obter um pouco mais de performance na primeira query
-						SqlLoad2 = io_lib:format("select distinct top ~p ~s from ( ~s ) _t_sql order by Id", [Offset+SqlLoadPacketLength-1, SqlFields, SqlLoad])
+						SqlLoad2 = io_lib:format("select distinct top ~p ~s from ( ~s ) _t_sql order by id", [Offset+SqlLoadPacketLength-1, SqlFields, SqlLoad])
 				end
 		end,
 		SqlLoad3 = re:replace(SqlLoad2, "\\s+", " ", [global,{return,list}]),

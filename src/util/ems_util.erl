@@ -492,6 +492,7 @@ tuple_to_binlist(T) ->
 	L = tuple_to_list(T),
 	list_to_binlist(L).
 
+-spec list_to_binlist(list(string())) -> list(binary()).
 list_to_binlist([]) -> [];
 list_to_binlist(<<>>) -> [];
 list_to_binlist(<<V/binary>>) -> [V];
@@ -501,11 +502,12 @@ list_to_binlist([], Result) -> lists:reverse(Result);
 list_to_binlist([H|T], Result) -> 	
 	list_to_binlist(T, [item_to_binary(H) | Result]).
 
+-spec binlist_to_list(list(binary())) -> list(string()).
 binlist_to_list(<<>>) -> [];
 binlist_to_list([]) -> [];
 binlist_to_list(Value) -> binlist_to_list(Value, []).
 
-binlist_to_list([], Result) -> Result;
+binlist_to_list([], Result) -> lists:reverse(Result);
 binlist_to_list([H|T], Result) ->
 	binlist_to_list(T, [binary_to_list(H)|Result]).
 
@@ -513,7 +515,7 @@ binlist_to_list([H|T], Result) ->
 join_binlist([], _) -> "";
 join_binlist(BinList, Str) -> string:join(binlist_to_list(BinList), Str).
 
-
+-spec item_to_binary(any()) -> binary().
 item_to_binary(undefined) -> undefined;
 item_to_binary(null) -> undefined;
 item_to_binary([]) -> <<>>;
