@@ -18,7 +18,7 @@
 	"sql_load_packet_length" : 3000,
 	"sql_load" : 
 				"select 
-					df.MatSipes as Id,
+					df.MatSipes as id,
 					u.UsuId as user_id, 
 					Isnull(ca.categocargo, 4) as type, 
 					0 as subtype,
@@ -39,7 +39,7 @@
                 ",
 	"sql_update" : 
 				"select 
-					df.MatSipes as Id,
+					df.MatSipes as id,
 					u.UsuId as user_id, 
 					Isnull(ca.categocargo, 4) as type, 
 					0 as subtype,
@@ -57,8 +57,7 @@
 					left join sipes.dbo.cargos ca 
 							ON c.codcargo = ca.codcargo 
 				where df.MatSipes is not null and (u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
-					  u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?) 
-				order by p.PesDataAlteracao desc, u.UsuDataAlteracao desc
+												   u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?)
                 ",
 
 			

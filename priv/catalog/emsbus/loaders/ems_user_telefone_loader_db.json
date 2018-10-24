@@ -21,23 +21,23 @@
 	"sql_load_packet_length" : 2000,
 	"sql_load" : 
 				"select 
-				   t.TelCodigo as Id,
-				   pft.PFTPesCodigoPessoa,
-				   t.TelNumero,
-				   t.TelRamal,
-				   t.TelDDD,
-				   t.TelTipo 
+				   t.TelCodigo as id,
+				   pft.PFTPesCodigoPessoa as codigo,
+				   t.TelNumero as numero,
+				   t.TelRamal as ramal,
+				   t.TelDDD as ddd,
+				   t.TelTipo as type 
 				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 					join BDPessoa.dbo.TB_Telefone t 
 					   on pft.PFTTelCodigo = t.TelCodigo",
 	"sql_update" : 
 				"select 
-				   t.TelCodigo as Id,
-				   pft.PFTPesCodigoPessoa,
-				   t.TelNumero,
-				   t.TelRamal,
-				   t.TelDDD,
-				   t.TelTipo 
+				   t.TelCodigo as id,
+				   pft.PFTPesCodigoPessoa as codigo,
+				   t.TelNumero as numero,
+				   t.TelRamal as ramal,
+				   t.TelDDD as ddd,
+				   t.TelTipo as type 
 				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 					join BDPessoa.dbo.TB_Telefone t 
 					   on pft.PFTTelCodigo = t.TelCodigo",

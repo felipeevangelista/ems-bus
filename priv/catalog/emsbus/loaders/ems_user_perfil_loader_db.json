@@ -37,8 +37,7 @@
 					 on u.UsuId = up.APeUsuId  
 				 join BDAcesso.dbo.TB_Perfil p  
 					 on up.APePerId = p.PerId  
-			where up.APeDataAlteracao >= ? or up.APeDataCadastramento >= ? 
-			order by up.APeDataAlteracao desc
+			where up.APeDataAlteracao >= ? or up.APeDataCadastramento >= ?
 		   ",
 	"fields" : ["id", "user_id", "client_id", "name"]
 }

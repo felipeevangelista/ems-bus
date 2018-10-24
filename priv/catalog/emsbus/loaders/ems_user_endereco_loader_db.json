@@ -51,8 +51,7 @@
 					   on pfe.PFeEndCodigo = e.EndCodigo 
 					join BDTabelaApoio.dbo.TB_Municipio mu 
 					   on e.EndLocalidade = mu.MunCodigo 
-				where e.EndDataAlteracao >= ? or e.EndDataCadastramento >= ? 
-				order by e.EndDataAlteracao desc",
+				where e.EndDataAlteracao >= ? or e.EndDataCadastramento >= ?",
 
 			
 	"fields" : ["id", "codigo", "endereco", "complemento", "bairro", "uf", "cidade", "cep", "type"]

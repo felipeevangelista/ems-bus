@@ -19,39 +19,39 @@
 	"sql_load_packet_length" : 3000,
 	"sql_load" : 
 				"select 
-				   u.UsuId as Id, 
-				   p.PesCodigoPessoa as Codigo, 
-				   lower(rtrim(u.UsuLogin)) as Login, 
-				   rtrim(p.PesNome) as Nome, 
-				   rtrim(cast(p.PesCpf as varchar(14))) as Cpf, 
-				   rtrim(cast(u.UsuSenha as varchar(60))) as Password, 
-				   'SHA1' as PasswdCryptoPessoa, 
-				   rtrim(coalesce(addr.endereco, p.PesEndereco)) as Endereco, 
-				   rtrim(coalesce(addr.complemento, p.PesComplementoEndereco)) as ComplementoEndereco, 
-				   rtrim(coalesce(addr.bairro, p.PesBairro)) as Bairro, 
-				   rtrim(coalesce(addr.cidade, p.PesCidade)) as Cidade, 
-				   rtrim(coalesce(addr.uf, p.PesUf)) as Uf, 
-				   rtrim(coalesce(addr.cep, p.PesCep)) as Cep, 
-				   rtrim(p.PesRg) as Rg, 
-				   p.PesDataNascimento as DataNascimento, 
-				   p.PesSexo as Sexo, 
+				   u.UsuId as id, 
+				   p.PesCodigoPessoa as codigo, 
+				   lower(rtrim(u.UsuLogin)) as login, 
+				   rtrim(p.PesNome) as name, 
+				   rtrim(cast(p.PesCpf as varchar(14))) as cpf, 
+				   rtrim(cast(u.UsuSenha as varchar(60))) as password, 
+				   'SHA1' as passwd_crypto, 
+				   rtrim(coalesce(addr.endereco, p.PesEndereco)) as endereco, 
+				   rtrim(coalesce(addr.complemento, p.PesComplementoEndereco)) as complemento_endereco, 
+				   rtrim(coalesce(addr.bairro, p.PesBairro)) as bairro, 
+				   rtrim(coalesce(addr.cidade, p.PesCidade)) as cidade, 
+				   rtrim(coalesce(addr.uf, p.PesUf)) as uf, 
+				   rtrim(coalesce(addr.cep, p.PesCep)) as cep, 
+				   rtrim(p.PesRg) as rg, 
+				   p.PesDataNascimento as data_nascimento, 
+				   p.PesSexo as sexo, 
 				   (select top 1 t.TelNumero 
 					from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 						   join BDPessoa.dbo.TB_Telefone t 
 							 on pft.PFTTelCodigo = t.TelCodigo 
-					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as Telefone, 
+					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as telefone, 
 				   (select top 1 t.TelNumero 
 					from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 						   join BDPessoa.dbo.TB_Telefone t 
 							 on pft.PFTTelCodigo = t.TelCodigo 
-					where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as Celular, 
+					where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as celular, 
 				   (select top 1 cast(t.TelDDD as varchar(3)) 
 					from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 						   join BDPessoa.dbo.TB_Telefone t 
 							 on pft.PFTTelCodigo = t.TelCodigo 
-					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as DDD, 
-				   p.PesNomePai, 
-				   p.PesNomeMae, 
+					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as ddd, 
+				   p.PesNomePai as nome_pai, 
+				   p.PesNomeMae as nome_mae, 
 				   cast(p.PesNacionalidade as int) as nacionalidade, 
 				   coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
 							  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
@@ -65,10 +65,10 @@
 								   join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
 							  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
 							    and em.EmaEmail LIKE '_%@__%.__%') ) as email, 
-				   1 as Type, 
-				   0 as SubType, 
-				   case UsuSituacao when 1 then 1 else 0 end as Active, 
-				   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword 
+				   1 as type, 
+				   0 as subtype, 
+				   case UsuSituacao when 1 then 1 else 0 end as active, 
+				   u.UsuDataTroca + u.UsuFrequenciaTroca as dt_expire_password 
 			from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 					 on u.UsuPesIdPessoa = p.PesCodigoPessoa 
 				   left join (select distinct 
@@ -90,39 +90,39 @@
 
 	"sql_update" :
 			"select 
-				   u.UsuId as Id, 
-				   p.PesCodigoPessoa as Codigo, 
-				   lower(rtrim(u.UsuLogin)) as Login, 
-				   rtrim(p.PesNome) as Nome, 
-				   rtrim(cast(p.PesCpf as varchar(14))) as Cpf, 
-				   rtrim(cast(u.UsuSenha as varchar(60))) as Password, 
-				   'SHA1' as PasswdCryptoPessoa, 
-				   rtrim(coalesce(addr.endereco, p.PesEndereco)) as Endereco, 
-				   rtrim(coalesce(addr.complemento, p.PesComplementoEndereco)) as ComplementoEndereco, 
-				   rtrim(coalesce(addr.bairro, p.PesBairro)) as Bairro, 
-				   rtrim(coalesce(addr.cidade, p.PesCidade)) as Cidade, 
-				   rtrim(coalesce(addr.uf, p.PesUf)) as Uf, 
-				   rtrim(coalesce(addr.cep, p.PesCep)) as Cep, 
-				   rtrim(p.PesRg) as Rg, 
-				   p.PesDataNascimento as DataNascimento, 
-				   p.PesSexo as Sexo, 
+				   u.UsuId as id, 
+				   p.PesCodigoPessoa as codigo, 
+				   lower(rtrim(u.UsuLogin)) as login, 
+				   rtrim(p.PesNome) as nome, 
+				   rtrim(cast(p.PesCpf as varchar(14))) as cpf, 
+				   rtrim(cast(u.UsuSenha as varchar(60))) as password, 
+				   'SHA1' as passwd_crypto, 
+				   rtrim(coalesce(addr.endereco, p.PesEndereco)) as endereco, 
+				   rtrim(coalesce(addr.complemento, p.PesComplementoEndereco)) as complemento_endereco, 
+				   rtrim(coalesce(addr.bairro, p.PesBairro)) as bairro, 
+				   rtrim(coalesce(addr.cidade, p.PesCidade)) as cidade, 
+				   rtrim(coalesce(addr.uf, p.PesUf)) as uf, 
+				   rtrim(coalesce(addr.cep, p.PesCep)) as cep, 
+				   rtrim(p.PesRg) as rg, 
+				   p.PesDataNascimento as data_nascimento, 
+				   p.PesSexo as sexo, 
 				   (select top 1 t.TelNumero 
 					from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 						   join BDPessoa.dbo.TB_Telefone t 
 							 on pft.PFTTelCodigo = t.TelCodigo 
-					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as Telefone, 
+					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as telefone, 
 				   (select top 1 t.TelNumero 
 					from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 						   join BDPessoa.dbo.TB_Telefone t 
 							 on pft.PFTTelCodigo = t.TelCodigo 
-					where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as Celular, 
+					where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as celular, 
 				   (select top 1 cast(t.TelDDD as varchar(3)) 
 					from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
 						   join BDPessoa.dbo.TB_Telefone t 
 							 on pft.PFTTelCodigo = t.TelCodigo 
-					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as DDD, 
-				   p.PesNomePai, 
-				   p.PesNomeMae, 
+					where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = u.UsuPesIdPessoa) as ddd, 
+				   p.PesNomePai as nome_pai, 
+				   p.PesNomeMae as nome_mae, 
 				   cast(p.PesNacionalidade as int) as nacionalidade, 
 				   coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
 							  from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
@@ -136,10 +136,10 @@
 								   join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
 							  where pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
 							    and em.EmaEmail LIKE '_%@__%.__%') ) as email, 
-				   1 as Type, 
-				   0 as SubType, 
-				   case UsuSituacao when 1 then 1 else 0 end as Active, 
-				   u.UsuDataTroca + u.UsuFrequenciaTroca as DtExpirePassword 
+				   1 as type, 
+				   0 as subtype, 
+				   case UsuSituacao when 1 then 1 else 0 end as active, 
+				   u.UsuDataTroca + u.UsuFrequenciaTroca as dt_expire_password 
 			from BDAcesso.dbo.TB_Usuario u join BDPessoa.dbo.TB_Pessoa p 
 					 on u.UsuPesIdPessoa = p.PesCodigoPessoa 
 				   left join (select distinct 

@@ -35,6 +35,7 @@
 				sql_update,
 				sql_count,
 				sql_ids,
+				sql_fields,
 				middleware,
 				fields,
 				check_count_checkpoint_metric_name,
@@ -103,7 +104,7 @@ resume(Server) ->
 
 	
 get_timeout_wait(WaitCount) ->
-	Result = 4000 - (WaitCount * 100),
+	Result = 6000 - (WaitCount * 100),
 	case Result < 500 of
 		true -> 500;
 		false -> Result
@@ -129,9 +130,10 @@ init(#service{name = Name,
 	SqlUpdate = ems_util:str_trim(binary_to_list(maps:get(<<"sql_update">>, Props, <<>>))),
 	SqlCount = re:replace(SqlLoad, "select (.+)( from.+)( order by.+)?","select count(1)\\2", [{return,list}]),
 	SqlIds = re:replace(SqlLoad, "select ([^,]+),(.+)( from.+)( order by.+)?", "select \\1 \\3", [{return,list}]),
-	Fields = maps:get(<<"fields">>, Props, <<>>),
+	Fields = maps:get(<<"fields">>, Props, []),
+	SqlFields = string:join(ems_util:binlist_to_list(Fields), ","),
 	SourceType = binary_to_atom(maps:get(<<"source_type">>, Props, <<"db">>), utf8),
-	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 20000) + rand:uniform(10000),
+	TimeoutOnError = maps:get(<<"timeout_on_error">>, Props, 120000) + rand:uniform(60000),
 	SyncFullCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_full_checkpoint">>]), utf8),
 	CheckCountCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_count_checkpoint">>]), utf8),
 	CheckRemoveCheckpointMetricName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_check_remove_checkpoint">>]), utf8),
@@ -161,6 +163,7 @@ init(#service{name = Name,
 				   sql_update = SqlUpdate,
 				   sql_count = SqlCount,
 				   sql_ids = SqlIds,
+				   sql_fields = SqlFields,
 				   middleware = Middleware,
 				   fields = Fields,
 				   timeout_on_error = TimeoutOnError,
@@ -553,6 +556,7 @@ do_load_data_pump(CtrlInsert,
 								 middleware = Middleware,
 								 sql_load = SqlLoad,
 								 sql_load_packet_length = SqlLoadPacketLength,
+								 sql_fields = SqlFields,
 								 fields = Fields,
 								 source_type = SourceType}, 
 				 Offset, InsertCount, ErrorCount, DisabledCount, SkipCount) -> 
@@ -564,10 +568,10 @@ do_load_data_pump(CtrlInsert,
 			false ->
 				case Offset > 1 of
 					true ->	
-						SqlLoad2 = io_lib:format("select distinct * from ( select *, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
+						SqlLoad2 = io_lib:format("select distinct ~s from ( select ~s, row_number() over (order by Id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlFields, SqlFields, SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
 					false -> 
 						% Quando o offset é 1, usamos select top para obter um pouco mais de performance na primeira query
-						SqlLoad2 = io_lib:format("select distinct  top ~p * from ( ~s ) _t_sql order by Id", [Offset+SqlLoadPacketLength-1, SqlLoad])
+						SqlLoad2 = io_lib:format("select distinct top ~p ~s from ( ~s ) _t_sql order by Id", [Offset+SqlLoadPacketLength-1, SqlFields, SqlLoad])
 				end
 		end,
 		SqlLoad3 = re:replace(SqlLoad2, "\\s+", " ", [global,{return,list}]),
