@@ -138,7 +138,6 @@ handle_call({notify_use, #service_datasource{pid_module = PidModule,
 							close_idle_connection_ref = undefined}};
 
 handle_call(notify_return_pool, _From, State = #state{datasource = InternalDatasource = #service_datasource{id = Id,
-																											conn_ref = ConnRef,
 																											sql_check_valid_connection = SqlCheckValidConnection,
 																											check_valid_connection_timeout = CheckValidConnectionTimeout,
 																											close_idle_connection_timeout = CloseIdleConnectionTimeout}, 
@@ -147,7 +146,7 @@ handle_call(notify_return_pool, _From, State = #state{datasource = InternalDatas
 	% volta ao pool somente se nenhum erro ocorreu
 	case LastError of
 		undefined ->
-			?DEBUG("ems_odbc_pool_worker notify_return_pool (Ds: ~p Worker: ~p QueryCount: ~p).", [Id, ConnRef, QueryCount]),
+			?DEBUG("ems_odbc_pool_worker notify_return_pool (Ds: ~p QueryCount: ~p).", [Id, QueryCount]),
 			case SqlCheckValidConnection =/= undefined andalso SqlCheckValidConnection =/= "" of
 				true -> CheckValidConnectionRef = erlang:send_after(CheckValidConnectionTimeout, self(), {check_valid_connection, QueryCount});
 				false -> CheckValidConnectionRef = undefined
@@ -159,7 +158,7 @@ handle_call(notify_return_pool, _From, State = #state{datasource = InternalDatas
 									check_valid_connection_ref = CheckValidConnectionRef,
 									close_idle_connection_ref = CloseIdleConnectionRef}};
 		{error, Reason} ->
-			?DEBUG("ems_odbc_pool_worker notify_return_pool skip due error (Ds: ~p Worker: ~p QueryCount: ~p LastError: ~p).", [Id, ConnRef, QueryCount, Reason]),
+			?DEBUG("ems_odbc_pool_worker notify_return_pool skip due error (Ds: ~p QueryCount: ~p LastError: ~p).", [Id, QueryCount, Reason]),
 			{reply, LastError, State}
 	end;
 
@@ -193,14 +192,14 @@ handle_info({check_valid_connection, QueryCount}, State = #state{datasource = #s
 				true ->
 					try
 						?DEBUG("ems_odbc_pool_worker check_valid_connection (Ds: ~p Worker: ~p timerRef: ~p QueryCount: ~p).", [Id, ConnRef, CurrentCheckValidConnectionRef, QueryCountNow]),
-						case odbc:param_query(ConnRef, SqlCheckValidConnection, [], 5000) of
+						case odbc:param_query(ConnRef, SqlCheckValidConnection, [], 16000) of
 							{error, Reason} ->
 								erlang:cancel_timer(CurrentCloseIdleConnectionRef),
 								?DEBUG("ems_odbc_pool_worker check_valid_connection failed, shutdown worker immediate (Ds: ~p Worker: ~p timerRef: ~p  QueryCount: ~p Reason: ~p).", [Id, ConnRef, CurrentCheckValidConnectionRef, QueryCountNow, Reason]),
 								{stop, shutdown, State#state{close_idle_connection_ref = undefined}};
 							_ -> 
 								{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-								case not (Hour >= 0 andalso Hour =< 6) of
+								case not (Hour >= 0 andalso Hour =< 4) of
 									true -> CheckValidConnectionRef = erlang:send_after(CheckValidConnectionTimeout * 10, self(), {check_valid_connection, QueryCount});
 									false -> CheckValidConnectionRef = erlang:send_after(CheckValidConnectionTimeout, self(), {check_valid_connection, QueryCount})
 								end,
@@ -217,11 +216,10 @@ handle_info({check_valid_connection, QueryCount}, State = #state{datasource = #s
 			end
 	end;
 
-handle_info(close_idle_connection, State = #state{datasource = #service_datasource{id = Id, 
-																				   conn_ref = ConnRef},
+handle_info(close_idle_connection, State = #state{datasource = #service_datasource{id = Id},
 												  check_valid_connection_ref = CheckValidConnectionRef,
 												  query_count = QueryCount}) ->
-   ?DEBUG("ems_odbc_pool_worker close_idle_connection (Ds: ~p Worker: ~p QueryCount: ~p).", [Id, ConnRef, QueryCount]),
+   ems_logger:info("ems_odbc_pool_worker close_idle_connection (Ds: ~p QueryCount: ~p).", [Id, QueryCount]),
    erlang:cancel_timer(CheckValidConnectionRef),
    {stop, normal, State#state{close_idle_connection_ref = undefined, 
 							  check_valid_connection_ref = undefined}};
@@ -232,6 +230,7 @@ handle_info(Msg, State) ->
 
 terminate(Reason, State) ->
 	?DEBUG("ems_odbc_pool_worker terminate. Reason: ~p.", [Reason]),   
+	io:format("terminou!!!!!!!!!!!!\n"),
     do_disconnect(State),
     ok.
  
@@ -243,7 +242,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%====================================================================
 
-    
+
 do_connect(Datasource = #service_datasource{connection = Connection, type = sqlite, driver = sqlite3}) -> 
 	{ok, ConnRef} = esqlite3:open(Connection),
 	Datasource2 = Datasource#service_datasource{owner = self(), 
@@ -267,21 +266,21 @@ do_connect(Datasource = #service_datasource{connection = Connection}) ->
 do_disconnect(#state{datasource = #service_datasource{id = Id, conn_ref = ConnRef, type = sqlite, driver = sqlite3}, 
 					 query_count = QueryCount}) -> 
 	try
-		?DEBUG("ems_odbc_pool_worker do_disconnect worker (Ds: ~p Worker: ~p QueryCount: ~p).", [Id, ConnRef, QueryCount]),
+		?DEBUG("ems_odbc_pool_worker do_disconnect worker (Ds: ~p QueryCount: ~p).", [Id, QueryCount]),
 		esqlite3:close(ConnRef)
 	catch
 		_:Reason ->	
-			?DEBUG("ems_odbc_pool_worker do_disconnect worker exception (Ds: ~p Worker: ~p QueryCount: ~p Reason: ~p).", [Id, ConnRef, QueryCount, Reason]),
+			?DEBUG("ems_odbc_pool_worker do_disconnect worker exception (Ds: ~p QueryCount: ~p Reason: ~p).", [Id, QueryCount, Reason]),
 			ok
 	end;
 do_disconnect(#state{datasource = #service_datasource{id = Id, conn_ref = ConnRef}, 
 					 query_count = QueryCount}) -> 
 	try
-		?DEBUG("ems_odbc_pool_worker do_disconnect worker (Ds: ~p Worker: ~p QueryCount: ~p).", [Id, ConnRef, QueryCount]),
+		?DEBUG("ems_odbc_pool_worker do_disconnect worker (Ds: ~p QueryCount: ~p).", [Id, QueryCount]),
 		odbc:disconnect(ConnRef)
 	catch
 		_:Reason ->	
-			?DEBUG("ems_odbc_pool_worker do_disconnect worker exception (Ds: ~p Worker: ~p QueryCount: ~p Reason: ~p).", [Id, ConnRef, QueryCount, Reason]),
+			?DEBUG("ems_odbc_pool_worker do_disconnect worker exception (Ds: ~p QueryCount: ~p Reason: ~p).", [Id, QueryCount, Reason]),
 			ok
 	end.
 
@@ -307,7 +306,10 @@ do_param_query(Sql, Params, #state{datasource = Datasource = #service_datasource
 		case odbc:param_query(ConnRef, Sql, Params, Timeout) of
 			{error, Reason} ->
 				ems_logger:error("ems_odbc_pool_worker param_query failed (Ds: ~p Reason: ~p)\n\tSQL: ~s", [Id, Reason, Sql]),
-				{error, eodbc_connection_closed};
+				case ems_db:is_database_in_restricted_mode(Reason) of	
+					true ->  {error, eodbc_restricted_connection};
+					false -> {error, eodbc_connection_closed}
+				end;
 			{selected, Fields1, Result1} -> 
 				{ok, {selected, [?UTF8_STRING(F) || F <- Fields1], Result1}, Datasource}
 		end

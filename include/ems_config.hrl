@@ -165,9 +165,9 @@
 
 
 % Timeout to check odbc connection
--define(CHECK_VALID_CONNECTION_TIMEOUT, 30000). % 60 segundos
+-define(CHECK_VALID_CONNECTION_TIMEOUT, 120000). % 60 segundos
 -define(MAX_CLOSE_IDLE_CONNECTION_TIMEOUT, 3600000). % 1h
--define(CLOSE_IDLE_CONNECTION_TIMEOUT, 300000). % 5 minutos
+-define(CLOSE_IDLE_CONNECTION_TIMEOUT, 180000). % 3 minutos
 
 
 % Define the default checkpoint to ems_data_loader and ems_json_loader

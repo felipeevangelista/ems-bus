@@ -18,7 +18,7 @@
 		 sort/2, field_position/3]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
--export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/4, command/2, select_count/2]).
+-export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/4, command/2, select_count/2, is_database_in_restricted_mode/1]).
 -export([get_param/1, get_param/2, set_param/2, get_re_param/2]).
 
 -export([filter_with_sort/2]).
@@ -1487,3 +1487,11 @@ select_count(Datasource, Sql) when is_tuple(Datasource) ->
 	catch
 		_:Reason-> ems_logger:format_error("ems_db select_count exception. Reason: ~p.\n", [Reason])
 	end.
+
+
+is_database_in_restricted_mode(Reason) when is_list(Reason) ->
+	io:format("Reason is ~p\n", [Reason]),
+	string:str(Reason, "security context") > 0;
+is_database_in_restricted_mode(X) -> 
+	io:format("x is ~p\n", [X]),
+	false.

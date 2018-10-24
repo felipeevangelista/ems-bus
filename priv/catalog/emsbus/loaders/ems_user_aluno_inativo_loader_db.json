@@ -9,7 +9,7 @@
 	"lang" : "erlang",
 	"update_checkpoint" : 3600000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 25000,
+	"start_timeout" : 30000,
 	"middleware" : "ems_user_loader_middleware",
 	"group" : [],
 	"pool_size" : 1,

@@ -12,7 +12,7 @@
 	"check_remove_records" : true,
 	"check_remove_records_checkpoint" : 14400000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 20000,
+	"start_timeout" : 26000,
 	"middleware" : "ems_user_telefone_loader_middleware",
 	"group" : [],
 	"pool_size" : 1,
