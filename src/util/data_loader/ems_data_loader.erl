@@ -342,8 +342,14 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 				{error, Reason} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, Reason),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
-					?DEBUG("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
-					{noreply, State#state{wait_count = 0}, TimeoutOnError}
+					case is_database_in_backup_mode(Reason) of
+						true ->
+							TimeoutOnError2 = TimeoutOnError * 5,
+							ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while database in backup mode. Reason: ~p.", [Name, TimeoutOnError2, Reason]),
+							{noreply, State#state{wait_count = 0}, TimeoutOnError2};
+						false ->
+							ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason])
+					end,
 			end;
 		false ->
 			TimeoutWait = get_timeout_wait(WaitCount),
@@ -515,33 +521,38 @@ do_load_table(CtrlInsert, Conf, State = #state{name = Name,
 				case do_clear_table(State) of
 					ok ->
 						do_reset_sequence(State),
-						{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} = do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0),
-						ems_logger:info("~s sync full ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
-						ems_db:counter(InsertMetricName, InsertCount),
-						ems_db:counter(ErrorsMetricName, ErrorCount),
-						ems_db:counter(DisabledMetricName, DisabledCount),
-						ems_db:counter(SkipMetricName, SkipCount),
-						{ok, State#state{insert_count = InsertCount,
-										 error_count = ErrorCount,
-										 disable_count = DisabledCount,
-										 skip_count = SkipCount}};
+						case do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0) of
+							{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} ->
+								ems_logger:info("~s sync full ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
+								ems_db:counter(InsertMetricName, InsertCount),
+								ems_db:counter(ErrorsMetricName, ErrorCount),
+								ems_db:counter(DisabledMetricName, DisabledCount),
+								ems_db:counter(SkipMetricName, SkipCount),
+								{ok, State#state{insert_count = InsertCount,
+												 error_count = ErrorCount,
+												 disable_count = DisabledCount,
+												 skip_count = SkipCount}};
+							Error -> Error
+						end;
 					Error ->
 						ems_logger:error("~s do_load could not clear table before load data.", [Name]),
 						Error
 				end;
 			false ->
-				{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} = do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0),
-				ems_logger:info("~s sync ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
-				ems_db:counter(InsertMetricName, InsertCount),
-				ems_db:counter(ErrorsMetricName, ErrorCount),
-				ems_db:counter(DisabledMetricName, DisabledCount),
-				ems_db:counter(SkipMetricName, SkipCount),
-				{ok, State#state{insert_count = InsertCount,
-								 update_count = 0,
-								 error_count = ErrorCount,
-								 disable_count = DisabledCount,
-								 skip_count = SkipCount}}
-
+				case do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0) of
+					{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} ->
+						ems_logger:info("~s sync ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
+						ems_db:counter(InsertMetricName, InsertCount),
+						ems_db:counter(ErrorsMetricName, ErrorCount),
+						ems_db:counter(DisabledMetricName, DisabledCount),
+						ems_db:counter(SkipMetricName, SkipCount),
+						{ok, State#state{insert_count = InsertCount,
+										 update_count = 0,
+										 error_count = ErrorCount,
+										 disable_count = DisabledCount,
+										 skip_count = SkipCount}};
+					Error -> Error
+				end
 		end
 	catch
 		_Exception:Reason4 -> 
