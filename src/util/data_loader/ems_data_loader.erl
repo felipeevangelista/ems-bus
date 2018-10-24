@@ -564,19 +564,24 @@ do_load_data_pump(CtrlInsert,
 		case SqlLoadPacketLength == 0 of
 			true -> 
 				% Quando SqlLoadPacketLength é 0, o load incremental por pacotes é desligado
+				Params = [],
 				SqlLoad2 = SqlLoad;
 			false ->
 				case Offset > 1 of
 					true ->	
-						SqlLoad2 = io_lib:format("select distinct ~s from ( select ~s, row_number() over (order by id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ~p and ~p", [SqlFields, SqlFields, SqlLoad, Offset, Offset+SqlLoadPacketLength-1]);
+						Params = [{sql_integer, [Offset]},
+								  {sql_integer, [Offset+SqlLoadPacketLength-1]}
+								 ],
+						SqlLoad2 = io_lib:format("select ~s from ( select ~s, row_number() over (order by id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ? and ?", [SqlFields, SqlFields, SqlLoad]);
 					false -> 
 						% Quando o offset é 1, usamos select top para obter um pouco mais de performance na primeira query
-						SqlLoad2 = io_lib:format("select distinct top ~p ~s from ( ~s ) _t_sql order by id", [Offset+SqlLoadPacketLength-1, SqlFields, SqlLoad])
+						Params = [],
+						SqlLoad2 = io_lib:format("select top ~p ~s from ( ~s ) _t_sql order by id", [Offset+SqlLoadPacketLength-1, SqlFields, SqlLoad])
 				end
 		end,
 		SqlLoad3 = re:replace(SqlLoad2, "\\s+", " ", [global,{return,list}]),
 		SqlLoad4 = re:replace(SqlLoad3, "\\s+$", "", [global,{return,list}]),
-		case ems_odbc_pool:param_query(Datasource, SqlLoad4, []) of
+		case ems_odbc_pool:param_query(Datasource, SqlLoad4, Params) of
 			{_, _, []} -> 
 				{ok, InsertCount, ErrorCount, DisabledCount, SkipCount};
 			{_, _, Records} ->
@@ -586,10 +591,14 @@ do_load_data_pump(CtrlInsert,
 						{ok, InsertCount2, ErrorCount2, DisabledCount2, SkipCount2};
 					false ->
 						{ok, InsertCount2, _, ErrorCount2, DisabledCount2, SkipCount2} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
+						%case Params of
+						%	[] -> ems_logger:info("~s partial sync full ~p inserts, ~p disabled, ~p skips, ~p errors (Offset ~p Limit ~p).", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount, 1, Offset+SqlLoadPacketLength-1]);
+						%	_ -> ems_logger:info("~s partial sync full ~p inserts, ~p disabled, ~p skips, ~p errors (Offset ~p Limit ~p).", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount, Offset, Offset+SqlLoadPacketLength-1])
+						%end,
 						do_load_data_pump(CtrlInsert, Conf, State, Offset + SqlLoadPacketLength, InsertCount + InsertCount2, ErrorCount + ErrorCount2, DisabledCount + DisabledCount2, SkipCount + SkipCount2)
 				end;
 			{error, Reason} = Error -> 
-				?DEBUG("~s do_load_data_pump fetch exception. Reason: ~p.", [Name, Reason]),
+				ems_logger:error("~s do_load_data_pump fetch exception. Reason: ~p.", [Name, Reason]),
 				Error
 		end
 	catch
