@@ -229,77 +229,83 @@ make_release(){
 	# ####### Create the package ems-bus-x.x.x.tar.gz #######
 
 	# Create the package file gz
-	echo "Creating package ems-bus-$VERSION_RELEASE.gz..."
+	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz now..."
 	tar -czf ems-bus-$VERSION_RELEASE.tar.gz ems-bus/ &
+	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz end..."
 
 	# build rpm packages
 	if [ "$BUILD_RPM_FLAG" = "true" ]; then
-
-		echo "Begin deb package now..."
-
+		echo "Begin create rpm package now..."
 		for SKEL_RPM_PACKAGE in `find ./rpm/* -maxdepth 0 -type d`; do
 			echo "Creating rpm package for template $SKEL_RPM_PACKAGE..."
 
-			SKEL_PACKAGE_SOURCES="$SKEL_RPM_PACKAGE/SOURCES"
-			VERSION_PACK=$VERSION_RELEASE
-			# Updates the version in the file SPEC/emsbus.spec
-			sed -ri "s/Version: .*$/Version: $VERSION_PACK/"  $SKEL_RPM_PACKAGE/SPECS/emsbus.spec
-			RELEASE_PACK=$(grep 'Release:' $SKEL_RPM_PACKAGE/SPECS/emsbus.spec | cut -d":" -f2 | tr " " "\0")
-			PACKAGE_NAME=ems-bus-$VERSION_RELEASE-$RELEASE_PACK.x86_64.rpm
-			PACKAGE_FILE=$SKEL_RPM_PACKAGE/RPMS/x86_64/$PACKAGE_NAME
+			# Codinome do sistema operacional
+			CODENAME=$(basename $SKEL_RPM_PACKAGE | awk -F- '{print $4}')
 			
-			# Creates the folder where the sources will be placed 
-			mkdir -p $SKEL_PACKAGE_SOURCES || die "Could not create folder $SKEL_PACKAGE_SOURCES!"
+			# O build é feito somente no SO do template
+			if grep -q -s -i $CODENAME /etc/os-release ; then 
+				echo "Creating rpm package for $LINUX_DISTRO $CODENAME using template $SKEL_RPM_PACKAGE..."
 
-			# Gera a estrutura /usr/lib/ems-bus
-			rm -Rf $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus || die "Could not remove folder $SKEL_RPM_PACKAGE/usr/lib/ems-bus!" 
-			mkdir -p $SKEL_PACKAGE_SOURCES/usr/lib
-			cp -R ems-bus $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus || die "Could not copy folder ems-bus to $SKEL_RPM_PACKAGE/usr/lib!"
+				SKEL_PACKAGE_SOURCES="$SKEL_RPM_PACKAGE/SOURCES"
+				VERSION_PACK=$VERSION_RELEASE
+				# Updates the version in the file SPEC/emsbus.spec
+				sed -ri "s/Version: .*$/Version: $VERSION_PACK/"  $SKEL_RPM_PACKAGE/SPECS/emsbus.spec
+				RELEASE_PACK=$(grep 'Release:' $SKEL_RPM_PACKAGE/SPECS/emsbus.spec | cut -d":" -f2 | tr " " "\0")
+				PACKAGE_NAME=ems-bus-$VERSION_RELEASE-$RELEASE_PACK.x86_64.rpm
+				PACKAGE_FILE=$SKEL_RPM_PACKAGE/RPMS/x86_64/$PACKAGE_NAME
+				
+				# Creates the folder where the sources will be placed 
+				mkdir -p $SKEL_PACKAGE_SOURCES || die "Could not create folder $SKEL_PACKAGE_SOURCES!"
 
-			rm -Rf $SKEL_PACKAGE_SOURCES/etc || die "Could not remove folder $SKEL_RPM_PACKAGE/etc!" 
+				# Gera a estrutura /usr/lib/ems-bus
+				rm -Rf $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus || die "Could not remove folder $SKEL_RPM_PACKAGE/usr/lib/ems-bus!" 
+				mkdir -p $SKEL_PACKAGE_SOURCES/usr/lib
+				cp -R ems-bus $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus || die "Could not copy folder ems-bus to $SKEL_RPM_PACKAGE/usr/lib!"
 
-			# Gera a estrutura /etc/ems-bus
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/ems-bus || die "Could not create folder $SKEL_RPM_PACKAGE/etc/ems-bus!" 
-			ln -s /usr/lib/ems-bus/priv/catalog $SKEL_PACKAGE_SOURCES/etc/ems-bus/catalog
-			ln -s /usr/lib/ems-bus/priv/conf $SKEL_PACKAGE_SOURCES/etc/ems-bus/conf
-			ln -s /usr/lib/ems-bus/priv/csv $SKEL_PACKAGE_SOURCES/etc/ems-bus/csv
-			ln -s /usr/lib/ems-bus/priv/ssl $SKEL_PACKAGE_SOURCES/etc/ems-bus/ssl
-			ln -s /usr/lib/ems-bus/priv/schema $SKEL_PACKAGE_SOURCES/etc/ems-bus/schema
-			ln -s /usr/lib/ems-bus/priv/systemd $SKEL_PACKAGE_SOURCES/etc/ems-bus/systemd
-			ln -s /usr/lib/ems-bus/priv/firewalld $SKEL_PACKAGE_SOURCES/etc/ems-bus/firewalld
-			
-			# Gera a estrutura /etc/systemd/system
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d
-			ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service || die 'Could not create symbolic link ems-bus.service!' 
-			ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service.d/limits.conf $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d/limits.conf || die 'Could not create symbolic link ems-bus.service.d/limits.conf!'
+				rm -Rf $SKEL_PACKAGE_SOURCES/etc || die "Could not remove folder $SKEL_RPM_PACKAGE/etc!" 
 
-			# Gera a estrutura /etc/firewalld
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/firewalld/services
-			ln -s /usr/lib/ems-bus/priv/firewalld/ems-bus.xml $SKEL_PACKAGE_SOURCES/etc/firewalld/services/ems-bus.xml || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/firewalld/services/ems-bus.xml!" 
+				# Gera a estrutura /etc/ems-bus
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/ems-bus || die "Could not create folder $SKEL_RPM_PACKAGE/etc/ems-bus!" 
+				ln -s /usr/lib/ems-bus/priv/catalog $SKEL_PACKAGE_SOURCES/etc/ems-bus/catalog
+				ln -s /usr/lib/ems-bus/priv/conf $SKEL_PACKAGE_SOURCES/etc/ems-bus/conf
+				ln -s /usr/lib/ems-bus/priv/csv $SKEL_PACKAGE_SOURCES/etc/ems-bus/csv
+				ln -s /usr/lib/ems-bus/priv/ssl $SKEL_PACKAGE_SOURCES/etc/ems-bus/ssl
+				ln -s /usr/lib/ems-bus/priv/schema $SKEL_PACKAGE_SOURCES/etc/ems-bus/schema
+				ln -s /usr/lib/ems-bus/priv/systemd $SKEL_PACKAGE_SOURCES/etc/ems-bus/systemd
+				ln -s /usr/lib/ems-bus/priv/firewalld $SKEL_PACKAGE_SOURCES/etc/ems-bus/firewalld
+				
+				# Gera a estrutura /etc/systemd/system
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d
+				ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service || die 'Could not create symbolic link ems-bus.service!' 
+				ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service.d/limits.conf $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d/limits.conf || die 'Could not create symbolic link ems-bus.service.d/limits.conf!'
 
-			# Gera a estrutura /etc/sudoers.d
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/sudoers.d
-			ln -s /usr/lib/ems-bus/priv/sudoers.d/ems-bus.sudoers $SKEL_PACKAGE_SOURCES/etc/sudoers.d/ems-bus.sudoers || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/sudoers.d/ems-bus!" 
+				# Gera a estrutura /etc/firewalld
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/firewalld/services
+				ln -s /usr/lib/ems-bus/priv/firewalld/ems-bus.xml $SKEL_PACKAGE_SOURCES/etc/firewalld/services/ems-bus.xml || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/firewalld/services/ems-bus.xml!" 
 
-			# Log -> /var/log/ems-bus
-			#ln -s /var/log/ems-bus $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus/priv/log
+				# Gera a estrutura /etc/sudoers.d
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/sudoers.d
+				ln -s /usr/lib/ems-bus/priv/sudoers.d/ems-bus.sudoers $SKEL_PACKAGE_SOURCES/etc/sudoers.d/ems-bus.sudoers || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/sudoers.d/ems-bus!" 
 
-			#echo "Generate $SKEL_PACKAGE_SOURCES/ems-bus-$VERSION_PACK.tar.gz from $SKEL_PACKAGE_SOURCES"
-			tar -czvf  ems-bus-$VERSION_PACK.tar.gz *
-			
-			echo "rpm build with rpmbuild..."
-			cd $SKEL_RPM_PACKAGE
-			rpmbuild -bb SPECS/emsbus.spec
+				# Log -> /var/log/ems-bus
+				#ln -s /var/log/ems-bus $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus/priv/log
 
-			send_build_repo $PACKAGE_FILE $PACKAGE_NAME
+				#echo "Generate $SKEL_PACKAGE_SOURCES/ems-bus-$VERSION_PACK.tar.gz from $SKEL_PACKAGE_SOURCES"
+				tar -czvf  ems-bus-$VERSION_PACK.tar.gz *
+				
+				echo "rpm build with rpmbuild..."
+				cd $SKEL_RPM_PACKAGE
+				rpmbuild -bb SPECS/emsbus.spec
+
+				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
+			fi
 		done
-		
+		echo "End create rpm package."
+
 	# build deb packages	
 	elif [ "$BUILD_DEB_FLAG" = "true" ]; then
-		
-		echo "Begin deb package now..."
-
+		echo "Begin create deb package now..."
 		for SKEL_DEB_PACKAGE in `find ./deb/* -maxdepth 0 -type d`; do
 
 			# Codinome do sistema operacional
@@ -361,6 +367,7 @@ make_release(){
 				break
 			fi
 		done
+		echo "End create deb package."
 	fi
 }
 
