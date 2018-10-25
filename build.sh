@@ -34,9 +34,7 @@ fi
 
 # Necessário para as bibliotecas c utilizadas
 export CFLAGS='-std=c11 -static'
-export CXXFLAGS='-std=c11 -static'
 echo "Usando CFLAGS=$CFLAGS"
-echo "Usando CXXFLAGS=$CXXFLAGS"
 
 # Erlang Runtime version required > 20
 ERLANG_VERSION=20

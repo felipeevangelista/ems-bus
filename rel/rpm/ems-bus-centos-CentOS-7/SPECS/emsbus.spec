@@ -1,6 +1,6 @@
 Summary: A service-oriented bus developed in Erlang/OTP by Everton de Vargas Agilar
 Name: ems-bus
-Version: 1.0.28
+Version: 2.0.4
 Release: centos.7
 License: GPL
 Group: System/Utilities
@@ -28,15 +28,19 @@ by graduate student Everton Vargas Agilar.
 
 
 %install
-
-  sudo systemctl daemon-reload
-  sudo systemctl stop ems-bus.service  > /dev/null 2>&1 || true
-  mkdir -p $RPM_BUILD_ROOT
-  cp -R $RPM_SOURCE_DIR/* $RPM_BUILD_ROOT/
+	echo aqui1
+  #sudo systemctl daemon-reload
+  #sudo systemctl stop ems-bus.service  > /dev/null 2>&1 || true
+  #mkdir -p $RPM_BUILD_ROOT
+  echo aqui dentro sources is  $RPM_SOURCE_DIR
+  echo aqui dentro build_root is  $RPM_BUILD_ROOT
+  #cp -R $RPM_SOURCE_DIR/* $RPM_BUILD_ROOT/
+  cp -R $RPM_BUILD_ROOT/* ~/rpmbuild/SOURCES
+  echo aqui11111
 
 
 %post
-
+echo aqui2	
   LOG="/var/log/ems-bus/ems-bus.log"
   USER_EMS_BUS=erlangms
   GROUP_EMS_BUS=erlangms
@@ -221,8 +225,6 @@ by graduate student Everton Vargas Agilar.
 %files
 %defattr(0755,root,root)
 /etc/ems-bus/*
-/etc/systemd/system/ems-bus.epmd.service
-/etc/systemd/system/ems-bus.epmd.service.d/limits.conf
 /etc/systemd/system/ems-bus.service
 /etc/systemd/system/ems-bus.service.d/limits.conf
 /etc/firewalld/services/ems-bus.xml

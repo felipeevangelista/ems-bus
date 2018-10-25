@@ -117,6 +117,7 @@ clean(){
 	rm -rf ../priv/db
 	rm -rf ../priv/log
 	rm -rf ../priv/tmp
+	rm -rf ../priv/archive
 	
 	# Loop pelas pastas de templates dos pacotes rpm
 	for SKEL_RPM_PACKAGE in `find ./rpm/* -maxdepth 0 -type d`; do
@@ -168,6 +169,7 @@ help(){
 # $1 = PACKAGE_FILE
 # $2 = PACKAGE_NAME
 send_build_repo(){
+	CURRENT_DIR="$(pwd)"
 	cd $WORKING_DIR
 	PACKAGE_FILE=$1
 	PACKAGE_NAME=$2
@@ -176,6 +178,7 @@ send_build_repo(){
 		mkdir -p $RELEASE_PATH/$VERSION_RELEASE/
 		cp $PACKAGE_FILE  $RELEASE_PATH/$VERSION_RELEASE/
 	fi
+	cd $CURRENT_DIR
 }	
 
 # send the generated package to git
@@ -247,6 +250,7 @@ make_release(){
 	rm -rf priv/db || die 'Unable to remove db folder in cleanup!'
 	rm -rf priv/log || die 'Unable to remove log folder in cleanup!'
 	rm -rf priv/tmp || die 'Unable to remove tmp folder in cleanup!'
+	rm -rf priv/archive || die 'Unable to remove tmp archive in cleanup!'
 	cd ..
 
 
@@ -254,21 +258,20 @@ make_release(){
 
 	# Create the package file gz
 	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz now..."
-	tar -czf ems-bus-$VERSION_RELEASE.tar.gz ems-bus/ &
+	tar -czf ems-bus-$VERSION_RELEASE.tar.gz ems-bus/ 
 	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz end."
 
 	# build rpm packages
 	if [ "$BUILD_RPM_FLAG" = "true" ]; then
 		echo "Begin create rpm package now..."
 		for SKEL_RPM_PACKAGE in `find ./rpm/* -maxdepth 0 -type d`; do
-			echo "Creating rpm package for template $SKEL_RPM_PACKAGE..."
 
 			# Codinome do sistema operacional
 			CODENAME=$(basename $SKEL_RPM_PACKAGE | cut -d- -f4-)
 			echo codename is $CODENAME
 			
 			# O build é feito somente no SO do template
-			if grep  $CODENAME /etc/os-release ; then 
+			if true ; then 
 				echo "Creating rpm package for $LINUX_DISTRO $CODENAME using template $SKEL_RPM_PACKAGE..."
 
 				SKEL_PACKAGE_SOURCES="$SKEL_RPM_PACKAGE/SOURCES"
@@ -286,7 +289,7 @@ make_release(){
 				rm -Rf $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus || die "Could not remove folder $SKEL_RPM_PACKAGE/usr/lib/ems-bus!" 
 				mkdir -p $SKEL_PACKAGE_SOURCES/usr/lib
 				cp -R ems-bus $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus || die "Could not copy folder ems-bus to $SKEL_RPM_PACKAGE/usr/lib!"
-
+				rm -f $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus/deps/jiffy/priv/jiffy.dll
 				rm -Rf $SKEL_PACKAGE_SOURCES/etc || die "Could not remove folder $SKEL_RPM_PACKAGE/etc!" 
 
 				# Gera a estrutura /etc/ems-bus
@@ -322,9 +325,17 @@ make_release(){
 				cd $SKEL_RPM_PACKAGE
 				echo "rpmbuild -bb SPECS/emsbus.spec"
 				echo "nos estamos em $SKEL_RPM_PACKAGE"
-				rpmbuild --buildroot $SKEL_RPM_PACKAGE -bb $SKEL_RPM_PACKAGE/SPECS/emsbus.spec || exit
-
-				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
+				
+				echo aqui $(pwd)
+				export RPM_SOURCE_DIR=$(pwd)/SOURCES
+				echo "rpmbuild --buildroot $(pwd) -bb SPECS/emsbus.spec"
+				echo sources is $RPM_SOURCE_DIR
+				rpmbuild --define="%RPM_SOURCE_DIR $RPM_SOURCE_DIR" --nocheck --buildroot $RPM_SOURCE_DIR -bb SPECS/emsbus.spec || exit
+				
+				echo "Send the generated package to the releases folder..."
+				cp -R ~/rpmbuild/RPMS/* $(pwd)/RPMS
+				send_build_repo $PACKAGE_FILE $PACKAGE_NAME 
+				rm -rf $(pwd)/RPMS
 			fi
 		done
 		echo "End create rpm package."

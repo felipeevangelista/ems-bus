@@ -21,9 +21,9 @@ deps/**
 *.gz
 rel/ems-bus
 rel/*.gz
-rel/rpm/centos/**
-rel/deb/ems-bus-Debian-jessie_amd64/**
-rel/deb/ems-bus-Ubuntu-xenial_amd64/**
-rel/deb/ems-bus-Ubuntu-yakkety_amd64/**
+rel/rpm/ems-bus-centos-CentOS-7/RPMS/**
+rel/rpm/ems-bus-centos-CentOS-7/BUILD/**
+rel/rpm/ems-bus-centos-CentOS-7/SOURCES/**
+rel/rpm/ems-bus-centos-CentOS-7/BUILDROOT/**
 rel/deb/*.deb
 rel/deb/*/control
