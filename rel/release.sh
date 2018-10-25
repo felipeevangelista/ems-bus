@@ -57,7 +57,7 @@ RELEASE_PATH=$WORKING_DIR
 GIT_RELEASE_REPO=https://github.com/erlangms/releases
 if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO" = "fedora" -o "$LINUX_DISTRO" = "kdeneon" ]; then
 	BUILD_RPM_FLAG="true"  
-	if ! rpmbuid --version 2> /dev/null ; then
+	if ! rpmbuild --version 2> /dev/null ; then
 		echo "Tool rpmbuild is not installed, build canceled!!!"
 		echo "Use: sudo yum install rpm-build"
 		exit
