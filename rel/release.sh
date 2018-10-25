@@ -305,7 +305,7 @@ make_release(){
 				
 				echo "rpm build with rpmbuild..."
 				cd $SKEL_RPM_PACKAGE
-				rpmbuild -bb SPECS/emsbus.spec | die "Tool rpmbuild is not installed, build canceled!!!"
+				rpmbuild -bb SPECS/emsbus.spec 
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 			fi
@@ -369,7 +369,7 @@ make_release(){
 				cp -f deb/prerm $SKEL_DEB_PACKAGE/DEBIAN
 				
 				echo "dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE"
-				dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE || die "Tool dpkg-deb is not installed, build canceled!!!"
+				dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 				
