@@ -30,33 +30,40 @@
 #
 ########################################################################################################
 
-# Parameters
-WORKING_DIR=$(pwd)
-RELEASE_PATH=$WORKING_DIR
-GIT_RELEASE_REPO=https://github.com/erlangms/releases
-#BUILD_RPM_FLAG="$( rpmbuild --version > /dev/null 2>&1 && echo 'true' || echo 'false')"  
-BUILD_RPM_FLAG="false"  
-BUILD_DEB_FLAG="$( dpkg-deb --version > /dev/null 2>&1 && echo 'true' || echo 'false')"  
-SKIP_BUILD="true"
-PUSH="false"
-
 # Identify the linux distribution: ubuntu, debian, centos
 LINUX_DISTRO=$(awk -F"=" '{ if ($1 == "ID"){ 
 								gsub("\"", "", $2);  print $2 
 							} 
 						  }' /etc/os-release)
 
-# Get linux description
 LINUX_DESCRIPTION=$(awk -F"=" '{ if ($1 == "PRETTY_NAME"){ 
 									gsub("\"", "", $2);  print $2 
 								 } 
 							   }'  /etc/os-release)
 
-
 LINUX_VERSION_ID=$(awk -F"=" '{ if ($1 == "VERSION_ID"){ 
 									gsub("\"", "", $2);  print $2 
 								 } 
 							   }'  /etc/os-release)
+
+# Parameters
+WORKING_DIR=$(pwd)
+RELEASE_PATH=$WORKING_DIR
+GIT_RELEASE_REPO=https://github.com/erlangms/releases
+if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO" = "fedora" -o "$LINUX_DISTRO" = "kdeneon" ]; then
+	BUILD_RPM_FLAG="true"  
+fi
+if [ ! "$BUILD_RPM_FLAG" = "true" ]; then
+	if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO" = "deepin" -o "$LINUX_DISTRO" = "mint" ]; then
+		echo "sim deb"
+		BUILD_DEB_FLAG="true"  
+	else
+		BUILD_DEB_FLAG="false"  
+	fi
+fi
+SKIP_BUILD="true"
+PUSH="false"
+
 
 
 # Imprime uma mensagem e termina o script
@@ -242,9 +249,10 @@ make_release(){
 
 			# Codinome do sistema operacional
 			CODENAME=$(basename $SKEL_RPM_PACKAGE | cut -d- -f4-)
+			echo codename is $CODENAME
 			
 			# O build é feito somente no SO do template
-			if grep -q -s -i $CODENAME /etc/os-release ; then 
+			if grep  $CODENAME /etc/os-release ; then 
 				echo "Creating rpm package for $LINUX_DISTRO $CODENAME using template $SKEL_RPM_PACKAGE..."
 
 				SKEL_PACKAGE_SOURCES="$SKEL_RPM_PACKAGE/SOURCES"
