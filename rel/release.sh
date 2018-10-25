@@ -235,7 +235,7 @@ make_release(){
 	# build rpm packages
 	if [ "$BUILD_RPM_FLAG" = "true" ]; then
 
-		# ####### Create the rpm packages for each distro ############
+		echo "Begin deb package now..."
 
 		for SKEL_RPM_PACKAGE in `find ./rpm/* -maxdepth 0 -type d`; do
 			echo "Creating rpm package for template $SKEL_RPM_PACKAGE..."
@@ -298,7 +298,7 @@ make_release(){
 	# build deb packages	
 	elif [ "$BUILD_DEB_FLAG" = "true" ]; then
 		
-		# ####### Create the deb packages for each distro ############
+		echo "Begin deb package now..."
 
 		for SKEL_DEB_PACKAGE in `find ./deb/* -maxdepth 0 -type d`; do
 
@@ -306,7 +306,7 @@ make_release(){
 			CODENAME=$(basename $SKEL_DEB_PACKAGE | awk -F- '{print $4}')
 			
 			# O build é feito somente no SO do template
-			if grep -q -s $CODENAME /etc/os-release ; then 
+			if grep -q -s -i $CODENAME /etc/os-release ; then 
 				echo "Creating deb package for $LINUX_DISTRO $CODENAME using template $SKEL_DEB_PACKAGE..."
 				
 				VERSION_PACK=$VERSION_RELEASE
