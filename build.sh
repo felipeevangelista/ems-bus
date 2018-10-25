@@ -25,6 +25,10 @@
 #
 ########################################################################################################
 
+LINUX_DISTRO=$(awk -F"=" '{ if ($1 == "ID"){ 
+								gsub("\"", "", $2);  print $2 
+							} 
+						  }' /etc/os-release)
 
 VERSION_SCRIPT="3.0.1"
 
@@ -49,6 +53,29 @@ KEEP_DB="false"
 
 # Profile of build: local or docker
 PROFILE="local"
+
+
+if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO" = "fedora" -o "$LINUX_DISTRO" = "kdeneon" ]; then
+	BUILD_RPM_FLAG="true"
+	if ! g++ --version 2> /dev/null ; then
+		echo "G++ is not installed, build canceled!!!"
+		echo "Use: sudo yum group install \"Development Tools\""
+		exit
+	fi
+fi
+if [ ! "$BUILD_RPM_FLAG" = "true" ]; then
+	if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO" = "deepin" -o "$LINUX_DISTRO" = "mint" ]; then
+		BUILD_DEB_FLAG="true"  
+		if ! g++ --version 2> /dev/null ; then
+			echo "Tool dpkg-deb is not installed, build canceled!!!"
+			echo "Use: sudo apt install build-essential"
+			exit
+		fi
+	else
+		BUILD_DEB_FLAG="false"  
+	fi
+fi
+
 
 
 # The settings may be stored in the /etc/default/erlangms-build
@@ -132,8 +159,9 @@ check_erlang_version(){
 
 # Remove all deps except jiffy
 function clean_deps(){
-	echo "Clearing the deps folder (except jiffy) before build..."
-	find ./deps  -maxdepth 1 -type d -not -name "*jiffy*" | sed '1d' | xargs rm -rf 
+	#echo "Clearing the deps folder (except jiffy) before build..."
+	#find ./deps  -maxdepth 1 -type d -not -name "*jiffy*" | sed '1d' | xargs rm -rf 
+	rm -rf ./deps
 }
 
 function prerequisites_docker(){
