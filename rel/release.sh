@@ -232,7 +232,7 @@ make_release(){
 	# Create the package file gz
 	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz now..."
 	tar -czf ems-bus-$VERSION_RELEASE.tar.gz ems-bus/ &
-	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz end..."
+	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz end."
 
 	# build rpm packages
 	if [ "$BUILD_RPM_FLAG" = "true" ]; then
@@ -241,7 +241,7 @@ make_release(){
 			echo "Creating rpm package for template $SKEL_RPM_PACKAGE..."
 
 			# Codinome do sistema operacional
-			CODENAME=$(basename $SKEL_RPM_PACKAGE | awk -F- '{print $4}')
+			CODENAME=$(basename $SKEL_RPM_PACKAGE | cut -d- -f4-)
 			
 			# O build é feito somente no SO do template
 			if grep -q -s -i $CODENAME /etc/os-release ; then 
@@ -310,7 +310,7 @@ make_release(){
 		for SKEL_DEB_PACKAGE in `find ./deb/* -maxdepth 0 -type d`; do
 
 			# Codinome do sistema operacional
-			CODENAME=$(basename $SKEL_DEB_PACKAGE | awk -F- '{print $4}')
+			CODENAME=$(basename $SKEL_DEB_PACKAGE | cut -d- -f4-)
 			
 			# O build é feito somente no SO do template
 			if grep -q -s -i $CODENAME /etc/os-release ; then 

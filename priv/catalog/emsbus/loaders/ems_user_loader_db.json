@@ -168,8 +168,7 @@
 								where em.EmaTipo = 1 
 								  and em.EmaEmail LIKE '_%@__%.__%' 
 								  and pfe.PFmPesCodigoPessoa = u.UsuPesIdPessoa 
-								  and (em.EmaDataAlteracao >= ? or em.EmaDataCadastramento >= ?) ) 
-			order by p.PesDataAlteracao desc, u.UsuDataAlteracao desc
+								  and (em.EmaDataAlteracao >= ? or em.EmaDataCadastramento >= ?) )
 			",
 			
 	"fields" : ["id", "codigo", "login", "name", "cpf", "password", 
