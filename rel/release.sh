@@ -303,9 +303,9 @@ make_release(){
 				#echo "Generate $SKEL_PACKAGE_SOURCES/ems-bus-$VERSION_PACK.tar.gz from $SKEL_PACKAGE_SOURCES"
 				tar -czvf  ems-bus-$VERSION_PACK.tar.gz *
 				
-				echo "rpm build with rpmbuild..."
 				cd $SKEL_RPM_PACKAGE
-				rpmbuild -bb SPECS/emsbus.spec 
+				echo "rpmbuild -bb SPECS/emsbus.spec"
+				rpmbuild -bb SPECS/emsbus.spec || exit
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 			fi
@@ -369,7 +369,7 @@ make_release(){
 				cp -f deb/prerm $SKEL_DEB_PACKAGE/DEBIAN
 				
 				echo "dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE"
-				dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE
+				dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE || exit
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 				
