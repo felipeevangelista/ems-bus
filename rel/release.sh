@@ -305,7 +305,7 @@ make_release(){
 				
 				echo "rpm build with rpmbuild..."
 				cd $SKEL_RPM_PACKAGE
-				rpmbuild -bb SPECS/emsbus.spec
+				rpmbuild -bb SPECS/emsbus.spec | die "Tool rpmbuild is not installed, build canceled!!!"
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 			fi
@@ -369,7 +369,7 @@ make_release(){
 				cp -f deb/prerm $SKEL_DEB_PACKAGE/DEBIAN
 				
 				echo "dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE"
-				dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE || die "Failed to generate package $SKEL_DEB_PACKAGE com dpkg-deb!"
+				dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE || die "Tool dpkg-deb is not installed, build canceled!!!"
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 				
@@ -387,10 +387,6 @@ clear
 
 echo "Start erlangms release tool ( Date: $(date '+%d/%m/%Y %H:%M:%S')  Distro: $LINUX_DISTRO )"
 echo "Linux: $LINUX_DESCRIPTION  Version: $LINUX_VERSION_ID"
-
-[ "$BUILD_RPM_FLAG" = "true" ] && echo "Build rpm packages with rpmbuild available."
-[ "$BUILD_DEB_FLAG" = "true" ] && echo "Build deb packages with dpkg-deb available."
-
 
 # Read command line parameters
 for P in $*; do
