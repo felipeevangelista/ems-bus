@@ -200,9 +200,10 @@ make_release(){
 
 
 	# ******** Gera o release na pasta rel *********
-	echo 'Generating release with rebar now...'
+	echo 'Begin generate release with rebar now...'
 	cd rel
 	../tools/rebar/rebar generate || die 'Failed to generate release with rebar compile generate!'
+	echo 'End generate release with rebar.'
 
 	# Esta lib dá erro no com "tools/rebar/rebar compile generate", portando é copiado manualmente
 	if [ -d ems_bus/lib/sd_notify ]; then
