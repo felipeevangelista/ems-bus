@@ -46,6 +46,11 @@ LINUX_VERSION_ID=$(awk -F"=" '{ if ($1 == "VERSION_ID"){
 								 } 
 							   }'  /etc/os-release)
 
+clear
+
+echo "Start erlangms release tool ( Date: $(date '+%d/%m/%Y %H:%M:%S')  Distro: $LINUX_DISTRO )"
+echo "Linux: $LINUX_DESCRIPTION  Version: $LINUX_VERSION_ID"
+
 # Parameters
 WORKING_DIR=$(pwd)
 RELEASE_PATH=$WORKING_DIR
@@ -54,6 +59,7 @@ if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO"
 	BUILD_RPM_FLAG="true"  
 	if ! rpmbuid --version 2> /dev/null 1> /dev/null ; then
 		echo "Tool rpmbuild is not installed, build canceled!!!"
+		echo "Use: sudo yum install rpm-build"
 		exit
 	fi
 fi
@@ -62,6 +68,7 @@ if [ ! "$BUILD_RPM_FLAG" = "true" ]; then
 		BUILD_DEB_FLAG="true"  
 		if ! dpkg-deb --version 2> /dev/null 1> /dev/null ; then
 			echo "Tool dpkg-deb is not installed, build canceled!!!"
+			echo "Use: sudo apt-get install dpkg-deb"
 			exit
 		fi
 	else
@@ -389,11 +396,6 @@ make_release(){
 
 
 # *************** main ***************
-
-clear
-
-echo "Start erlangms release tool ( Date: $(date '+%d/%m/%Y %H:%M:%S')  Distro: $LINUX_DISTRO )"
-echo "Linux: $LINUX_DESCRIPTION  Version: $LINUX_VERSION_ID"
 
 # Read command line parameters
 for P in $*; do
