@@ -78,6 +78,8 @@ fi
 SKIP_BUILD="true"
 PUSH="false"
 
+BUILD_DEB_FLAG="false"  
+BUILD_RPM_FLAG="true"  
 
 
 # Imprime uma mensagem e termina o script
@@ -320,7 +322,7 @@ make_release(){
 				cd $SKEL_RPM_PACKAGE
 				echo "rpmbuild -bb SPECS/emsbus.spec"
 				echo "nos estamos em $SKEL_RPM_PACKAGE"
-				rpmbuild -bb $SKEL_RPM_PACKAGE/SPECS/emsbus.spec || exit
+				rpmbuild --buildroot $SKEL_RPM_PACKAGE -bb $SKEL_RPM_PACKAGE/SPECS/emsbus.spec || exit
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 			fi
