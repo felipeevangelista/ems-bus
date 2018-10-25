@@ -22,6 +22,7 @@
 # 06/07/2017  Everton Agilar     New: --skip_build
 # 23/09/2017  Everton Agilar     New: --push
 # 28/09/2017  Everton Agilar     New: --clean
+# 25/10/2018  Everto Agilar		 Faz build somente do SO ativo usando o template deste SO
 #
 #
 #
@@ -162,9 +163,11 @@ push_release(){
 		git add $VERSION_RELEASE >> /dev/null
 		git add setup/current_version >> /dev/null
 		git commit -am "New release $VERSION_RELEASE" >> /dev/null
-		echo "Sending package $PACKAGE_NAME to $GIT_RELEASE_REPO..."
+		echo "Sending build package $PACKAGE_NAME to $GIT_RELEASE_REPO..."
 		git pull --no-edit
-		git push
+		while ! git push; do
+			echo "Push failed, please try again!!!"
+		done
 	fi
 }
 
@@ -298,62 +301,73 @@ make_release(){
 		# ####### Create the deb packages for each distro ############
 
 		for SKEL_DEB_PACKAGE in `find ./deb/* -maxdepth 0 -type d`; do
-			echo "Creating deb package for template $SKEL_DEB_PACKAGE..."
-			
-			VERSION_PACK=$VERSION_RELEASE
-			DEB_CONTROL_FILE=$SKEL_DEB_PACKAGE/DEBIAN/control
-			SKEL_PACKAGE_SOURCES=$SKEL_DEB_PACKAGE
-			# Updates the version in the file SPEC/emsbus.spec
-			sed -ri "s/Version: [0.9]{1,2}.[0-9]{1,2}.[0-9]{1,3}(.*$)/Version: $VERSION_RELEASE\1/" $DEB_CONTROL_FILE
-			RELEASE_PACK=$(grep 'Version' $DEB_CONTROL_FILE | cut -d'-' -f2-)	
-			PACKAGE_NAME=ems-bus-$VERSION_RELEASE-$RELEASE_PACK.x86_64.deb
-			PACKAGE_FILE=$SKEL_DEB_PACKAGE/$PACKAGE_NAME
-			
-			# Gera a estrutura /usr/lib/ems-bus
-			rm -Rf $SKEL_DEB_PACKAGE/usr/lib/ems-bus || die "Could not remove folder $SKEL_DEB_PACKAGE/usr/lib/ems-bus!" 
-			mkdir -p $SKEL_DEB_PACKAGE/usr/lib
-			cp -R ems-bus $SKEL_DEB_PACKAGE/usr/lib/ems-bus || die "Could not copy ems-bus folder to $SKEL_DEB_PACKAGE/usr/lib!"
 
-			rm -Rf $SKEL_DEB_PACKAGE/etc || die "Could not remove folder $SKEL_DEB_PACKAGE/etc!" 
-
-			# Gera a estrutura /etc/ems-bus
-			mkdir -p $SKEL_DEB_PACKAGE/etc/ems-bus || die "Could not create folder $SKEL_DEB_PACKAGE/etc/ems-bus!" 
-			ln -s /usr/lib/ems-bus/priv/catalog $SKEL_DEB_PACKAGE/etc/ems-bus/catalog
-			ln -s /usr/lib/ems-bus/priv/conf $SKEL_DEB_PACKAGE/etc/ems-bus/conf
-			ln -s /usr/lib/ems-bus/priv/csv $SKEL_DEB_PACKAGE/etc/ems-bus/csv
-			ln -s /usr/lib/ems-bus/priv/ssl $SKEL_DEB_PACKAGE/etc/ems-bus/ssl
-			ln -s /usr/lib/ems-bus/priv/schema $SKEL_DEB_PACKAGE/etc/ems-bus/schema
-			ln -s /usr/lib/ems-bus/priv/systemd $SKEL_DEB_PACKAGE/etc/ems-bus/systemd
+			# Codinome do sistema operacional
+			CODENAME=$(basename $SKEL_DEB_PACKAGE | awk -F- '{print $4}')
 			
-			# Gera a estrutura /etc/systemd/system
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d
-			ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service || die 'Could not create symbolic link ems-bus.service!'
-			ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service.d/limits.conf $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d/limits.conf || die 'Could not create symbolic link ems-bus.service.d/limits.conf!'
+			# O build é feito somente no SO do template
+			if grep -q -s $CODENAME /etc/os-release ; then 
+				echo "Creating deb package for $LINUX_DISTRO $CODENAME using template $SKEL_DEB_PACKAGE..."
+				
+				VERSION_PACK=$VERSION_RELEASE
+				DEB_CONTROL_FILE=$SKEL_DEB_PACKAGE/DEBIAN/control
+				SKEL_PACKAGE_SOURCES=$SKEL_DEB_PACKAGE
+				# Updates the version in the file SPEC/emsbus.spec
+				sed -ri "s/Version: [0.9]{1,2}.[0-9]{1,2}.[0-9]{1,3}(.*$)/Version: $VERSION_RELEASE\1/" $DEB_CONTROL_FILE
+				RELEASE_PACK=$(grep 'Version' $DEB_CONTROL_FILE | cut -d'-' -f2-)	
+				PACKAGE_NAME=ems-bus-$VERSION_RELEASE-$RELEASE_PACK.x86_64.deb
+				PACKAGE_FILE=$SKEL_DEB_PACKAGE/$PACKAGE_NAME
+				
+				# Gera a estrutura /usr/lib/ems-bus
+				rm -Rf $SKEL_DEB_PACKAGE/usr/lib/ems-bus || die "Could not remove folder $SKEL_DEB_PACKAGE/usr/lib/ems-bus!" 
+				mkdir -p $SKEL_DEB_PACKAGE/usr/lib
+				cp -R ems-bus $SKEL_DEB_PACKAGE/usr/lib/ems-bus || die "Could not copy ems-bus folder to $SKEL_DEB_PACKAGE/usr/lib!"
 
-			# Gera a estrutura /etc/sudoers.d
-			mkdir -p $SKEL_PACKAGE_SOURCES/etc/sudoers.d
-			ln -s /usr/lib/ems-bus/priv/sudoers.d/ems-bus.sudoers $SKEL_PACKAGE_SOURCES/etc/sudoers.d/ems-bus.sudoers || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/sudoers.d/ems-bus!" 
+				rm -Rf $SKEL_DEB_PACKAGE/etc || die "Could not remove folder $SKEL_DEB_PACKAGE/etc!" 
 
-			# Log -> /var/log/ems-bus
-			#ln -s /var/log/ems-bus $SKEL_DEB_PACKAGE/usr/lib/ems-bus/priv/log
-			
-			# Copia os scripts padrão para o pacote
-			cp -f deb/postinst $SKEL_DEB_PACKAGE/DEBIAN
-			cp -f deb/postrm $SKEL_DEB_PACKAGE/DEBIAN
-			cp -f deb/preinst $SKEL_DEB_PACKAGE/DEBIAN
-			cp -f deb/prerm $SKEL_DEB_PACKAGE/DEBIAN
-			
-			echo "dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE"
-			dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE || die "Failed to generate package $SKEL_DEB_PACKAGE com dpkg-deb!"
+				# Gera a estrutura /etc/ems-bus
+				mkdir -p $SKEL_DEB_PACKAGE/etc/ems-bus || die "Could not create folder $SKEL_DEB_PACKAGE/etc/ems-bus!" 
+				ln -s /usr/lib/ems-bus/priv/catalog $SKEL_DEB_PACKAGE/etc/ems-bus/catalog
+				ln -s /usr/lib/ems-bus/priv/conf $SKEL_DEB_PACKAGE/etc/ems-bus/conf
+				ln -s /usr/lib/ems-bus/priv/csv $SKEL_DEB_PACKAGE/etc/ems-bus/csv
+				ln -s /usr/lib/ems-bus/priv/ssl $SKEL_DEB_PACKAGE/etc/ems-bus/ssl
+				ln -s /usr/lib/ems-bus/priv/schema $SKEL_DEB_PACKAGE/etc/ems-bus/schema
+				ln -s /usr/lib/ems-bus/priv/systemd $SKEL_DEB_PACKAGE/etc/ems-bus/systemd
+				
+				# Gera a estrutura /etc/systemd/system
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d
+				ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service || die 'Could not create symbolic link ems-bus.service!'
+				ln -s /usr/lib/ems-bus/priv/systemd/ems-bus.service.d/limits.conf $SKEL_PACKAGE_SOURCES/etc/systemd/system/ems-bus.service.d/limits.conf || die 'Could not create symbolic link ems-bus.service.d/limits.conf!'
 
-			send_build_repo $PACKAGE_FILE $PACKAGE_NAME
+				# Gera a estrutura /etc/sudoers.d
+				mkdir -p $SKEL_PACKAGE_SOURCES/etc/sudoers.d
+				ln -s /usr/lib/ems-bus/priv/sudoers.d/ems-bus.sudoers $SKEL_PACKAGE_SOURCES/etc/sudoers.d/ems-bus.sudoers || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/sudoers.d/ems-bus!" 
+
+				# Log -> /var/log/ems-bus
+				#ln -s /var/log/ems-bus $SKEL_DEB_PACKAGE/usr/lib/ems-bus/priv/log
+				
+				# Copia os scripts padrão para o pacote
+				cp -f deb/postinst $SKEL_DEB_PACKAGE/DEBIAN
+				cp -f deb/postrm $SKEL_DEB_PACKAGE/DEBIAN
+				cp -f deb/preinst $SKEL_DEB_PACKAGE/DEBIAN
+				cp -f deb/prerm $SKEL_DEB_PACKAGE/DEBIAN
+				
+				echo "dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE"
+				dpkg-deb -b $SKEL_DEB_PACKAGE $PACKAGE_FILE || die "Failed to generate package $SKEL_DEB_PACKAGE com dpkg-deb!"
+
+				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
+				
+				break
+			fi
 		done
 	fi
 }
 
 
 # *************** main ***************
+
+clear
 
 echo "Start erlangms release tool ( Date: $(date '+%d/%m/%Y %H:%M:%S')  Distro: $LINUX_DISTRO )"
 echo "Linux: $LINUX_DESCRIPTION  Version: $LINUX_VERSION_ID"
@@ -394,6 +408,7 @@ if [ -L /usr/lib/erlang/man ]; then
 fi	
 
 rm -f ../priv/scripts/*.tar
+rm -f ../priv/scripts/*.log
 clean
 config_release_path
 make_release
@@ -401,4 +416,5 @@ push_release
 clean
 cd $WORKING_DIR
 echo "Ok!"
+
 

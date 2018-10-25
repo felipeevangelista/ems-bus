@@ -282,7 +282,7 @@ prepare_project_to_build(){
 		echo "Preparing $APP_NAME to build in production mode, please wait..."
 	fi
 
-	echo "Entra na pasta \"$STAGE_AREA/docker/build\" onde será feito o clone do projeto"
+	echo "Enter the folder \"$STAGE_AREA/docker/build\" where the project clone will be made."
 	cd $STAGE_AREA/docker/build
 
 	# Clone git project
@@ -293,10 +293,10 @@ prepare_project_to_build(){
 	 
 	
 	# Entra no projeto
-	echo "Entrando no projeto git $APP_NAME..."
+	echo "Entering the git project $APP_NAME..."
 	cd $APP_NAME
 	
-	echo "Pesquisando a tag $GIT_CHECKOUT_TAG..."
+	echo "Searching the tag $GIT_CHECKOUT_TAG..."
 	
 	# Faz clone da última tag gerada do projeto se não foi informado o parâmetro --tag
 	# Se não há nenhuma tag e não foi informado --tag, faz da master mesmo
@@ -316,7 +316,7 @@ prepare_project_to_build(){
 		git checkout $GIT_CHECKOUT_TAG
 	fi
 	
-	echo "Tag onde estou:"
+	echo "Current git branch:"
 	git status
 	
 	# Se existe um diretório frontend, move para lá pois é onde está o código fonte em projetos Kubernetes
@@ -421,7 +421,7 @@ build_image(){
 	echo "Start build docker image $APP_NAME, please wait (Root credentials necessary)..."
 
 	# Entra na pasta onde será feito o build da imagem
-	echo "Entrando na pasta "$STAGE_AREA/docker" para criar a imagem Docker..."
+	echo "Entering the folder "$STAGE_AREA/docker" to create the Docker image..."
 	cd $STAGE_AREA/docker
 
 	# Format app version do docker
@@ -707,13 +707,13 @@ if [ -z "$APP_URL_GIT" ]; then
 else
 	GIT_BASE_URL_PROJECTS=$(dirname "$APP_URL_GIT")
 fi
-[ -z "$APP_URL_GIT" ] && die "Project url not informed, build canceled. Enter the parameter --app_url_git!"
+[ -z "$APP_URL_GIT" ] && die "Project url was not entered. Enter the parameter --app_url_git!!!"
 
-
+# APP_NAME setting
 if [ -z "$APP_NAME" ]; then
 	APP_NAME=$(basename "$APP_URL_GIT" | sed 's/.git//' | sed -r 's/_frontend$//' | sed 's/[-_]//g')
 fi
-[ -z "$APP_NAME" ] && die 'Name of project not informed, build canceled. Enter the parameter --app!'
+[ -z "$APP_NAME" ] && die 'Project name was not entered. Enter the parameter --app!!!'
 
 
 
