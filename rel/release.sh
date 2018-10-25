@@ -57,7 +57,7 @@ RELEASE_PATH=$WORKING_DIR
 GIT_RELEASE_REPO=https://github.com/erlangms/releases
 if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO" = "fedora" -o "$LINUX_DISTRO" = "kdeneon" ]; then
 	BUILD_RPM_FLAG="true"  
-	if ! rpmbuid --version 2> /dev/null 1> /dev/null ; then
+	if ! rpmbuid --version 2> /dev/null ; then
 		echo "Tool rpmbuild is not installed, build canceled!!!"
 		echo "Use: sudo yum install rpm-build"
 		exit
@@ -66,7 +66,7 @@ fi
 if [ ! "$BUILD_RPM_FLAG" = "true" ]; then
 	if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO" = "deepin" -o "$LINUX_DISTRO" = "mint" ]; then
 		BUILD_DEB_FLAG="true"  
-		if ! dpkg-deb --version 2> /dev/null 1> /dev/null ; then
+		if ! dpkg-deb --version 2> /dev/null ; then
 			echo "Tool dpkg-deb is not installed, build canceled!!!"
 			echo "Use: sudo apt-get install dpkg-deb"
 			exit
