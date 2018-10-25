@@ -320,7 +320,7 @@ make_release(){
 				cd $SKEL_RPM_PACKAGE
 				echo "rpmbuild -bb SPECS/emsbus.spec"
 				echo "nos estamos em $(pwd)"
-				rpmbuild --buildroot . -bb SPECS/emsbus.spec || exit
+				rpmbuild --buildroot $(pwd) -bb SPECS/emsbus.spec || exit
 
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 			fi
