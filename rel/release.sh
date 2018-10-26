@@ -55,32 +55,13 @@ echo "Linux: $LINUX_DESCRIPTION  Version: $LINUX_VERSION_ID"
 WORKING_DIR=$(pwd)
 RELEASE_PATH=$WORKING_DIR
 GIT_RELEASE_REPO=https://github.com/erlangms/releases
-if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO" = "fedora" -o "$LINUX_DISTRO" = "kdeneon" ]; then
-	BUILD_RPM_FLAG="true"  
-	if ! rpmbuild --version 2> /dev/null ; then
-		echo "Tool rpmbuild is not installed, build canceled!!!"
-		echo "Use: sudo yum install rpm-build"
-		exit
-	fi
-fi
-if [ ! "$BUILD_RPM_FLAG" = "true" ]; then
-	if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO" = "deepin" -o "$LINUX_DISTRO" = "mint" ]; then
-		BUILD_DEB_FLAG="true"  
-		if ! dpkg-deb --version 2> /dev/null ; then
-			echo "Tool dpkg-deb is not installed, build canceled!!!"
-			echo "Use: sudo apt-get install dpkg-deb"
-			exit
-		fi
-	else
-		BUILD_DEB_FLAG="false"  
-	fi
-fi
+BUILD_DEB_FLAG="false"  
+BUILD_RPM_FLAG="false"  
 SKIP_BUILD="true"
 PUSH="false"
 
-BUILD_DEB_FLAG="false"  
-BUILD_RPM_FLAG="true"  
-
+echo "Build deb packages is $BUILD_DEB_FLAG."
+echo "Build rpm packages is $BUILD_RPM_FLAG."
 
 # Imprime uma mensagem e termina o script
 # Parâmetros:
@@ -102,7 +83,7 @@ config_release_path(){
 		cd $WORKING_DIR
 		RELEASE_PATH=$(cd $WORKING_DIR/../../releases/ && pwd)
 	fi
-	echo "Setting release path to $RELEASE_PATH."
+	echo "RELEASE_PATH is $RELEASE_PATH."
 }
 
 # ***** Clean ******
@@ -114,6 +95,8 @@ clean(){
 	#rm -f *.tar.gz
 	rm -f *.tar
 	rm -f ../priv/scripts/*.log
+	rm -f ../priv/scripts/*.tar
+	rm -f ../priv/scripts/~*
 	rm -rf ../priv/db
 	rm -rf ../priv/log
 	rm -rf ../priv/tmp
@@ -158,9 +141,10 @@ help(){
 	echo "How to use: ./release.sh"
 	echo
 	echo "Additional parameters:"
-	echo "  --skip-build     -> skip build with rebar. Default is true."
-	echo "  --push           -> push release to repository. Default is false."
-	echo "  --clean          -> clean build release."
+	echo "  --skip-build=true|false		-> skip build with rebar. Default is true."
+	echo "  --push           			-> push release to repository. Default is false."
+	echo "  --clean          			-> clean build release."
+	echo "  --distro_name=name    		-> define the distro name."
 	exit 1
 }
 
@@ -266,11 +250,11 @@ make_release(){
 
 			# Codinome do sistema operacional
 			CODENAME=$(basename $SKEL_RPM_PACKAGE | cut -d- -f4-)
-			echo codename is $CODENAME
 			
 			# O build é feito somente no SO do template
-			if true ; then 
+			if grep -q -s -i $CODENAME /etc/os-release ; then 
 				echo "Creating rpm package for $LINUX_DISTRO $CODENAME using template $SKEL_RPM_PACKAGE..."
+				echo "===================================================================================="
 
 				SKEL_PACKAGE_SOURCES="$SKEL_RPM_PACKAGE/SOURCES"
 				VERSION_PACK=$VERSION_RELEASE
@@ -314,33 +298,26 @@ make_release(){
 				mkdir -p $SKEL_PACKAGE_SOURCES/etc/sudoers.d
 				ln -s /usr/lib/ems-bus/priv/sudoers.d/ems-bus.sudoers $SKEL_PACKAGE_SOURCES/etc/sudoers.d/ems-bus.sudoers || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/sudoers.d/ems-bus!" 
 
-				# Log -> /var/log/ems-bus
-				#ln -s /var/log/ems-bus $SKEL_PACKAGE_SOURCES/usr/lib/ems-bus/priv/log
-
 				#echo "Generate $SKEL_PACKAGE_SOURCES/ems-bus-$VERSION_PACK.tar.gz from $SKEL_PACKAGE_SOURCES"
 				tar -czvf  ems-bus-$VERSION_PACK.tar.gz *
 				
-				cd $SKEL_RPM_PACKAGE
-				echo "rpmbuild -bb SPECS/emsbus.spec"
-				echo "nos estamos em $SKEL_RPM_PACKAGE"
-				
-				echo aqui $(pwd)
-				echo "rpmbuild --buildroot $(pwd) -bb SPECS/emsbus.spec"
-				echo sources is $RPM_SOURCE_DIR
-				echo "copiando!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 				cp -r $(pwd)/SOURCES/* ~/rpmbuild/SOURCES
 				cp -r $(pwd)/SOURCES/* ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
 				mkdir -p ~/rpmbuild/build_emsbus
 				cp -r $(pwd)/SOURCES/* ~/rpmbuild/build_emsbus
 				echo SKEL_PACKAGE_SOURCES is $SKEL_PACKAGE_SOURCES
 				
-				echo "VAR COMPILAR!!!!!!!!!!!"
+				echo "rpmbuild -bb SPECS/emsbus.spec"
 				rpmbuild -bb SPECS/emsbus.spec || exit
 				
 				echo "Send the generated package to the releases folder..."
 				cp -R ~/rpmbuild/RPMS/* $(pwd)/RPMS
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME 
 				rm -rf $(pwd)/RPMS
+				
+				break
+			else
+				echo "Skip build rpm package for $LINUX_DISTRO $CODENAME using template $SKEL_RPM_PACKAGE..."
 			fi
 		done
 
@@ -355,6 +332,7 @@ make_release(){
 			# O build é feito somente no SO do template
 			if grep -q -s -i $CODENAME /etc/os-release ; then 
 				echo "Creating deb package for $LINUX_DISTRO $CODENAME using template $SKEL_DEB_PACKAGE..."
+				echo "===================================================================================="
 				
 				VERSION_PACK=$VERSION_RELEASE
 				DEB_CONTROL_FILE=$SKEL_DEB_PACKAGE/DEBIAN/control
@@ -391,9 +369,6 @@ make_release(){
 				mkdir -p $SKEL_PACKAGE_SOURCES/etc/sudoers.d
 				ln -s /usr/lib/ems-bus/priv/sudoers.d/ems-bus.sudoers $SKEL_PACKAGE_SOURCES/etc/sudoers.d/ems-bus.sudoers || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/sudoers.d/ems-bus!" 
 
-				# Log -> /var/log/ems-bus
-				#ln -s /var/log/ems-bus $SKEL_DEB_PACKAGE/usr/lib/ems-bus/priv/log
-				
 				# Copia os scripts padrão para o pacote
 				cp -f deb/postinst $SKEL_DEB_PACKAGE/DEBIAN
 				cp -f deb/postrm $SKEL_DEB_PACKAGE/DEBIAN
@@ -406,6 +381,8 @@ make_release(){
 				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
 				
 				break
+			else
+				echo "Skip build deb package for $LINUX_DISTRO $CODENAME using template $SKEL_DEB_PACKAGE..."
 			fi
 		done
 	fi
@@ -422,12 +399,17 @@ for P in $*; do
 		elif [[ "$P" = "--clean" ]]; then
 			clean
 			exit 1
+		elif [[ "$P" =~ ^--skip[_-]build=.+$ ]]; then
+			SKIP_BUILD="$(echo $P | cut -d= -f2)"
+			echo "Skip build is $SKIP_BUILD..."
 		elif [[ "$P" =~ --skip[_-]build ]]; then
-			echo "Skip build ems-bus enabled..."
+			echo "Skip build uildis true..."
 			SKIP_BUILD="true"
 		elif [[ "$P" =~ --push ]]; then
 			echo "Push release after build to repository..."
 			PUSH="true"
+		elif [[ "$P" =~ ^--distro_name=.+$ ]]; then
+			LINUX_DISTRO="$(echo $P | cut -d= -f2)"
 		else
 			echo "Invalid parameter: $P"
 			help
@@ -438,6 +420,7 @@ for P in $*; do
 	fi
 done
 
+clean
 
 # check remove link to fix Unable to generate spec: read file info
 if [ -L /usr/lib/erlang/man ]; then
@@ -445,9 +428,23 @@ if [ -L /usr/lib/erlang/man ]; then
 	sudo rm  /usr/lib/erlang/man
 fi	
 
-rm -f ../priv/scripts/*.tar
-rm -f ../priv/scripts/*.log
-clean
+if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO" = "fedora" -o "$LINUX_DISTRO" = "kdeneon" ]; then
+	BUILD_RPM_FLAG="true"  
+	if ! rpmbuild --version 2> /dev/null ; then
+		echo "Tool rpmbuild is not installed, build canceled!!!"
+		echo "Use: sudo yum install rpm-build"
+		exit
+	fi
+fi
+if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO" = "deepin" -o "$LINUX_DISTRO" = "mint" ]; then
+	BUILD_DEB_FLAG="true"  
+	if ! dpkg-deb --version 2> /dev/null ; then
+		echo "Tool dpkg-deb is not installed, build canceled!!!"
+		echo "Use: sudo apt-get install dpkg-deb"
+		exit
+	fi
+fi
+
 config_release_path
 make_release
 push_release
