@@ -97,7 +97,7 @@
 				   CSETcpSslCertfile as tcp_ssl_certfile,
 				   CSETcpSslKeyfile as tcp_ssl_keyfile,
 				   CSEOAuth2WithCheckConstraint as oauth2_with_check_constraint 
-				from BDAcesso.dbo.TB_CatalogoServicoErlangms 
+				from BDAcesso.dbo.TB_CatalogoServicoErlangms with (nolock) 
 				where CSECtrlUpdate >= ? or CSECtrlInsert >= ?
 				",
 	"fields" : ["id", "name", "url", "use_re", "type", "service", 

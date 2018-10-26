@@ -29,10 +29,10 @@
 				   mu.MunDenominacao as cidade,
 				   e.EndCep as cep,
 				   e.EndTipo as type 
-				from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe  
-					join BDPessoa.dbo.TB_Endereco e 
+				from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe  with (nolock) 
+					join BDPessoa.dbo.TB_Endereco e with (nolock) 
 					   on pfe.PFeEndCodigo = e.EndCodigo 
-					join BDTabelaApoio.dbo.TB_Municipio mu 
+					join BDTabelaApoio.dbo.TB_Municipio mu with (nolock) 
 					   on e.EndLocalidade = mu.MunCodigo",
 
 	"sql_update" : 
@@ -46,10 +46,10 @@
 				   mu.MunDenominacao as cidade,
 				   e.EndCep as cep,
 				   e.EndTipo as type 
-				from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe  
-					join BDPessoa.dbo.TB_Endereco e 
+				from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe with (nolock)  
+					join BDPessoa.dbo.TB_Endereco e with (nolock) 
 					   on pfe.PFeEndCodigo = e.EndCodigo 
-					join BDTabelaApoio.dbo.TB_Municipio mu 
+					join BDTabelaApoio.dbo.TB_Municipio mu with (nolock) 
 					   on e.EndLocalidade = mu.MunCodigo 
 				where e.EndDataAlteracao >= ? or e.EndDataCadastramento >= ?",
 

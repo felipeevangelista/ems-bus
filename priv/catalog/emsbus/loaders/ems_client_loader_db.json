@@ -27,7 +27,7 @@
 			   s.SisAuthSecret,
 			   s.SisGroup,
 			   s.SisGlyphIcon 
-			from BDAcesso.dbo.TB_Sistemas s
+			from BDAcesso.dbo.TB_Sistemas s with (nolock) 
 			",
 	"sql_update" :
 			"select s.SisId as id,
@@ -39,7 +39,7 @@
 			   s.SisAuthScope,
 			   s.SisGroup,
 			   s.SisGlyphIcon 
-			from BDAcesso.dbo.TB_Sistemas s 
+			from BDAcesso.dbo.TB_Sistemas s with (nolock) 
 			",
 	"fields" : ["id", "name", "secret", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
 }

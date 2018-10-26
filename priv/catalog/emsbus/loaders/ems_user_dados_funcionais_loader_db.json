@@ -26,14 +26,14 @@
 						when c.dtdesliga < Getdate() then 0 
 						else u.UsuSituacao 
 					end as active  
-				from   bdacesso.dbo.tb_usuario u  
-					   join bdpessoa.dbo.tb_pessoa p 
+				from   bdacesso.dbo.tb_usuario u  with (nolock) 
+					   join bdpessoa.dbo.tb_pessoa p with (nolock) 
 						 ON u.usupesidpessoa = p.pescodigopessoa 
-					   left join sipes.dbo.dadosfuncionais df 
+					   left join sipes.dbo.dadosfuncionais df with (nolock) 
 							  ON p.pescodigopessoa = df.pescodigopessoa 
-					   left join sipes.dbo.contratos c 
+					   left join sipes.dbo.contratos c with (nolock) 
 							  ON df.matsipes = c.matsipes 
-					   left join sipes.dbo.cargos ca 
+					   left join sipes.dbo.cargos ca with (nolock) 
 							  ON c.codcargo = ca.codcargo 
 				where df.MatSipes is not null
                 ",
@@ -47,14 +47,14 @@
 						when c.dtdesliga < Getdate() then 0 
 						else u.UsuSituacao 
 					end as active  
-				from   bdacesso.dbo.tb_usuario u  
-					join bdpessoa.dbo.tb_pessoa p 
+				from   bdacesso.dbo.tb_usuario u  with (nolock) 
+					join bdpessoa.dbo.tb_pessoa p with (nolock) 
 						ON u.usupesidpessoa = p.pescodigopessoa 
-					left join sipes.dbo.dadosfuncionais df 
+					left join sipes.dbo.dadosfuncionais df with (nolock) 
 							ON p.pescodigopessoa = df.pescodigopessoa 
-					left join sipes.dbo.contratos c 
+					left join sipes.dbo.contratos c with (nolock) 
 							ON df.matsipes = c.matsipes 
-					left join sipes.dbo.cargos ca 
+					left join sipes.dbo.cargos ca with (nolock) 
 							ON c.codcargo = ca.codcargo 
 				where df.MatSipes is not null and (u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
 												   u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?)

@@ -35,43 +35,45 @@
 				coalesce(p.PesDataNascimento, al.AluDtNasc) as data_nascimento,
 				p.PesSexo as sexo, 
 				(select top 1 t.TelNumero 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-						join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+						join BDPessoa.dbo.TB_Telefone t with (nolock) 
 						on pft.PFTTelCodigo = t.TelCodigo 
 				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as telefone, 
 				(select top 1 t.TelNumero 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-						join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+						join BDPessoa.dbo.TB_Telefone t with (nolock) 
 						on pft.PFTTelCodigo = t.TelCodigo 
 				where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as celular, 
 				(select top 1 cast(t.TelDDD as varchar(3)) 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-						join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+						join BDPessoa.dbo.TB_Telefone t with (nolock) 
 						on pft.PFTTelCodigo = t.TelCodigo 
 				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as ddd,
 				p.PesNomePai as nome_pai,
 				p.PesNomeMae as nome_mae,
 				cast(p.PesNacionalidade as int) as nacionalidade,
 				coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
-					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe with (nolock) 
+						join BDPessoa.dbo.TB_Email em with (nolock) 
+							on pfe.PFmEmaCodigo = em.EmaCodigo 
 					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
 					and em.EmaTipo = 1 
 					and em.EmaEmail LIKE '_%@__%.__%') 
 				, 
 				(select top 1 lower(rtrim(em.EmaEmail)) as email 
-					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe with (nolock) 
+						join BDPessoa.dbo.TB_Email em with (nolock) 
+							on pfe.PFmEmaCodigo = em.EmaCodigo 
 					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
 					and em.EmaEmail LIKE '_%@__%.__%') 
 				) as email, 
 				3 as type,  
 				al.AluNivel as subtype,	
 				0 as active,
-				(select u.UsuId from BDAcesso.dbo.TB_Usuario u 
-				where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
+				(select u.UsuId from BDAcesso.dbo.TB_Usuario u with (nolock) 
+				 where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
 				null as dt_expire_password    
-				from BDSiac.dbo.TB_Aluno al join BDPessoa.dbo.TB_Pessoa p 
+				from BDSiac.dbo.TB_Aluno al with (nolock) join BDPessoa.dbo.TB_Pessoa p with (nolock) 
 						on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
 						left join (select distinct 
 									pfe.PFEPesCodigoPessoa, 
@@ -81,10 +83,10 @@
 									e.EndUf as uf, 
 									mu.MunDenominacao as cidade, 
 									e.EndCep as cep 
-							from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe 
-									join BDPessoa.dbo.TB_Endereco e 
+							from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe with (nolock) 
+									join BDPessoa.dbo.TB_Endereco e with (nolock) 
 										on pfe.PFeEndCodigo = e.EndCodigo 
-									join BDTabelaApoio.dbo.TB_Municipio mu 
+									join BDTabelaApoio.dbo.TB_Municipio mu with (nolock) 
 										on e.EndLocalidade = mu.MunCodigo 
 							where e.EndTipo = 1) addr 
 					on addr.PFEPesCodigoPessoa = al.AluPesCodigoPessoa 
@@ -109,43 +111,45 @@
 				coalesce(p.PesDataNascimento, al.AluDtNasc) as data_nascimento,
 				p.PesSexo as sexo, 
 				(select top 1 t.TelNumero 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-						join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+						join BDPessoa.dbo.TB_Telefone t with (nolock) 
 						on pft.PFTTelCodigo = t.TelCodigo 
 				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as telefone, 
 				(select top 1 t.TelNumero 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-						join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+						join BDPessoa.dbo.TB_Telefone t with (nolock) 
 						on pft.PFTTelCodigo = t.TelCodigo 
 				where t.TelTipo = 2 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as celular, 
 				(select top 1 cast(t.TelDDD as varchar(3)) 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-						join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+						join BDPessoa.dbo.TB_Telefone t with (nolock) 
 						on pft.PFTTelCodigo = t.TelCodigo 
 				where t.TelTipo = 3 and pft.PFTPesCodigoPessoa = al.AluPesCodigoPessoa) as ddd,
 				p.PesNomePai as nome_pai,
 				p.PesNomeMae as nome_mae,
 				cast(p.PesNacionalidade as int) as nacionalidade,
 				coalesce( (select top 1 lower(rtrim(em.EmaEmail)) as email 
-					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe with (nolock) 
+						join BDPessoa.dbo.TB_Email em with (nolock) 
+							on pfe.PFmEmaCodigo = em.EmaCodigo 
 					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
 					and em.EmaTipo = 1 
 					and em.EmaEmail LIKE '_%@__%.__%') 
 				, 
 					(select top 1 lower(rtrim(em.EmaEmail)) as email 
-					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe 
-						join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo 
+					from BDPessoa.dbo.TB_PessoaFisicaEmail pfe with (nolock) 
+						join BDPessoa.dbo.TB_Email em with (nolock) 
+							on pfe.PFmEmaCodigo = em.EmaCodigo 
 					where pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa  
 					and em.EmaEmail LIKE '_%@__%.__%')
 				) as email,
 				3 as type,  
 				al.AluNivel as subtype,	
 				0 as active,
-				(select u.UsuId from BDAcesso.dbo.TB_Usuario u 
-				where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
+				(select u.UsuId from BDAcesso.dbo.TB_Usuario u with (nolock) 
+				 where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
 				null as dt_expire_password    
-				from BDSiac.dbo.TB_Aluno al join BDPessoa.dbo.TB_Pessoa p 
+				from BDSiac.dbo.TB_Aluno al with (nolock) join BDPessoa.dbo.TB_Pessoa p with (nolock) 
 						on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
 						left join (select distinct 
 									pfe.PFEPesCodigoPessoa, 
@@ -155,10 +159,10 @@
 									e.EndUf as uf, 
 									mu.MunDenominacao as cidade, 
 									e.EndCep as cep 
-							from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe 
-									join BDPessoa.dbo.TB_Endereco e 
+							from BDPessoa.dbo.TB_PessoaFisicaEndereco pfe with (nolock) 
+									join BDPessoa.dbo.TB_Endereco e with (nolock) 
 										on pfe.PFeEndCodigo = e.EndCodigo 
-									join BDTabelaApoio.dbo.TB_Municipio mu 
+									join BDTabelaApoio.dbo.TB_Municipio mu with (nolock) 
 										on e.EndLocalidade = mu.MunCodigo 
 							where e.EndTipo = 1) addr 
 					on addr.PFEPesCodigoPessoa = al.AluPesCodigoPessoa 
@@ -166,8 +170,9 @@
 					   al.AluDataCadastramento >= ? or p.PesDataCadastramento >= ?) 
 					  and al.AluPerSaiUnB <> 99999 and al.alunivel not in  (9,10,11) and al.AluSenha is not null and p.PesDataNascimento >= '1980-01-01' 
 					  and exists ( select 1 
-						from BDPessoa.dbo.TB_PessoaFisicaEmail pfe  
-							join BDPessoa.dbo.TB_Email em on pfe.PFmEmaCodigo = em.EmaCodigo  
+						from BDPessoa.dbo.TB_PessoaFisicaEmail pfe  with (nolock) 
+							join BDPessoa.dbo.TB_Email em with (nolock) 
+								on pfe.PFmEmaCodigo = em.EmaCodigo  
 						where em.EmaTipo = 1 
 							and em.EmaEmail LIKE '_%@__%.__%' 
 							and pfe.PFmPesCodigoPessoa = al.AluPesCodigoPessoa 

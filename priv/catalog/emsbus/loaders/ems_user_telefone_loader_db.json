@@ -27,8 +27,8 @@
 				   t.TelRamal as ramal,
 				   t.TelDDD as ddd,
 				   t.TelTipo as type 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-					join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+					join BDPessoa.dbo.TB_Telefone t with (nolock) 
 					   on pft.PFTTelCodigo = t.TelCodigo",
 	"sql_update" : 
 				"select 
@@ -38,8 +38,8 @@
 				   t.TelRamal as ramal,
 				   t.TelDDD as ddd,
 				   t.TelTipo as type 
-				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft 
-					join BDPessoa.dbo.TB_Telefone t 
+				from BDPessoa.dbo.TB_PessoaFisicaTelefone pft with (nolock) 
+					join BDPessoa.dbo.TB_Telefone t with (nolock) 
 					   on pft.PFTTelCodigo = t.TelCodigo",
 
 	"fields" : ["id", "codigo", "numero", "ramal", "ddd", "type"]
