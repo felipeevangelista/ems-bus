@@ -298,23 +298,27 @@ make_release(){
 				mkdir -p $SKEL_PACKAGE_SOURCES/etc/sudoers.d
 				ln -s /usr/lib/ems-bus/priv/sudoers.d/ems-bus.sudoers $SKEL_PACKAGE_SOURCES/etc/sudoers.d/ems-bus.sudoers || die "Could not create symbolic link $SKEL_RPM_PACKAGE/etc/sudoers.d/ems-bus!" 
 
-				#echo "Generate $SKEL_PACKAGE_SOURCES/ems-bus-$VERSION_PACK.tar.gz from $SKEL_PACKAGE_SOURCES"
+				echo "Generate ems-bus-$VERSION_PACK.tar.gz"
 				tar -czvf  ems-bus-$VERSION_PACK.tar.gz *
-				
-				cp -r $(pwd)/SOURCES/* ~/rpmbuild/SOURCES
-				cp -r $(pwd)/SOURCES/* ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
+
+				echo "aqui1 $SKEL_PACKAGE_SOURCES"
+				cp -r $SKEL_PACKAGE_SOURCES/* ~/rpmbuild/SOURCES
+				echo aqui2
+				rm -rf ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
+				mkdir -p ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
+				cp -r $SKEL_PACKAGE_SOURCES/* ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
+				rm -rf ~/rpmbuild/build_emsbus
 				mkdir -p ~/rpmbuild/build_emsbus
-				cp -r $(pwd)/SOURCES/* ~/rpmbuild/build_emsbus
+				cp -r $SKEL_PACKAGE_SOURCES/* ~/rpmbuild/build_emsbus
 				echo SKEL_PACKAGE_SOURCES is $SKEL_PACKAGE_SOURCES
-				
+
 				echo "rpmbuild -bb SPECS/emsbus.spec"
-				rpmbuild -bb SPECS/emsbus.spec || exit
-				
+				rpmbuild -bb $SKEL_RPM_PACKAGE/SPECS/emsbus.spec || exit
+
 				echo "Send the generated package to the releases folder..."
-				cp -R ~/rpmbuild/RPMS/* $(pwd)/RPMS
-				send_build_repo $PACKAGE_FILE $PACKAGE_NAME 
-				rm -rf $(pwd)/RPMS
-				
+				cp -R ~/rpmbuild/RPMS/* $SKEL_RPM_PACKAGE/RPMS
+				send_build_repo $PACKAGE_FILE $PACKAGE_NAME
+
 				break
 			else
 				echo "Skip build rpm package for $LINUX_DISTRO $CODENAME using template $SKEL_RPM_PACKAGE..."
