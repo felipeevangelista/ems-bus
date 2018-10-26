@@ -60,9 +60,6 @@ BUILD_RPM_FLAG="false"
 SKIP_BUILD="true"
 PUSH="false"
 
-echo "Build deb packages is $BUILD_DEB_FLAG."
-echo "Build rpm packages is $BUILD_RPM_FLAG."
-
 # Imprime uma mensagem e termina o script
 # Parâmetros:
 #  $1  - Mensagem que será impressa 
@@ -301,12 +298,17 @@ make_release(){
 				echo "Generate ems-bus-$VERSION_PACK.tar.gz"
 				tar -czvf  ems-bus-$VERSION_PACK.tar.gz *
 
-				echo "aqui1 $SKEL_PACKAGE_SOURCES"
+				echo "Copy source files to ~/rpmbuild/SOURCES..."
+				rm -rf ~/rpmbuild/SOURCES
+				mkdir -p ~/rpmbuild/SOURCES
 				cp -r $SKEL_PACKAGE_SOURCES/* ~/rpmbuild/SOURCES
-				echo aqui2
+				
+				echo "Copy source files to ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64..."
 				rm -rf ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
 				mkdir -p ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
 				cp -r $SKEL_PACKAGE_SOURCES/* ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
+				
+				echo "Copy source files to ~/rpmbuild/build_emsbus..."
 				rm -rf ~/rpmbuild/build_emsbus
 				mkdir -p ~/rpmbuild/build_emsbus
 				cp -r $SKEL_PACKAGE_SOURCES/* ~/rpmbuild/build_emsbus
@@ -449,6 +451,8 @@ if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO"
 	fi
 fi
 
+echo "Build deb packages is $BUILD_DEB_FLAG."
+echo "Build rpm packages is $BUILD_RPM_FLAG."
 config_release_path
 make_release
 push_release
