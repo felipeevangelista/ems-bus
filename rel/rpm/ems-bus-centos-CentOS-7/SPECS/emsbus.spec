@@ -21,6 +21,7 @@ This work is the result of efforts made in the Master of Applied Computing at th
 by graduate student Everton Vargas Agilar.
 
 %prep
+  sudo systemctl stop ems-bus.service  > /dev/null 2>&1 || true
   rm -rf %{name}-%{version}
   mkdir -p %{name}-%{version}
   #tar -zxf $RPM_SOURCE_DIR/%{name}-%{version}.tar.gz
@@ -37,7 +38,6 @@ by graduate student Everton Vargas Agilar.
 
 
 %post
-echo aqui2	
   LOG="/var/log/ems-bus/ems-bus.log"
   USER_EMS_BUS=erlangms
   GROUP_EMS_BUS=erlangms
