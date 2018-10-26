@@ -21,38 +21,17 @@ This work is the result of efforts made in the Master of Applied Computing at th
 by graduate student Everton Vargas Agilar.
 
 %prep
-
   rm -rf %{name}-%{version}
   mkdir -p %{name}-%{version}
   #tar -zxf $RPM_SOURCE_DIR/%{name}-%{version}.tar.gz
 
 
 %install
-	echo aqui1
-  #sudo systemctl daemon-reload
-  #sudo systemctl stop ems-bus.service  > /dev/null 2>&1 || true
-  #mkdir -p $RPM_BUILD_ROOT
-  echo aqui dentro sources is  $RPM_SOURCE_DIR
-  echo aqui dentro build_root is  $RPM_BUILD_ROOT
-  #cp -R $RPM_SOURCE_DIR/* $RPM_BUILD_ROOT/
-  #cp -R $RPM_BUILD_ROOT/* ~/rpmbuild/SOURCES
-  
-
-  
-  echo "copiando o fonte para o lugar certo 1"
-  mkdir -p $RPM_BUILD_ROOT/
-  cp -r ~/rpmbuild/build_emsbus/* $RPM_BUILD_ROOT/
-
-  echo "copiando o fonte para o lugar certo 2"
-  mkdir -p ~/rpmbuild/SOURCES
-  cp -r ~/rpmbuild/build_emsbus/* ~/rpmbuild/SOURCES
-  echo "fim"
-  
-  echo aqui11111
+  sudo systemctl stop ems-bus.service  > /dev/null 2>&1 || true
+ 
 
 
 %post
-echo aqui2	
   LOG="/var/log/ems-bus/ems-bus.log"
   USER_EMS_BUS=erlangms
   GROUP_EMS_BUS=erlangms
