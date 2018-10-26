@@ -28,10 +28,16 @@ by graduate student Everton Vargas Agilar.
 
 %install
   sudo systemctl stop ems-bus.service  > /dev/null 2>&1 || true
- 
+   
+  mkdir -p $RPM_BUILD_ROOT/
+  cp -r ~/rpmbuild/build_emsbus/* $RPM_BUILD_ROOT/
+
+  mkdir -p ~/rpmbuild/SOURCES
+  cp -r ~/rpmbuild/build_emsbus/* ~/rpmbuild/SOURCES
 
 
 %post
+echo aqui2	
   LOG="/var/log/ems-bus/ems-bus.log"
   USER_EMS_BUS=erlangms
   GROUP_EMS_BUS=erlangms
