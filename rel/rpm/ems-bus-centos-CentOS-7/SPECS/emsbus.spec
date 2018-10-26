@@ -36,6 +36,18 @@ by graduate student Everton Vargas Agilar.
   echo aqui dentro build_root is  $RPM_BUILD_ROOT
   #cp -R $RPM_SOURCE_DIR/* $RPM_BUILD_ROOT/
   #cp -R $RPM_BUILD_ROOT/* ~/rpmbuild/SOURCES
+  
+
+  
+  echo "copiando o fonte para o lugar certo 1"
+  mkdir -p $RPM_BUILD_ROOT/
+  cp -r ~/rpmbuild/build_emsbus/* $RPM_BUILD_ROOT/
+
+  echo "copiando o fonte para o lugar certo 2"
+  mkdir -p ~/rpmbuild/SOURCES
+  cp -r ~/rpmbuild/build_emsbus/* ~/rpmbuild/SOURCES
+  echo "fim"
+  
   echo aqui11111
 
 

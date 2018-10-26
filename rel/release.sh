@@ -229,7 +229,6 @@ make_release(){
 	echo 'Begin generate release with rebar now...'
 	cd rel
 	../tools/rebar/rebar generate || die 'Failed to generate release with rebar compile generate!'
-	echo 'End generate release with rebar.'
 
 	# Esta lib dá erro no com "tools/rebar/rebar compile generate", portando é copiado manualmente
 	if [ -d ems_bus/lib/sd_notify ]; then
@@ -259,7 +258,6 @@ make_release(){
 	# Create the package file gz
 	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz now..."
 	tar -czf ems-bus-$VERSION_RELEASE.tar.gz ems-bus/ 
-	echo "Begin create compress file ems-bus-$VERSION_RELEASE.gz end."
 
 	# build rpm packages
 	if [ "$BUILD_RPM_FLAG" = "true" ]; then
@@ -332,8 +330,11 @@ make_release(){
 				echo "copiando!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 				cp -r $(pwd)/SOURCES/* ~/rpmbuild/SOURCES
 				cp -r $(pwd)/SOURCES/* ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
+				mkdir -p ~/rpmbuild/build_emsbus
+				cp -r $(pwd)/SOURCES/* ~/rpmbuild/build_emsbus
 				echo SKEL_PACKAGE_SOURCES is $SKEL_PACKAGE_SOURCES
 				
+				echo "VAR COMPILAR!!!!!!!!!!!"
 				rpmbuild -bb SPECS/emsbus.spec || exit
 				
 				echo "Send the generated package to the releases folder..."
@@ -342,7 +343,6 @@ make_release(){
 				rm -rf $(pwd)/RPMS
 			fi
 		done
-		echo "End create rpm package."
 
 	# build deb packages	
 	elif [ "$BUILD_DEB_FLAG" = "true" ]; then
@@ -408,7 +408,6 @@ make_release(){
 				break
 			fi
 		done
-		echo "End create deb package."
 	fi
 }
 
