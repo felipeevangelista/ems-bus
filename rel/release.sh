@@ -327,11 +327,14 @@ make_release(){
 				echo "nos estamos em $SKEL_RPM_PACKAGE"
 				
 				echo aqui $(pwd)
-				export RPM_SOURCE_DIR=$(pwd)/SOURCES
 				echo "rpmbuild --buildroot $(pwd) -bb SPECS/emsbus.spec"
 				echo sources is $RPM_SOURCE_DIR
-				cp -r $SKEL_PACKAGE_SOURCES ~/rpmbuild/SOURCES
-				rpmbuild --define="%RPM_SOURCE_DIR $RPM_SOURCE_DIR" --nocheck --buildroot $RPM_SOURCE_DIR -bb SPECS/emsbus.spec || exit
+				echo "copiando!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+				cp -r $(pwd)/SOURCES/* ~/rpmbuild/SOURCES
+				cp -r $(pwd)/SOURCES/* ~/rpmbuild/BUILDROOT/ems-bus-2.0.4-centos.7.x86_64
+				echo SKEL_PACKAGE_SOURCES is $SKEL_PACKAGE_SOURCES
+				
+				rpmbuild -bb SPECS/emsbus.spec || exit
 				
 				echo "Send the generated package to the releases folder..."
 				cp -R ~/rpmbuild/RPMS/* $(pwd)/RPMS
