@@ -35,7 +35,7 @@ by graduate student Everton Vargas Agilar.
   echo aqui dentro sources is  $RPM_SOURCE_DIR
   echo aqui dentro build_root is  $RPM_BUILD_ROOT
   #cp -R $RPM_SOURCE_DIR/* $RPM_BUILD_ROOT/
-  cp -R $RPM_BUILD_ROOT/* ~/rpmbuild/SOURCES
+  #cp -R $RPM_BUILD_ROOT/* ~/rpmbuild/SOURCES
   echo aqui11111
 
 
