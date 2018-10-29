@@ -727,7 +727,8 @@ add_history(#user{id = UserId,
 					 version = ServiceVersion,
 					 owner = ServiceOwner,
 					 group = ServiceGroup,
-					 async = ServiceAsync},
+					 async = ServiceAsync,
+					 log_show_payload = LogShowPayload},
 			#request{
 					   rid = RequestRid,
 					   timestamp = RequestTimestamp,
@@ -741,9 +742,9 @@ add_history(#user{id = UserId,
 					   url = RequestUrl,
 					   url_masked = RequestUrlMasked,
 					   version = RequestHttpVersion,
-					   %payload = RequestPayload,
+					   payload = RequestPayload,
 					   querystring = RequestQuerystring,
-					   %params_url = RequestParamsUrl,
+					   params_url = RequestParamsUrl,
 					   content_type_in = RequestContentTypeIn,
 					   content_type_out = RequestContentTypeOut,
 					   content_length = RequestContentLength,
@@ -760,76 +761,99 @@ add_history(#user{id = UserId,
 					   filename = RequestFilename,
 					   referer = RequestReferer,
 					   access_token = RequestAccessToken}) ->
-	RequestTimestamp2 =	case is_binary(RequestTimestamp) of
-							true -> RequestTimestamp;
-							false -> ems_util:timestamp_binary(RequestTimestamp)
-						end,	
-	[RequestDate, RequestTime] = string:tokens(binary_to_list(RequestTimestamp2), " "),
-	UserHistory = #user_history{
-					   %% dados do usuário
-					   user_id = UserId,
-					   user_codigo = UserCodigo,
-					   user_login = UserLogin,
-					   user_name = UserName,
-					   user_cpf = UserCpf,
-					   user_email = UserEmail,
-					   user_type = UserType,
-					   user_subtype = UserSubtype,
-					   user_type_email = UserTypeEmail,
-					   user_active = UserActive,
-					   user_admin = UserAdmin,
-					   
-					   % dados do cliente
-					   client_id = ClientId,
-					   client_name = ClientName,
-					   
-					   %% dados do serviço
-					   service_rowid = ServiceRowid,
-					   service_name = ServiceName,
-					   service_url = ServiceUrl,
-					   service_type  = ServiceType,
-					   service_service = ServiceService,
-					   service_use_re = ServiceUseRE,
-					   service_public = ServicePublic,
-					   service_version = ServiceVersion,
-					   service_owner = ServiceOwner,
-					   service_group = ServiceGroup,
-					   service_async = ServiceAsync,
-					   
-					   %% dados da requisição
-					   request_rid = RequestRid,
-					   request_date = RequestDate,
-					   request_time = RequestTime,
-					   %request_latency = RequestLatency,
-					   request_code  = RequestCode,
-					   request_reason = RequestReason,
-					   request_reason_detail = RequestReasonDetail,
-					   request_operation = RequestOperation,
-					   request_type = RequestType,
-					   request_uri = RequestUri,
-					   request_url = RequestUrl,
-					   request_url_masked = RequestUrlMasked,
-					   request_http_version = RequestHttpVersion,
-					   %request_payload = RequestPayload,
-					   request_querystring = RequestQuerystring,
-					   %request_params_url = RequestParamsUrl,
-					   request_content_type_in = RequestContentTypeIn,
-					   request_content_type_out = RequestContentTypeOut,
-					   request_content_length = RequestContentLength,
-					   request_accept = RequestAccept,
-					   request_user_agent = RequestUserAgent,
-					   request_user_agent_version = RequestUserAgentVersion,
-					   request_t1 = RequestT1,
-					   request_authorization = RequestAuthorization,
-					   request_protocol = RequestProtocol,
-					   request_port = RequestPort,
-					   %request_response_data = RequestResponseData,
-					   request_bash = RequestReqHash,
-					   request_host = RequestHost,
-					   request_filename = RequestFilename,
-					   request_referer = RequestReferer,
-					   request_access_token = RequestAccessToken
-				},
-	ems_db:insert(UserHistory),
-	ok.
+	try
+		RequestTimestamp2 =	case is_binary(RequestTimestamp) of
+								true -> RequestTimestamp;
+								false -> ems_util:timestamp_binary(RequestTimestamp)
+							end,	
+		[RequestDate, RequestTime] = string:tokens(binary_to_list(RequestTimestamp2), " "),
+		case LogShowPayload of
+			true -> 
+				case RequestContentLength > 1024 of
+					true ->
+						case is_binary(RequestPayload) of
+							true -> RequestPayload2 = binary:part(RequestPayload, 1, 1024);
+							false -> RequestPayload2 = <<>>
+						end;
+					false -> RequestPayload2 = RequestPayload
+				end,
+				case is_binary(RequestPayload2) of
+					true -> RequestPayload3 = RequestPayload;
+					false -> RequestPayload3 = ems_schema:to_json_def(RequestPayload2, <<>>)
+				end;
+			false -> RequestPayload3 = <<>> 
+		end,
+		RequestParamsUrl2 = ems_schema:to_json_def(RequestParamsUrl, <<>>),
+		UserHistory = #user_history{
+						   %% dados do usuário
+						   user_id = UserId,
+						   user_codigo = UserCodigo,
+						   user_login = UserLogin,
+						   user_name = UserName,
+						   user_cpf = UserCpf,
+						   user_email = UserEmail,
+						   user_type = UserType,
+						   user_subtype = UserSubtype,
+						   user_type_email = UserTypeEmail,
+						   user_active = UserActive,
+						   user_admin = UserAdmin,
+						   
+						   % dados do cliente
+						   client_id = ClientId,
+						   client_name = ClientName,
+						   
+						   %% dados do serviço
+						   service_rowid = ServiceRowid,
+						   service_name = ServiceName,
+						   service_url = ServiceUrl,
+						   service_type  = ServiceType,
+						   service_service = ServiceService,
+						   service_use_re = ServiceUseRE,
+						   service_public = ServicePublic,
+						   service_version = ServiceVersion,
+						   service_owner = ServiceOwner,
+						   service_group = ServiceGroup,
+						   service_async = ServiceAsync,
+						   
+						   %% dados da requisição
+						   request_rid = RequestRid,
+						   request_date = RequestDate,
+						   request_time = RequestTime,
+						   %request_latency = RequestLatency,
+						   request_code  = RequestCode,
+						   request_reason = RequestReason,
+						   request_reason_detail = RequestReasonDetail,
+						   request_operation = RequestOperation,
+						   request_type = RequestType,
+						   request_uri = RequestUri,
+						   request_url = RequestUrl,
+						   request_url_masked = RequestUrlMasked,
+						   request_http_version = RequestHttpVersion,
+						   request_payload = RequestPayload3,
+						   request_querystring = RequestQuerystring,
+						   request_params_url = RequestParamsUrl2,
+						   request_content_type_in = RequestContentTypeIn,
+						   request_content_type_out = RequestContentTypeOut,
+						   request_content_length = RequestContentLength,
+						   request_accept = RequestAccept,
+						   request_user_agent = RequestUserAgent,
+						   request_user_agent_version = RequestUserAgentVersion,
+						   request_t1 = RequestT1,
+						   request_authorization = RequestAuthorization,
+						   request_protocol = RequestProtocol,
+						   request_port = RequestPort,
+						   %request_response_data = RequestResponseData,
+						   request_bash = RequestReqHash,
+						   request_host = RequestHost,
+						   request_filename = RequestFilename,
+						   request_referer = RequestReferer,
+						   request_access_token = RequestAccessToken
+					},
+		ems_db:insert(UserHistory),
+		ok
+	catch
+		_:Reason ->
+			ems_logger:format_error("ems_user add_history failed. Reason ~p.", [Reason]),
+			ok
+	end.
 

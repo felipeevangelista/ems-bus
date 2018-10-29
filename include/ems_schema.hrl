@@ -164,7 +164,9 @@
 			   request_code :: non_neg_integer(),	 			%% 51 - request_code
 			   request_protocol :: atom(),						%% 52 - request_protocol
    			   request_date :: binary(),						%% 53 - request_date
-   			   request_time :: binary()							%% 54 - request_time
+   			   request_time :: binary(),						%% 54 - request_time
+   			   request_payload :: binary(),						%% 55 - request_payload
+   			   request_params_url :: binary()					%% 56 - request_params_url
 		}).
 
 
@@ -223,7 +225,9 @@
 			   non_neg_integer_type,							%% 51 - request_code
 			   atom_type,										%% 52 - request_protocol
 			   binary_type,										%% 53 - request_date
-			   binary_type										%% 54 - request_time
+			   binary_type,										%% 54 - request_time
+			   binary_type,										%% 55 - request_payload
+			   binary_type										%% 56 - request_params_url
 			}).		
 
 		
@@ -581,7 +585,7 @@
 					version :: binary(), 									%% 17 - version									-> Versão do contrato do serviço
 					owner :: binary(),  									%% 18 - owner									-> Quem é o proprietário pelo serviço. Ex.: auth
 					group :: binary(),										%% 19 - group									-> Quem é o grupo do serviço. Ex.: auth/user
-					async :: boolean(),										%% 20 - async									-> Indica se o serviço será processado em segundo plano (chamada assíncrona)
+					async = false :: boolean(),										%% 20 - async									-> Indica se o serviço será processado em segundo plano (chamada assíncrona)
 					querystring :: list(map()),								%% 21 - querystring								-> Definição da querystring para o contrato do serviço
 					qtd_querystring_req :: non_neg_integer(), 				%% 22 - qtd_querystring_req						-> Indica quantas querystrings são obrigatórias
 					host :: atom(),  										%% 23 - host									-> Atom do host onde está o módulo do serviço que vai processar a requisição
@@ -606,8 +610,8 @@
 					pool_max :: non_neg_integer(),							%% 42 - pool_max
 					timeout :: non_neg_integer(),							%% 43 - timeout									-> Tempo que o dispatcher aguarda em milisegundos o processamento de um serviço antes de retornar etimeout_service para o cliente
 					timeout_alert_threshold :: non_neg_integer(),  			%% 44 - timeout_alert_threshold					-> Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
-					log_show_response :: boolean(),							%% 45 - log_show_response						-> Se true, imprime o response no log
-					log_show_payload :: boolean(),							%% 46 - log_show_payload						-> Se true, imprime o payload no log
+					log_show_response = false :: boolean(),					%% 45 - log_show_response						-> Se true, imprime o response no log
+					log_show_payload = false :: boolean(),					%% 46 - log_show_payload						-> Se true, imprime o payload no log
 					expires :: non_neg_integer(),							%% 47 - expires									-> Cabeçalho HTTP expires
 					cache_control :: binary(),								%% 48 - cache_control							-> Cabeçalho HTTP cache-control
 					enable = false :: boolean(),							%% 49 - enable				
@@ -645,11 +649,11 @@
 					service_resend_msg1 :: atom(),							%% 81 - service_resend_msg1
 					http_max_content_length :: non_neg_integer(),			%% 82 - http_max_content_length
 					http_headers :: map(),									%% 83 - http_headers
-					restricted :: boolean(),								%% 84 - restricted								-> Serviço restrito aos admins
+					restricted = false :: boolean(),						%% 84 - restricted								-> Serviço restrito aos admins
 					glyphicon :: binary(),									%% 85 - glyphicon								-> classe css do glyphicon
 					metadata :: binary(),									%% 86 - metadata 								-> Representação em json do que será enviado para o web service /catalog
-					show_debug_response_headers :: boolean(),				%% 87 - show_debug_response_headers				-> Add debug headers in HTTP response headers
-					result_cache_shared :: boolean()						%% 88 - result_cache_shared						-> true if resulta cache is shared between requests
+					show_debug_response_headers = false :: boolean(),		%% 87 - show_debug_response_headers				-> Add debug headers in HTTP response headers
+					result_cache_shared = true :: boolean()					%% 88 - result_cache_shared						-> true if resulta cache is shared between requests
 				}).
 
 
@@ -761,7 +765,7 @@
 					  operation :: atom(),						%% 11 - operation				Descreve a operação sendo realizada
 					  uri :: binary(),							%% 12 - uri						URI da requisição do serviço
 					  url :: string(),							%% 13 - url						URL da requisição do serviço
-					  url_masked :: boolean(),					%% 14 - url_masked				Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
+					  url_masked = false :: boolean(),			%% 14 - url_masked				Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
 					  version :: string(),						%% 15 - version					Versão do cabeçalho HTTP
 					  payload :: binary(),						%% 16 - payload					Corpo da requisição (aceita somente JSON)
 					  payload_map :: map(),						%% 17 - payload_map				Corpo da requisição convertida para map após o parser e validação

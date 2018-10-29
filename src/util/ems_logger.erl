@@ -137,11 +137,8 @@ sync() ->
 	info("ems_logger sync log_buffer."),
 	gen_server:cast(?SERVER, sync_log_buffer). 
 
-log_request(Request = #request{content_length = ContentLength}) -> 
-	case ContentLength > ?LOG_SHOW_PAYLOAD_MAX_LENGTH of
-		true -> gen_server:cast(?SERVER, {log_request, Request#request{payload = <<>>, content_length = 0}});
-		false -> gen_server:cast(?SERVER, {log_request, Request})
-	end.
+log_request(Request) -> 
+	gen_server:cast(?SERVER, {log_request, Request}).
 
 set_level(Level) -> 
 	info("ems_logger set log_level ~p.", [Level]),

@@ -326,6 +326,8 @@
 		},
 		"schema_in" : "user_history",
 		"schema_out" : "user_history",
+		"log_show_payload" : false,
+		"log_show_response" : false,
 		"querystring": [
 				{
 					"name": "filter",
