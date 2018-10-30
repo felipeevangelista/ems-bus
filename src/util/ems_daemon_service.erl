@@ -560,8 +560,8 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 	
 	% Eh muito importante este path, vamos validar a cada uso e se definido e não existir, mostrar um warning
 	JavaHome0 = Conf#config.java_home,
-	JavaHome = case JavaHome0 =:= <<>> of
-					true -> <<>>;
+	JavaHome = case JavaHome0 =:= "" of
+					true -> "";
 					false ->
 						case filelib:is_dir(JavaHome0) of
 							true -> JavaHome0;
@@ -571,8 +571,8 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 
 	% Eh muito importante este path, vamos validar a cada uso e se definido e não existir, mostrar um warning
 	JavaJarPath0 = Conf#config.java_jar_path,
-	JavaJarPath = case JavaJarPath0 =:= <<>> of
-					true -> <<>>;
+	JavaJarPath = case JavaJarPath0 =:= "" of
+					true -> "";
 					false ->
 						case filelib:is_dir(JavaJarPath0) of
 							true -> JavaJarPath0;

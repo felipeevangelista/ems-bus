@@ -314,8 +314,8 @@ parse_java_home(Path) ->
 	Path2 = binary_to_list(Path),
 	Path3 = ems_util:replace_all_vars_and_custom_variables(Path2, [{<<"JAVA_HOME">>, ems_util:get_java_home()},
 																	{<<"PRIV_PATH">>, ?PRIV_PATH}]),
-	case Path3 =:= <<>> of
-		true -> <<>>;
+	case Path3 =:= "" of
+		true -> "";
 		false ->
 			case filelib:is_dir(Path3) of
 				true -> 
