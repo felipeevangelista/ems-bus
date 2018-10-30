@@ -118,6 +118,7 @@ init(#service{name = Name,
     KillCmd = ems_util:replace_config_and_custom_variables(maps:get(<<"kill_cmd">>, Props, <<>>)),
 	PidFileWatchDogTimeOut = ems_util:parse_range(maps:get(<<"pidfile_watchdog_timer">>, Props, 30000), 0, 86400000),
     Filename = ems_util:replace_config_and_custom_variables(FilenameService),
+    check_exist_filename(Filename),
     PidFile = ems_util:replace_config_and_custom_variables(maps:get(<<"pidfile">>, Props, <<>>)),
     Logfile = ems_util:replace_config_and_custom_variables(maps:get(<<"logfile">>, Props, <<>>)),
     DaemonParamsEncode = maps:get(<<"daemon_params_encode">>, Props, <<>>),
@@ -556,6 +557,30 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 						    daemon_params = DaemonParams,
 						    daemon_params_encode = DaemonParamsEncode}) ->
 	Conf = ems_config:getConfig(),
+	
+	% Eh muito importante este path, vamos validar a cada uso e se definido e não existir, mostrar um warning
+	JavaHome0 = Conf#config.java_home,
+	JavaHome = case JavaHome0 =:= <<>> of
+					true -> <<>>;
+					false ->
+						case filelib:is_dir(JavaHome0) of
+							true -> JavaHome0;
+							false -> ems_logger:warn("ems_daemon_service detect inexistent java_home \033[01;34m\"~s\"\033[0m.", [JavaHome0])
+						end
+				end,
+
+	% Eh muito importante este path, vamos validar a cada uso e se definido e não existir, mostrar um warning
+	JavaJarPath0 = Conf#config.java_jar_path,
+	JavaJarPath = case JavaJarPath0 =:= <<>> of
+					true -> <<>>;
+					false ->
+						case filelib:is_dir(JavaJarPath0) of
+							true -> JavaJarPath0;
+							false -> ems_logger:warn("ems_daemon_service detect inexistent java_jar_path \033[01;34m\"~s\"\033[0m.", [JavaJarPath0])
+						end
+				end,
+
+	
     DaemonParams2 = ems_util:replace_all_vars_and_custom_variables(DaemonParams, 
     		[{<<"PORT">>, integer_to_list(Port)},
 			 {<<"DAEMON_SERVICE">>, Name},
@@ -565,9 +590,9 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 			 {<<"LOGFILE">>, Logfile},
 			 {<<"PIDFILE_WATCHDOG_TIMER">>, integer_to_list(PidfileWatchdogTimer)},
 			 {<<"PIDFILE">>, Pidfile},
-			 {<<"JAVA_HOME">>, Conf#config.java_home},
+			 {<<"JAVA_HOME">>, JavaHome},
 			 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
-			 {<<"JAVA_JAR_PATH">>, Conf#config.java_jar_path},
+			 {<<"JAVA_JAR_PATH">>, JavaJarPath},
 			 {<<"REST_BASE_URL">>, binary_to_list(Conf#config.rest_base_url)},
 			 {<<"REST_ENVIRONMENT">>, Conf#config.rest_environment},
 			 {<<"REST_USER">>, Conf#config.rest_user},
@@ -585,6 +610,7 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 						<<"base64">> -> list_to_binary("'base64:" ++ base64:encode_to_string(DaemonParams2) ++ "'");
 						_ -> list_to_binary("'" ++ DaemonParams2 ++ "'")
 				    end,
+
 	Result = ems_util:replace_all_vars_and_custom_variables(Str, 
 		[{<<"PORT">>, integer_to_list(Port)},
 		 {<<"DAEMON_SERVICE">>, Name},
@@ -595,9 +621,9 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		 {<<"LOGFILE">>, Logfile},
 		 {<<"PIDFILE_WATCHDOG_TIMER">>, integer_to_list(PidfileWatchdogTimer)},
 		 {<<"PIDFILE">>, Pidfile},
-		 {<<"JAVA_HOME">>, Conf#config.java_home},
+		 {<<"JAVA_HOME">>, JavaHome},
 		 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
-		 {<<"JAVA_JAR_PATH">>, Conf#config.java_jar_path},
+		 {<<"JAVA_JAR_PATH">>, JavaJarPath},
 		 {<<"REST_BASE_URL">>, binary_to_list(Conf#config.rest_base_url)},
 		 {<<"REST_ENVIRONMENT">>, Conf#config.rest_environment},
 		 {<<"REST_USER">>, Conf#config.rest_user},
@@ -657,3 +683,10 @@ parse_daemon_watchdog_policy(<<"none">>) -> none;
 parse_daemon_watchdog_policy(_) -> throw(einvalid_daemon_watchdog_policy).
 
 
+check_exist_filename(<<>>) -> ok;
+check_exist_filename(Filename) ->
+	case filelib:is_regular(Filename) of
+		true -> ok;
+		false -> ems_logger:warn("ems_daemon_service detect inexistent filename ~p.", [Filename])
+	end.
+		

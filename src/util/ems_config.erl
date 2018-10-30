@@ -292,18 +292,39 @@ parse_http_headers_([{Key, _} = Item|T], ShowDebugResponseHeaders, Hostname, Res
 			erlang:error(einvalid_http_response_header)
 	end.
 	
+parse_jar_path(<<>>) -> <<>>;
+parse_jar_path(undefined) -> <<>>;
 parse_jar_path(Path) ->
 	Path2 = ems_util:replace_all_vars_and_custom_variables(Path, [{<<"PRIV_PATH">>, ?PRIV_PATH}]),
-	case filelib:is_dir(Path2) of
-		true -> Path2;
-		false -> erlang:error(enoent)
+	case Path2 =:= <<>> of
+		true -> <<>>;
+		false ->
+			case filelib:is_dir(Path2) of
+				true -> 
+					Path2;
+				false -> 
+					ems_logger:format_warn("ems_config detect inexistent java_jar_path \033[01;34m\"~s\"\033[0m.", [Path2]),
+					Path2
+			end
 	end.
 
 parse_java_home(<<>>) -> ems_util:get_java_home();
+parse_java_home(undefined) -> ems_util:get_java_home();
 parse_java_home(Path) -> 
 	Path2 = binary_to_list(Path),
-	ems_util:replace_all_vars_and_custom_variables(Path2, [{<<"JAVA_HOME">>, ems_util:get_java_home()},
-														   {<<"PRIV_PATH">>, ?PRIV_PATH}]).
+	Path3 = ems_util:replace_all_vars_and_custom_variables(Path2, [{<<"JAVA_HOME">>, ems_util:get_java_home()},
+																	{<<"PRIV_PATH">>, ?PRIV_PATH}]),
+	case Path3 =:= <<>> of
+		true -> <<>>;
+		false ->
+			case filelib:is_dir(Path3) of
+				true -> 
+					Path3;
+				false -> 
+					ems_logger:format_warn("ems_config detect inexistent java_home \033[01;34m\"~s\"\033[0m.", [Path3]),
+					Path3
+			end
+	end.
 	
 
 parse_variables(V) when is_map(V) -> maps:to_list(V);

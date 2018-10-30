@@ -221,6 +221,7 @@ handle_info(close_idle_connection, State = #state{datasource = #service_datasour
 												  query_count = QueryCount}) ->
    ems_logger:info("ems_odbc_pool_worker close_idle_connection (Ds: ~p QueryCount: ~p).", [Id, QueryCount]),
    erlang:cancel_timer(CheckValidConnectionRef),
+   do_disconnect(State),
    {stop, normal, State#state{close_idle_connection_ref = undefined, 
 							  check_valid_connection_ref = undefined}};
 
@@ -229,9 +230,8 @@ handle_info(Msg, State) ->
    {noreply, State}.
 
 terminate(Reason, State) ->
-	?DEBUG("ems_odbc_pool_worker terminate. Reason: ~p.", [Reason]),   
-	io:format("terminou!!!!!!!!!!!!\n"),
     do_disconnect(State),
+	ems_logger:info("ems_odbc_pool_worker terminate. Reason: ~p.", [Reason]),   
     ok.
  
 code_change(_OldVsn, State, _Extra) ->
@@ -250,7 +250,7 @@ do_connect(Datasource = #service_datasource{connection = Connection, type = sqli
 	{ok, Datasource2};
 do_connect(Datasource = #service_datasource{connection = Connection}) -> 
 	try
-		case odbc:connect(Connection, [{scrollable_cursors, off}, {timeout, 16000}, {trace_driver, off}, {extended_errors, off}]) of
+		case odbc:connect(Connection, [{scrollable_cursors, off}, {timeout, 30000}, {trace_driver, off}, {extended_errors, off}]) of
 			{ok, ConnRef}	-> 
 				Datasource2 = Datasource#service_datasource{owner = self(), 
 															conn_ref = ConnRef},
