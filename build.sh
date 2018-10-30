@@ -37,7 +37,8 @@ if [ -z "$ERLANGMS_IN_DOCKER" ]; then
 fi
 
 # Necessário para as bibliotecas c utilizadas
-export CFLAGS='-std=c11 -static'
+export CFLAGS='-std=c11 -static -w'
+export CXXFLAGS='-w'
 echo "Usando CFLAGS=$CFLAGS"
 
 # Erlang Runtime version required > 20
@@ -64,7 +65,7 @@ if [ "$LINUX_DISTRO" = "centos" -o "$LINUX_DISTRO" = "redhat" -o "$LINUX_DISTRO"
 	fi
 fi
 if [ ! "$BUILD_RPM_FLAG" = "true" ]; then
-	if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO" = "deepin" -o "$LINUX_DISTRO" = "mint" ]; then
+	if [ "$LINUX_DISTRO" = "debian" -o "$LINUX_DISTRO" = "ubuntu" -o "$LINUX_DISTRO" = "deepin" -o "$LINUX_DISTRO" = "linuxmint" ]; then
 		BUILD_DEB_FLAG="true"  
 		if ! g++ --version 2> /dev/null ; then
 			echo "Tool dpkg-deb is not installed, build canceled!!!"
