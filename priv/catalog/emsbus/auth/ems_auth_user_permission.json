@@ -7,6 +7,7 @@
 		"url": "/auth/user/permission/:id",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_permission_db", "user_permission_fs"],
@@ -38,6 +39,7 @@
 		"url": "/auth/user/permission",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_permission_db", "user_permission_fs"],
@@ -87,6 +89,7 @@
 		"url": "/auth/user/:id/permission",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_permission_db", "user_permission_fs"],

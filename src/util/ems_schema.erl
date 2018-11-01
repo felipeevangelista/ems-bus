@@ -12,7 +12,7 @@
 
 -include("include/ems_schema.hrl").
 
--export([to_record/2, to_list/1, to_list/2, to_json/1, new/1, new_/1, prop_list_to_json/1, get_schema_table/1, get_data_type_field/2]).
+-export([to_record/2, to_list/1, to_list/2, to_json/1, to_json_def/2, new/1, new_/1, prop_list_to_json/1, get_schema_table/1, get_data_type_field/2]).
 
 -export_records([user, user_history, user_permission, user_perfil, 
 				 user_email, user_dados_funcionais, user_endereco, user_telefone,
@@ -110,6 +110,21 @@ to_json(Value) when is_list(Value) ->
 	iolist_to_binary([<<"["/utf8>>, to_json_list(Value, []), <<"]"/utf8>>]);
 to_json(Value) -> 
 	Value.
+
+
+	
+% to_json_def
+-spec to_json_def(any(), any()) -> binary().
+to_json_def(Value, DefaultValue) -> 
+	try
+		Result = to_json(Value),
+		case is_binary(Result) of  % se converteu para json, deve ser binary
+			true -> Result;
+			false -> DefaultValue
+		end
+	catch
+		_:_ -> DefaultValue
+	end.
 
 	
 to_json_rec([], L) -> lists:reverse(L);

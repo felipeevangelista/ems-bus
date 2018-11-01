@@ -18,7 +18,7 @@
 
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3, 
+-export([init/1, handle_call/3, handle_cast/2, handle_info/1, handle_info/2, terminate/2, code_change/3, 
 		 permission_to_execute/4, notify_finish_work/9]).
 
 % estado do servidor
@@ -112,6 +112,10 @@ handle_cast(_Msg, State) ->
 handle_call(Msg, _From, State) ->
 	{reply, Msg, State}.
 		
+handle_info(timeout, State) ->  {noreply, State}.
+
+handle_info(State) -> {noreply, State}.
+
 terminate(Reason, #service{name = Name}) ->
     ems_logger:warn("~s was terminated. Reason: ~p.", [Name, Reason]),
     ok.

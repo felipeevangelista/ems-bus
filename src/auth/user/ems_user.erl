@@ -18,7 +18,9 @@
 		 find_by_email/1, 
 		 find_by_cpf/1, 
 		 find_by_login_and_password/2,
-		 find_by_codigo_pessoa/1, find_by_codigo_pessoa/2,
+		 find_by_login_and_password/3,
+		 find_by_codigo_pessoa/1, 
+		 find_by_codigo_pessoa/2,
 		 find_by_filter/2,
 		 to_resource_owner/1,
 		 to_resource_owner/2,
@@ -86,12 +88,95 @@ find_by_codigo_pessoa(Table, Codigo) ->
 	end.
 
 
+find_index_by_login_and_password([], _LoginBin, _LoginSemBarraBin, _PasswordBin, _PassowrdBinCrypto, _PassowrdBinLowerCrypto, _PassowrdBinUpperCrypto, _PasswordStrLower, _PasswordStrUpper, _Client) ->
+	ems_data_loader:sync(ems_user_loader_db),
+	{error, access_denied, enoent};
+find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client) ->
+	case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
+		[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
+			case PasswordUser =:= PassowrdBinCrypto 
+				 orelse PasswordUser =:= PasswordBin 
+				 orelse PasswordUser =:= PassowrdBinLowerCrypto 
+				 orelse PasswordUser =:= PasswordStrLower 
+				 orelse PasswordUser =:= PassowrdBinUpperCrypto 
+				 orelse PasswordUser =:= PasswordStrUpper of
+					true -> 
+						ClientName = case Client of
+										undefined -> undefined;
+										_ -> Client#client.name
+									 end,
+						case Table of
+							user_cache_lru ->
+								User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+												  ctrl_login_count = User#user.ctrl_login_count + 1,
+												  ctrl_last_login_client = ClientName},
+								mnesia:dirty_write(user_cache_lru, User2),
+								case CtrlLoginScope of
+									undefined -> ok; % não deveria se está no cache lru
+									_ -> mnesia:dirty_write(CtrlLoginScope, User2)
+								end;
+							_ -> 
+								User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+												  ctrl_login_count = User#user.ctrl_login_count + 1,
+												  ctrl_last_login_scope = Table,
+												  ctrl_last_login_client = ClientName},
+								mnesia:dirty_write(user_cache_lru, User2),
+								mnesia:dirty_write(Table, User2)
+						end,	
+						{ok, User2};
+					false -> 
+						find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
+			end;
+		_ -> 
+			case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
+				[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
+					case PasswordUser =:= PassowrdBinCrypto 
+						 orelse PasswordUser =:= PasswordBin 
+						 orelse PasswordUser =:= PassowrdBinLowerCrypto 
+						 orelse PasswordUser =:= PasswordStrLower 
+						 orelse PasswordUser =:= PassowrdBinUpperCrypto 
+						 orelse PasswordUser =:= PasswordStrUpper of
+							true -> 
+								ClientName = case Client of
+												undefined -> undefined;
+												_ -> Client#client.name
+											 end,
+								case Table of
+									user_cache_lru ->
+										User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+														  ctrl_login_count = User#user.ctrl_login_count + 1,
+														  ctrl_last_login_client = ClientName},
+										mnesia:dirty_write(user_cache_lru, User2),
+										case CtrlLoginScope of
+											undefined -> ok; % não deveria se está no cache lru
+											_ -> mnesia:dirty_write(CtrlLoginScope, User2)
+										end;
+									_ -> 
+										User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+														  ctrl_login_count = User#user.ctrl_login_count + 1,
+														  ctrl_last_login_scope = Table,
+														  ctrl_last_login_client = ClientName},
+										mnesia:dirty_write(user_cache_lru, User2),
+										mnesia:dirty_write(Table, User2)
+								end,	
+								{ok, User2};
+							false -> 
+								find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
+					end;
+				_ -> find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
+			end
+	end.
+
 -spec find_by_login_and_password(binary() | list(), binary() | list()) -> {ok, #user{}} | {error, access_denied, enoent | einvalid_password}.	
-find_by_login_and_password(_, <<>>) -> {error, access_denied, epassword_empty};
-find_by_login_and_password(<<>>, _) -> {error, access_denied, elogin_empty};
-find_by_login_and_password(_, "") -> {error, access_denied, epassword_empty};
-find_by_login_and_password("", _) -> {error, access_denied, elogin_empty};
-find_by_login_and_password(Login, Password)  ->
+find_by_login_and_password(Login, Password) -> find_by_login_and_password(Login, Password, undefined). 
+
+
+-spec find_by_login_and_password(binary() | list(), binary() | list(), #client{}) -> {ok, #user{}} | {error, access_denied, enoent | einvalid_password}.	
+find_by_login_and_password(_, <<>>, _) -> {error, access_denied, epassword_empty};
+find_by_login_and_password(<<>>, _, _) -> {error, access_denied, elogin_empty};
+find_by_login_and_password(_, "", _) -> {error, access_denied, epassword_empty};
+find_by_login_and_password("", _, _) -> {error, access_denied, elogin_empty};
+find_by_login_and_password(Login, Password, Client)  ->
 	PasswordStr = case is_list(Password) of
 					 true -> Password;
 					 false -> binary_to_list(Password)
@@ -112,71 +197,18 @@ find_by_login_and_password(Login, Password)  ->
 			PassowrdBinCrypto = ems_util:criptografia_sha1(PasswordStr),
 			PassowrdBinLowerCrypto = ems_util:criptografia_sha1(PasswordStrLower),
 			PassowrdBinUpperCrypto = ems_util:criptografia_sha1(PasswordStrUpper),
-			IndexFind = fun(Table) ->
-				case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
-					[User = #user{password = PasswordUser}|_] -> 
-						case PasswordUser =:= PassowrdBinCrypto 
-							 orelse PasswordUser =:= PasswordBin 
-							 orelse PasswordUser =:= PassowrdBinLowerCrypto 
-							 orelse PasswordUser =:= PasswordStrLower 
-							 orelse PasswordUser =:= PassowrdBinUpperCrypto 
-							 orelse PasswordUser =:= PasswordStrUpper of
-								true -> {ok, User};
-								false -> {error, access_denied, einvalid_password}
-						end;
-					_ -> 
-						case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
-							[User = #user{password = PasswordUser}|_] -> 
-								case PasswordUser =:= PassowrdBinCrypto 
-									 orelse PasswordUser =:= PasswordBin 
-									 orelse PasswordUser =:= PassowrdBinLowerCrypto 
-									 orelse PasswordUser =:= PasswordStrLower 
-									 orelse PasswordUser =:= PassowrdBinUpperCrypto 
-									 orelse PasswordUser =:= PasswordStrUpper of
-										true -> {ok, User};
-										false -> {error, access_denied, einvalid_password}
-								end;
-							_ -> {error, access_denied, enoent}
-						end
-				end
+			case Client of
+				undefined -> LoadersFind = ?CLIENT_DEFAULT_SCOPE;
+				_ -> LoadersFind = Client#client.scope
 			end,
-			case IndexFind(user_cache_lru) of
-				{error, _, _} -> 
-					case IndexFind(user_db) of
-						{error, _Reason1, ReasonDetail1} -> 
-							case IndexFind(user_aluno_ativo_db) of
-								{error, _Reason2, ReasonDetail2} -> 
-									case IndexFind(user_aluno_inativo_db) of
-										{error, _Reason3, ReasonDetail3} -> 
-											case IndexFind(user_fs) of
-												{error, _Reason4, ReasonDetail4} -> 
-													case ReasonDetail1 == einvalid_password orelse
-														 ReasonDetail2 == einvalid_password orelse
-														 ReasonDetail3 == einvalid_password orelse
-														 ReasonDetail4 == einvalid_password of
-															true -> {error, access_denied, einvalid_password};
-															false -> {error, access_denied, enoent}
-													end;
-												{ok, Record} ->
-													mnesia:dirty_write(user_cache_lru, Record),
-													{ok, Record}
-											end;
-										{ok, Record} -> 
-											mnesia:dirty_write(user_cache_lru, Record),
-											{ok, Record}
-									end;
-								{ok, Record} -> 
-									mnesia:dirty_write(user_cache_lru, Record),
-									{ok, Record}
-							end;
-						{ok, Record} -> 
-							mnesia:dirty_write(user_cache_lru, Record),
-							{ok, Record}
-					end;
-				{ok, Record} -> 
-					{ok, Record}
-			end;
-		false -> {error, access_denied, einvalid_password_size}
+			find_index_by_login_and_password(LoadersFind, 
+											 LoginBin, LoginSemBarraBin, 
+											 PasswordBin, PassowrdBinCrypto, 
+											 PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, 
+											 PasswordStrLower, PasswordStrUpper,
+											 Client);
+		false -> 
+			{error, access_denied, einvalid_password_size}
 	end.
 
 	
@@ -210,7 +242,9 @@ find_by_login(Login) ->
 					case IndexFind(user_aluno_inativo_db) of
 						{error, enoent} -> 
 							case IndexFind(user_fs) of
-								{error, enoent} -> {error, access_denied, enoent};
+								{error, enoent} -> 
+									ems_data_loader:sync(ems_user_loader_db),
+									{error, access_denied, enoent};
 								{ok, Record} -> {ok, Record}
 							end;
 						{ok, Record} -> {ok, Record}
@@ -458,63 +492,165 @@ to_resource_owner(User) ->
 -spec new_from_map(map(), #config{}) -> {ok, #user{}} | {error, atom()}.
 new_from_map(Map, Conf) ->
 	try
+		put(parse_step, passwd_crypto),
 		PasswdCrypto = maps:get(<<"passwd_crypto">>, Map, <<>>),
+
+		put(parse_step, password),
 		Password = maps:get(<<"password">>, Map, <<>>),
+		Password2 = case PasswdCrypto of
+						<<"SHA1">> -> ?UTF8_STRING(Password);
+						_ -> ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
+					end,
+							   
+		put(parse_step, login),
 		Login = list_to_binary(string:to_lower(binary_to_list(?UTF8_STRING(maps:get(<<"login">>, Map))))),
-		{ok, #user{	id = maps:get(<<"id">>, Map),
-					codigo = maps:get(<<"codigo">>, Map, 0),
+
+		put(parse_step, id),
+		Id = maps:get(<<"id">>, Map),
+		
+		put(parse_step, codigo),
+		Codigo = maps:get(<<"codigo">>, Map, 0),
+		
+		put(parse_step, name),
+		Name = ?UTF8_STRING(maps:get(<<"name">>, Map, Login)),
+		
+		put(parse_step, cpf),
+		Cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
+		
+		put(parse_step, dt_expire_password),
+		DtExpirePassword = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
+							  <<>> -> undefined;
+							  DtExpirePasswordValue -> DtExpirePasswordValue
+						   end,
+		
+		put(parse_step, endereco),
+		Endereco = ?UTF8_STRING(maps:get(<<"endereco">>, Map, <<>>)),
+		
+		put(parse_step, complemento_endereco),
+		ComplementoEndereco = ?UTF8_STRING(maps:get(<<"complemento_endereco">>, Map, <<>>)),
+		
+		put(parse_step, bairro),
+		Bairro = ?UTF8_STRING(maps:get(<<"bairro">>, Map, <<>>)),
+		
+		put(parse_step, cidade),
+		Cidade = ?UTF8_STRING(maps:get(<<"cidade">>, Map, <<>>)),
+		
+		put(parse_step, uf),
+		Uf = ?UTF8_STRING(maps:get(<<"uf">>, Map, <<>>)),
+		
+		put(parse_step, cep),
+		Cep = ?UTF8_STRING(maps:get(<<"cep">>, Map, <<>>)),
+		
+		put(parse_step, rg),
+		Rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
+		
+		put(parse_step, data_nascimento),
+		DataNascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
+		
+		put(parse_step, sexo),
+		Sexo = case maps:get(<<"sexo">>, Map, undefined) of
+					SexoValue when is_binary(SexoValue) -> ems_util:list_to_integer_def(string:strip(binary_to_list(SexoValue)), undefined);
+					SexoValue when is_list(SexoValue) -> ems_util:list_to_integer_def(string:strip(SexoValue), undefined);
+					SexoValue when is_integer(SexoValue) -> SexoValue;
+					undefined -> undefined
+				end,
+		
+		put(parse_step, telefone),
+		Telefone = ?UTF8_STRING(maps:get(<<"telefone">>, Map, <<>>)),
+		
+		put(parse_step, celular),
+		Celular = ?UTF8_STRING(maps:get(<<"celular">>, Map, <<>>)),
+		
+		put(parse_step, ddd),
+		DDD = ?UTF8_STRING(maps:get(<<"ddd">>, Map, <<>>)),
+		
+		put(parse_step, nome_pai),
+		NomePai = ?UTF8_STRING(maps:get(<<"nome_pai">>, Map, <<>>)),
+		
+		put(parse_step, nome_mae),
+		NomeMae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
+		
+		put(parse_step, nacionalidade),
+		Nacionalidade = case maps:get(<<"nacionalidade">>, Map, undefined) of
+							NacionalidadeValue when is_binary(NacionalidadeValue) -> ems_util:binary_to_integer_def(NacionalidadeValue, undefined);
+							NacionalidadeValue when is_integer(NacionalidadeValue) -> NacionalidadeValue;
+							undefined -> undefined
+						end,
+						
+		put(parse_step, email),						
+		Email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
+		
+		put(parse_step, type),
+		Type = maps:get(<<"type">>, Map, 1),
+		
+		put(parse_step, subtype),
+		Subtype = maps:get(<<"subtype">>, Map, 0),
+		
+		put(parse_step, active),
+		Active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
+		
+		put(parse_step, remap_user_id),
+		RemapUserId = maps:get(<<"remap_user_id">>, Map, undefined),
+		
+		put(parse_step, admin),
+		Admin = ems_util:value_to_boolean(maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_admin))),
+		
+		put(parse_step, ctrl_path),
+		CtrlPath = maps:get(<<"ctrl_path">>, Map, <<>>),
+		
+		put(parse_step, ctrl_file),
+		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
+		
+		put(parse_step, ctrl_modified),
+		CtrlModified = maps:get(<<"ctrl_modified">>, Map, undefined),
+		
+		put(parse_step, ctrl_hash),
+		CtrlHash = erlang:phash2(Map),
+		
+		put(parse_step, new_user),
+		{ok, #user{	id = Id,
+					codigo = Codigo,
 					login = Login,
-					name = ?UTF8_STRING(maps:get(<<"name">>, Map, Login)),
-					cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
-					password = case PasswdCrypto of
-									<<"SHA1">> -> ?UTF8_STRING(Password);
-									_ -> ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
-							   end,
+					name = Name,
+					cpf = Cpf,
+					password = Password2,
 					passwd_crypto = <<"SHA1">>,
-					dt_expire_password = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
-											  <<>> -> undefined;
-											  DtExpirePasswordValue -> DtExpirePasswordValue
-										 end,
-					endereco = ?UTF8_STRING(maps:get(<<"endereco">>, Map, <<>>)),
-					complemento_endereco = ?UTF8_STRING(maps:get(<<"complemento_endereco">>, Map, <<>>)),
-					bairro = ?UTF8_STRING(maps:get(<<"bairro">>, Map, <<>>)),
-					cidade = ?UTF8_STRING(maps:get(<<"cidade">>, Map, <<>>)),
-					uf = ?UTF8_STRING(maps:get(<<"uf">>, Map, <<>>)),
-					cep = ?UTF8_STRING(maps:get(<<"cep">>, Map, <<>>)),
-					rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
-					data_nascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
-					sexo = case maps:get(<<"sexo">>, Map, undefined) of
-								SexoValue when is_binary(SexoValue) -> ems_util:list_to_integer_def(string:strip(binary_to_list(SexoValue)), undefined);
-								SexoValue when is_list(SexoValue) -> ems_util:list_to_integer_def(string:strip(SexoValue), undefined);
-								SexoValue when is_integer(SexoValue) -> SexoValue;
-								undefined -> undefined
-							end,
-					telefone = ?UTF8_STRING(maps:get(<<"telefone">>, Map, <<>>)),
-					celular = ?UTF8_STRING(maps:get(<<"celular">>, Map, <<>>)),
-					ddd = ?UTF8_STRING(maps:get(<<"ddd">>, Map, <<>>)),
-					nome_pai = ?UTF8_STRING(maps:get(<<"nome_pai">>, Map, <<>>)),
-					nome_mae = ?UTF8_STRING(maps:get(<<"nome_mae">>, Map, <<>>)),
-					nacionalidade = case maps:get(<<"nacionalidade">>, Map, undefined) of
-										NacionalidadeValue when is_binary(NacionalidadeValue) -> ems_util:binary_to_integer_def(NacionalidadeValue, undefined);
-										NacionalidadeValue when is_integer(NacionalidadeValue) -> NacionalidadeValue;
-										undefined -> undefined
-									end,
-					email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
-					type = maps:get(<<"type">>, Map, 1),
-					subtype = maps:get(<<"subtype">>, Map, 0),
-					active = ems_util:value_to_boolean(maps:get(<<"active">>, Map, true)),
-					remap_user_id = maps:get(<<"remap_user_id">>, Map, undefined),
-					admin = ems_util:value_to_boolean(maps:get(<<"admin">>, Map, lists:member(Login, Conf#config.cat_restricted_services_admin))),
-					ctrl_path = maps:get(<<"ctrl_path">>, Map, <<>>),
-					ctrl_file = maps:get(<<"ctrl_file">>, Map, <<>>),
-					ctrl_modified = maps:get(<<"ctrl_modified">>, Map, undefined),
-					ctrl_hash = erlang:phash2(Map)
+					dt_expire_password = DtExpirePassword,
+					endereco = Endereco,
+					complemento_endereco = ComplementoEndereco,
+					bairro = Bairro,
+					cidade = Cidade,
+					uf = Uf,
+					cep = Cep,
+					rg = Rg,
+					data_nascimento = DataNascimento,
+					sexo = Sexo,
+					telefone = Telefone,
+					celular = Celular,
+					ddd = DDD,
+					nome_pai = NomePai,
+					nome_mae = NomeMae,
+					nacionalidade = Nacionalidade,
+					email = Email,
+					type = Type,
+					subtype = Subtype,
+					active = Active,
+					remap_user_id = RemapUserId,
+					admin = Admin,
+					ctrl_path = CtrlPath,
+					ctrl_file = CtrlFile,
+					ctrl_modified = CtrlModified,
+					ctrl_hash = CtrlHash,
+					ctrl_last_login = undefined,
+					ctrl_login_count = 0,
+					ctrl_last_login_scope = undefined,
+					ctrl_last_login_client = undefined
 			}
 		}
 	catch
 		_Exception:Reason -> 
 			ems_db:inc_counter(edata_loader_invalid_user),
-			ems_logger:warn("ems_user parse invalid user specification: ~p\n\t~p.\n", [Reason, Map]),
+			ems_logger:warn("ems_user parse invalid user specification on field ~p: ~p\n\t~p.\n", [get(parse_step), Reason, Map]),
 			{error, Reason}
 	end.
 
@@ -591,7 +727,8 @@ add_history(#user{id = UserId,
 					 version = ServiceVersion,
 					 owner = ServiceOwner,
 					 group = ServiceGroup,
-					 async = ServiceAsync},
+					 async = ServiceAsync,
+					 log_show_payload = LogShowPayload},
 			#request{
 					   rid = RequestRid,
 					   timestamp = RequestTimestamp,
@@ -605,9 +742,9 @@ add_history(#user{id = UserId,
 					   url = RequestUrl,
 					   url_masked = RequestUrlMasked,
 					   version = RequestHttpVersion,
-					   %payload = RequestPayload,
+					   payload = RequestPayload,
 					   querystring = RequestQuerystring,
-					   %params_url = RequestParamsUrl,
+					   params_url = RequestParamsUrl,
 					   content_type_in = RequestContentTypeIn,
 					   content_type_out = RequestContentTypeOut,
 					   content_length = RequestContentLength,
@@ -624,76 +761,99 @@ add_history(#user{id = UserId,
 					   filename = RequestFilename,
 					   referer = RequestReferer,
 					   access_token = RequestAccessToken}) ->
-	RequestTimestamp2 =	case is_binary(RequestTimestamp) of
-							true -> RequestTimestamp;
-							false -> ems_util:timestamp_binary(RequestTimestamp)
-						end,
-	[RequestDate, RequestTime] = string:split(RequestTimestamp2, " "),
-	UserHistory = #user_history{
-					   %% dados do usuário
-					   user_id = UserId,
-					   user_codigo = UserCodigo,
-					   user_login = UserLogin,
-					   user_name = UserName,
-					   user_cpf = UserCpf,
-					   user_email = UserEmail,
-					   user_type = UserType,
-					   user_subtype = UserSubtype,
-					   user_type_email = UserTypeEmail,
-					   user_active = UserActive,
-					   user_admin = UserAdmin,
-					   
-					   % dados do cliente
-					   client_id = ClientId,
-					   client_name = ClientName,
-					   
-					   %% dados do serviço
-					   service_rowid = ServiceRowid,
-					   service_name = ServiceName,
-					   service_url = ServiceUrl,
-					   service_type  = ServiceType,
-					   service_service = ServiceService,
-					   service_use_re = ServiceUseRE,
-					   service_public = ServicePublic,
-					   service_version = ServiceVersion,
-					   service_owner = ServiceOwner,
-					   service_group = ServiceGroup,
-					   service_async = ServiceAsync,
-					   
-					   %% dados da requisição
-					   request_rid = RequestRid,
-					   request_date = RequestDate,
-					   request_time = RequestTime,
-					   %request_latency = RequestLatency,
-					   request_code  = RequestCode,
-					   request_reason = RequestReason,
-					   request_reason_detail = RequestReasonDetail,
-					   request_operation = RequestOperation,
-					   request_type = RequestType,
-					   request_uri = RequestUri,
-					   request_url = RequestUrl,
-					   request_url_masked = RequestUrlMasked,
-					   request_http_version = RequestHttpVersion,
-					   %request_payload = RequestPayload,
-					   request_querystring = RequestQuerystring,
-					   %request_params_url = RequestParamsUrl,
-					   request_content_type_in = RequestContentTypeIn,
-					   request_content_type_out = RequestContentTypeOut,
-					   request_content_length = RequestContentLength,
-					   request_accept = RequestAccept,
-					   request_user_agent = RequestUserAgent,
-					   request_user_agent_version = RequestUserAgentVersion,
-					   request_t1 = RequestT1,
-					   request_authorization = RequestAuthorization,
-					   request_protocol = RequestProtocol,
-					   request_port = RequestPort,
-					   %request_response_data = RequestResponseData,
-					   request_bash = RequestReqHash,
-					   request_host = RequestHost,
-					   request_filename = RequestFilename,
-					   request_referer = RequestReferer,
-					   request_access_token = RequestAccessToken
-				},
-	ems_db:insert(UserHistory),
-	ok.
+	try
+		RequestTimestamp2 =	case is_binary(RequestTimestamp) of
+								true -> RequestTimestamp;
+								false -> ems_util:timestamp_binary(RequestTimestamp)
+							end,	
+		[RequestDate, RequestTime] = string:tokens(binary_to_list(RequestTimestamp2), " "),
+		case LogShowPayload of
+			true -> 
+				case RequestContentLength > 1024 of
+					true ->
+						case is_binary(RequestPayload) of
+							true -> RequestPayload2 = binary:part(RequestPayload, 1, 1024);
+							false -> RequestPayload2 = <<>>
+						end;
+					false -> RequestPayload2 = RequestPayload
+				end,
+				case is_binary(RequestPayload2) of
+					true -> RequestPayload3 = RequestPayload;
+					false -> RequestPayload3 = ems_schema:to_json_def(RequestPayload2, <<>>)
+				end;
+			false -> RequestPayload3 = <<>> 
+		end,
+		RequestParamsUrl2 = ems_schema:to_json_def(RequestParamsUrl, <<>>),
+		UserHistory = #user_history{
+						   %% dados do usuário
+						   user_id = UserId,
+						   user_codigo = UserCodigo,
+						   user_login = UserLogin,
+						   user_name = UserName,
+						   user_cpf = UserCpf,
+						   user_email = UserEmail,
+						   user_type = UserType,
+						   user_subtype = UserSubtype,
+						   user_type_email = UserTypeEmail,
+						   user_active = UserActive,
+						   user_admin = UserAdmin,
+						   
+						   % dados do cliente
+						   client_id = ClientId,
+						   client_name = ClientName,
+						   
+						   %% dados do serviço
+						   service_rowid = ServiceRowid,
+						   service_name = ServiceName,
+						   service_url = ServiceUrl,
+						   service_type  = ServiceType,
+						   service_service = ServiceService,
+						   service_use_re = ServiceUseRE,
+						   service_public = ServicePublic,
+						   service_version = ServiceVersion,
+						   service_owner = ServiceOwner,
+						   service_group = ServiceGroup,
+						   service_async = ServiceAsync,
+						   
+						   %% dados da requisição
+						   request_rid = RequestRid,
+						   request_date = RequestDate,
+						   request_time = RequestTime,
+						   %request_latency = RequestLatency,
+						   request_code  = RequestCode,
+						   request_reason = RequestReason,
+						   request_reason_detail = RequestReasonDetail,
+						   request_operation = RequestOperation,
+						   request_type = RequestType,
+						   request_uri = RequestUri,
+						   request_url = RequestUrl,
+						   request_url_masked = RequestUrlMasked,
+						   request_http_version = RequestHttpVersion,
+						   request_payload = RequestPayload3,
+						   request_querystring = RequestQuerystring,
+						   request_params_url = RequestParamsUrl2,
+						   request_content_type_in = RequestContentTypeIn,
+						   request_content_type_out = RequestContentTypeOut,
+						   request_content_length = RequestContentLength,
+						   request_accept = RequestAccept,
+						   request_user_agent = RequestUserAgent,
+						   request_user_agent_version = RequestUserAgentVersion,
+						   request_t1 = RequestT1,
+						   request_authorization = RequestAuthorization,
+						   request_protocol = RequestProtocol,
+						   request_port = RequestPort,
+						   %request_response_data = RequestResponseData,
+						   request_bash = RequestReqHash,
+						   request_host = RequestHost,
+						   request_filename = RequestFilename,
+						   request_referer = RequestReferer,
+						   request_access_token = RequestAccessToken
+					},
+		ems_db:insert(UserHistory),
+		ok
+	catch
+		_:Reason ->
+			ems_logger:format_error("ems_user add_history failed. Reason ~p.", [Reason]),
+			ok
+	end.
 

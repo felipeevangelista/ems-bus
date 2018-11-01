@@ -12,8 +12,8 @@
 # Data       |  Quem           |  Mensagem  
 # -----------------------------------------------------------------------------------------------------
 # 28/06/2017  Everton Agilar     Initial release
-#
-#
+# 11/08/2018  Everton Agilar     Suporte para compilar projetos no formato docker-compose
+# 16/10/2018  Everton Agilar     Melhorias ao fazer push e baixar o projeto
 #
 #
 #
@@ -22,7 +22,7 @@
 clear
 
 CURRENT_DIR=$(pwd)
-VERSION_SCRIPT="3.0.0"
+VERSION_SCRIPT="3.0.1"
 
 echo "Build ErlangMS images for apps with Docker and ErlangMS Technology ( Version $VERSION_SCRIPT  Date: $(date '+%d/%m/%Y %H:%M:%S') )"
 
@@ -129,7 +129,7 @@ ERLANGMS_DOCKER_GIT_URL="https://github.com/erlangMS/docker"
 # deixa em branço para pedir na execução do build
 MODE_BUILD=""
 BUILD_FROM_MASTER="false"
-
+SOURCE_PATH=""
 
 # Registry server daemon to catalog images
 REGISTRY_IP=""
@@ -282,28 +282,49 @@ prepare_project_to_build(){
 		echo "Preparing $APP_NAME to build in production mode, please wait..."
 	fi
 
-	# Clone git project app if it does not emsbus
+	echo "Enter the folder \"$STAGE_AREA/docker/build\" where the project clone will be made."
+	cd $STAGE_AREA/docker/build
+
+	# Clone git project
 	echo "Git clone $APP_URL_GIT $APP_NAME"
 	if ! git clone $APP_URL_GIT $APP_NAME 2> /dev/null ; then
 		die "Fatal: Could not access project repository $APP_URL_GIT, check your network connection or password!"
 	fi
 	 
+	
+	# Entra no projeto
+	echo "Entering the git project $APP_NAME..."
 	cd $APP_NAME
+	
+	echo "Searching the tag $GIT_CHECKOUT_TAG..."
 	
 	# Faz clone da última tag gerada do projeto se não foi informado o parâmetro --tag
 	# Se não há nenhuma tag e não foi informado --tag, faz da master mesmo
 	if [ -z "$GIT_CHECKOUT_TAG" ]; then
+		echo "Obtendo a última tag..." 
 		GIT_CHECKOUT_TAG="$(git tag -l --sort=-creatordate | sed '1!d')"
+		echo "Ultima tag é $GIT_CHECKOUT_TAG."
 		if [ -z "$GIT_CHECKOUT_TAG" ]; then
-			echo "Git checkout from master..."
+			echo "Git checkout from master pois não encontrou nenhuma tag..."
 			BUILD_FROM_MASTER="true"
 		else
-			echo "Git checkout from lastest tag..."
-			echo "exec: git checkout -b $GIT_CHECKOUT_TAG"
-			git checkout -b $GIT_CHECKOUT_TAG
-			#[ $? -ne 0 ] | die "Fatal: Could not git checkout $GIT_CHECKOUT_TAG!"
+			echo "Git checkout from tag encontrada $GIT_CHECKOUT_TAG..."
+			git checkout $GIT_CHECKOUT_TAG
 		fi
+	else
+		echo "Git checkout from tag $GIT_CHECKOUT_TAG..."
+		git checkout $GIT_CHECKOUT_TAG
 	fi
+	
+	echo "Current git branch:"
+	git status
+	
+	# Se existe um diretório frontend, move para lá pois é onde está o código fonte em projetos Kubernetes
+	if [ -d frontend ]; then
+		cd frontend
+	fi
+	SOURCE_PATH=`pwd`
+	echo "Source path: $SOURCE_PATH"
 	
 	# Get expose http and https ports from Dockerfile
 	if [ -z "$HTTP_PORT" ]; then
@@ -314,31 +335,29 @@ prepare_project_to_build(){
 		HTTPS_PORT=$(grep ems_https_server.tcp_port emsbus.conf | sed -r 's/[^0-9]//g')
 		fi
 
-	[ -z "$HTTP_PORT" ] && die "HTTP port of project not informed, build canceled. Enter the parameter --http_port!"
+	[ -z "$HTTP_PORT" ]  && die "HTTP port of project not informed, build canceled. Enter the parameter --http_port!"
 	[ -z "$HTTPS_PORT" ] && die "HTTPS port of project not informed, build canceled. Enter the parameter --https_port!"
 
 	# Copia o arquivo emsbus.conf para a pasta conf do docker template
-	mkdir -p ../../conf/
-	cp emsbus.conf ../../conf/
-	cd ../../
+	mkdir -p $STAGE_AREA/docker/conf  #mkdir -p ../../conf/
+	cp emsbus.conf  $STAGE_AREA/docker/conf  #cp emsbus.conf ../../conf/
+
 	
 	# Atualiza o arquivo Dockerfile com as portas expostas
-	sed -i "s/{{ HTTP_PORT }}/$HTTP_PORT/"  Dockerfile
-	sed -i "s/{{ HTTPS_PORT }}/$HTTPS_PORT/"  Dockerfile
+	sed -i "s/{{ HTTP_PORT }}/$HTTP_PORT/"  	$STAGE_AREA/docker/Dockerfile
+	sed -i "s/{{ HTTPS_PORT }}/$HTTPS_PORT/"  	$STAGE_AREA/docker/Dockerfile
 	
 	if [ -z "$GIT_CHECKOUT_TAG" ]; then
-		sed -i "s/{{ APP_VERSION }}/1.0.0/"  Dockerfile
+		sed -i "s/{{ APP_VERSION }}/1.0.0/"  	$STAGE_AREA/docker/Dockerfile
 	else
-		sed -i "s/{{ APP_VERSION }}/$GIT_CHECKOUT_TAG/"  Dockerfile
+		sed -i "s/{{ APP_VERSION }}/$GIT_CHECKOUT_TAG/"  $STAGE_AREA/docker/Dockerfile
 	fi
 	
 	# Atualiza o arquivo docker-compose.yml
-	sed -i "s/{{ HTTP_PORT }}/$HTTP_PORT/g"  docker-compose.yml
-	sed -i "s/{{ HTTPS_PORT }}/$HTTPS_PORT/g"  docker-compose.yml
-	sed -i "s/{{ APP_NAME }}/$APP_NAME/g"  docker-compose.yml
-	sed -i "s/{{ APP_NAME }}/$APP_NAME/g"  docker-compose.yml
-	
-	cd build/$APP_NAME
+	sed -i "s/{{ HTTP_PORT }}/$HTTP_PORT/g"  	$STAGE_AREA/docker/docker-compose.yml
+	sed -i "s/{{ HTTPS_PORT }}/$HTTPS_PORT/g"  	$STAGE_AREA/docker/docker-compose.yml
+	sed -i "s/{{ APP_NAME }}/$APP_NAME/g"  		$STAGE_AREA/docker/docker-compose.yml
+	sed -i "s/{{ APP_NAME }}/$APP_NAME/g"  		$STAGE_AREA/docker/docker-compose.yml
 }
 
 # Build app (if necessary)
@@ -381,9 +400,11 @@ build_app(){
 			die "An error occurred in the npm run build command. Build canceled."
 		fi
 
-		echo "Copy sources files to ../../app/$APP_NAME..."
-		mv dist/ ../../app/$APP_NAME/
-		cd ../../
+		echo "Copy sources files to \"$STAGE_AREA/docker/app/$APP_NAME/\"..."
+		
+		mv $SOURCE_PATH/dist/ $STAGE_AREA/docker/app/$APP_NAME/
+		
+		cd $STAGE_AREA/docker/build  	#cd ../../
 	else
 		#  ##################### BUILD STATIC FILE PROJECT ######################
 	
@@ -398,6 +419,10 @@ build_app(){
 # Build docker image
 build_image(){
 	echo "Start build docker image $APP_NAME, please wait (Root credentials necessary)..."
+
+	# Entra na pasta onde será feito o build da imagem
+	echo "Entering the folder "$STAGE_AREA/docker" to create the Docker image..."
+	cd $STAGE_AREA/docker
 
 	# Format app version do docker
 	if [ "$BUILD_FROM_MASTER" = "true" ]; then
@@ -425,7 +450,7 @@ build_image(){
 	sudo docker rmi --force $(sudo docker images 2> /dev/null | grep "$APP_DOCKER_FILENAME" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
 	sudo docker rmi --force $(sudo docker images 2> /dev/null | grep "$APP_DOCKER_LATEST" | tr -s ' ' '|' | cut -d'|' -f3) 2> /dev/null
 
-	# build docker image $APP_NAME:$APP_VERSION
+	echo "build docker with dockerfile $APP_DOCKER_FILENAME"
 	echo "sudo docker build . -t $APP_DOCKER_FILENAME"
 	sudo docker build --no-cache . -t $APP_DOCKER_FILENAME
 	
@@ -558,47 +583,33 @@ check_push_registry(){
 		if [ ! -z "$REGISTRY" ]; then
 			push_registry		
 		else
-			# Check with user if push images to Docker Registry
-			DO_PUSH="y"
-			printf 'Push the generated image to the Docker Registry servers: [Y/n] '
-			while true; do
-				read DO_PUSH
-				if [[ ! $DO_PUSH =~ [yYnN] ]]; then
-					printf 'Ops, push the generated image to the Docker Registry servers: [Y/n] '
+			PUSH_MESSAGE='\tEnter the IP of the Registry server (Example: 164.41.106.30:5000): '
+			CANCEL_PUSH="n"
+			while [[ ! "$CANCEL_PUSH" = "Y" && ! "$CANCEL_PUSH" = "y" ]]; do
+				echo
+				echo "---------------------------------------------------------------------------------------------------"
+				printf "$PUSH_MESSAGE"
+				read REGISTRY
+				if [ ! -z "$REGISTRY" ]; then
+					REGISTRY_PORT="5000"
+					if [[ "$REGISTRY" =~ ^[0-9a-zA-Z_.]+:[0-9]+$ ]] ; then
+						REGISTRY_PORT=$(echo $REGISTRY | awk -F: '{ print $2; }')
+						REGISTRY_SERVER=$REGISTRY
+					elif [[ $REGISTRY =~ ^[0-9a-zA-Z_-.]+$ ]] ; then
+						REGISTRY_SERVER=$REGISTRY:$REGISTRY_PORT
+					else
+						REGISTRY_SERVER=$REGISTRY
+					fi
+					REGISTRY_IP="$(echo $REGISTRY_SERVER | cut -d: -f1)"
+					push_registry
+					PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
 				else
-					break
+					printf '\tDo you want cancel push images? [Y/n] '
+					read CANCEL_PUSH
+					echo
+					PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
 				fi
 			done
-
-			if [[ "$DO_PUSH" = "Y" || "$DO_PUSH" = "y" ]]; then
-				PUSH_MESSAGE='\tEnter the IP or DNS of the Registry server (Example: desenvservicos.unb.br): '
-				CANCEL_PUSH="n"
-				while [[ ! "$CANCEL_PUSH" = "Y" && ! "$CANCEL_PUSH" = "y" ]]; do
-					echo
-					echo "---------------------------------------------------------------------------------------------------"
-					printf "$PUSH_MESSAGE"
-					read REGISTRY
-					if [ ! -z "$REGISTRY" ]; then
-						REGISTRY_PORT="5000"
-						if [[ "$REGISTRY" =~ ^[0-9a-zA-Z_.]+:[0-9]+$ ]] ; then
-							REGISTRY_PORT=$(echo $REGISTRY | awk -F: '{ print $2; }')
-							REGISTRY_SERVER=$REGISTRY
-						elif [[ $REGISTRY =~ ^[0-9a-zA-Z_-.]+$ ]] ; then
-							REGISTRY_SERVER=$REGISTRY:$REGISTRY_PORT
-						else
-							die "\tIP or DNS of server is invalid. Example: 127.0.0.1 or localhost"
-						fi
-						REGISTRY_IP="$(echo $REGISTRY_SERVER | cut -d: -f1)"
-						push_registry
-						PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
-					else
-						printf '\tDo you want cancel push images? [Y/n] '
-						read CANCEL_PUSH
-						echo
-						PUSH_MESSAGE='\tEnter the IP or DNS of the next Registry server: '
-					fi
-				done
-			fi
 		fi
 		
 	else
@@ -608,29 +619,11 @@ check_push_registry(){
 
 push_registry(){
 			PUSH_TAG="$REGISTRY_SERVER/$APP_NAME"
+			echo "sudo docker tag $APP_NAME $PUSH_TAG"
 			sudo docker tag $APP_NAME $PUSH_TAG
-			echo
-			echo "Push $PUSH_TAG to $REGISTRY_SERVER"
+			echo "sudo docker push $REGISTRY_SERVER/$APP_NAME"
 			sudo docker push $REGISTRY_SERVER/$APP_NAME
-
 			echo
-			
-			# Check if deploy
-			#DO_DEPLOY="y"
-			#printf '\n\tYou want to deploy the app in this environment: [Y/n] '
-			#while true; do
-			#	read DO_DEPLOY
-			#	if [[ ! $DO_DEPLOY =~ [yYnN] ]]; then
-			#		printf '\tOps, You want to deploy the app in this environment: [Y/n] '
-			#	else
-			#		break
-			#	fi
-			#done
-
-			#if [[ "$DO_DEPLOY" = "Y" || "$DO_DEPLOY" = "y" ]]; then
-			#	echo deploy...
-			#fi
-			
 }
 
 # IMPORTANTE
@@ -639,7 +632,7 @@ push_registry(){
 # O build não altera nenhum arquivo do projeto no git pois tudo é realizado na stage.
 make_stage_area(){
 	echo "Preparing state area for build temporary files, please wait..."
-	STAGE_AREA=/tmp/erlangms/docker/build_$$/
+	STAGE_AREA=/tmp/erlangms/docker/build_$$
 	mkdir -p $STAGE_AREA
 	cd $STAGE_AREA
 	echo "Stage area is $STAGE_AREA"
@@ -714,13 +707,13 @@ if [ -z "$APP_URL_GIT" ]; then
 else
 	GIT_BASE_URL_PROJECTS=$(dirname "$APP_URL_GIT")
 fi
-[ -z "$APP_URL_GIT" ] && die "Project url not informed, build canceled. Enter the parameter --app_url_git!"
+[ -z "$APP_URL_GIT" ] && die "Project url was not entered. Enter the parameter --app_url_git!!!"
 
-
+# APP_NAME setting
 if [ -z "$APP_NAME" ]; then
 	APP_NAME=$(basename "$APP_URL_GIT" | sed 's/.git//' | sed -r 's/_frontend$//' | sed 's/[-_]//g')
 fi
-[ -z "$APP_NAME" ] && die 'Name of project not informed, build canceled. Enter the parameter --app!'
+[ -z "$APP_NAME" ] && die 'Project name was not entered. Enter the parameter --app!!!'
 
 
 
@@ -787,11 +780,7 @@ if [ "$SKIP_BUILD" = "false" ]; then
 	if [ "$BUILD_FROM_MASTER" = "true" ]; then
 		echo "Build app version: master"
 	else
-		if [ -z "$GIT_CHECKOUT_TAG" ]; then
-			echo "Build app version: latest"
-		else
-			echo "Build app version: $GIT_CHECKOUT_TAG"
-		fi
+		echo "Build app version: $GIT_CHECKOUT_TAG"
 	fi	
 	echo "Option keep stage enabled after build: $KEEP_STAGE"
 	echo "Option Skip build enabled: $SKIP_BUILD"

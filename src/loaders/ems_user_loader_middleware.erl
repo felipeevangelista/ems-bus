@@ -81,12 +81,13 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 				case ems_user:find(SourceType, Id) of
 					{error, enoent} -> 
 						User = NewUser#user{ctrl_insert = CtrlDate},
+						ems_db:delete(user_cache_lru, Id),
 						{ok, User, SourceType, insert};
 					{ok, CurrentUser = #user{ctrl_hash = CurrentCtrlHash}} ->
 						case CtrlHash =/= CurrentCtrlHash of
 							true ->
 								?DEBUG("ems_user_loader_middleware update ~p from ~p.", [Map, SourceType]),
-								%email, type, subtype e active são atualizado somente pelo dataloader de email
+								%type, subtype são atualizado somente pelo dataloader de dados funcionais
 								User = CurrentUser#user{
 												 codigo = NewUser#user.codigo,
 												 login = NewUser#user.login,
@@ -107,6 +108,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 telefone = NewUser#user.telefone,
 												 celular = NewUser#user.celular,
 												 ddd = NewUser#user.ddd,
+												 email = NewUser#user.email,
 												 nome_pai = NewUser#user.nome_pai,
 												 nome_mae = NewUser#user.nome_mae,
 												 nacionalidade = NewUser#user.nacionalidade,

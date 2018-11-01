@@ -17,7 +17,5 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="kernel" />
-    <orderEntry type="module" module-name="stdlib" />
   </component>
 </module>

@@ -19,7 +19,7 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/1, handle_info/2, terminate/2, code_change/3]).
 
--export([get_connection/1, release_connection/1, connection_pool_size/1, param_query/2, param_query/3, param_query/4]).
+-export([get_connection/1, release_connection/1, connection_pool_size/1, param_query/2, param_query/3, param_query/4, select_count/2, select/3]).
 
 -define(SERVER, ?MODULE).
 
@@ -44,29 +44,48 @@ stop() ->
 -spec get_connection(#service_datasource{}) -> {ok, #service_datasource{}} | {error, eunavailable_odbc_connection}.
 get_connection(Datasource = #service_datasource{id = Id}) ->
 	try
-		case gen_server:call(?SERVER, {create_connection, Datasource}, 60000) of
+		case gen_server:call(?SERVER, {create_connection, Datasource}, 16000) of
 			{ok, _Datasource2} = Result ->
-				?DEBUG("ems_odbc_pool get_connection from datasource ~p.", [Id]),
+				?DEBUG("ems_odbc_pool get_connection from datasource id ~p.", [Id]),
 				Result;
-			{error, Reason} -> 
-				ems_logger:error("ems_odbc_pool get_connection exception from datasource ~p. Reason: ~p.", [Id, Reason]),
-				{error, eunavailable_odbc_connection}
+			{error, eodbc_restricted_connection} -> 
+				{error, eodbc_restricted_connection};
+			_ -> 
+				case gen_server:call(?SERVER, {create_connection, Datasource}, 16000) of
+					{ok, _Datasource2} = Result2 ->
+						?DEBUG("ems_odbc_pool get_connection from datasource id ~p after the second attempt.", [Id]),
+						Result2;
+					{error, Reason2} -> 
+						?DEBUG("ems_odbc_pool get_connection eunavailable_odbc_connection from datasource id ~p. Reason: ~p.", [Id, Reason2]),
+						{error, eunavailable_odbc_connection}
+				end
 		end
 	catch
-		_ : Reason2 ->
-			?DEBUG("ems_odbc_pool get_connection catch exception from datasource ~p. Reason: ~p.", [Id, Reason2]),
-			{error, eunavailable_odbc_connection}
+		_:_ -> %% provavelmente timeout
+			try
+				case gen_server:call(?SERVER, {create_connection, Datasource}, 16000) of
+					{ok, _Datasource3} = Result3 ->
+						?DEBUG("ems_odbc_pool get_connection from datasource id ~p after timeout.", [Id]),
+						Result3;
+					{error, Reason3} -> 
+						?DEBUG("ems_odbc_pool get_connection eunavailable_odbc_connection from datasource id ~p. Reason: ~p.", [Id, Reason3]),
+						{error, eunavailable_odbc_connection}
+				end
+			catch 
+				_:_ ->
+					?DEBUG("ems_odbc_pool get_connection eunavailable_odbc_connection from datasource id ~p. Reason: eodbc_connection_timeout.", [Id]),
+					{error, eunavailable_odbc_connection}
+			end
 	end.
 
 
 -spec release_connection(#service_datasource{}) -> ok.
 release_connection(Datasource = #service_datasource{id = Id}) ->
 	try
-		gen_server:call(?SERVER, {release_connection, Datasource}, 60000)
+		gen_server:call(?SERVER, {release_connection, Datasource}, 16000)
 	catch 
-		_: _Reason -> 
-			% does not return error for the process that released or attempted to release a connection
-			?DEBUG("ems_odbc_pool release_connection catch exception from datasource ~p. Reason: ~p.", [Id, _Reason]),
+		_: Reason -> 
+			?DEBUG("ems_odbc_pool release_connection exception from datasource id ~p. Reason: ~p.", [Id, Reason]),
 			ok
 	end.
 
@@ -76,7 +95,7 @@ connection_pool_size(Datasource = #service_datasource{id = Id}) ->
 		gen_server:call(?SERVER, {get_size, Datasource})
 	catch
 		_ : _ ->
-			?DEBUG("ems_odbc_pool connection_pool_size catch timeout exception from datasource ~p.", [Id]),
+			?DEBUG("ems_odbc_pool connection_pool_size catch timeout exception from datasource id ~p.", [Id]),
 			{error, eunavailable_odbc_connection}
 	end.
 
@@ -86,7 +105,7 @@ param_query(#service_datasource{id = Id, owner = Owner, timeout = Timeout}, Sql)
 		gen_server:call(Owner, {param_query, Sql, []}, Timeout)
 	catch
 		_ : _ ->
-			?DEBUG("ems_odbc_pool param_query catch timeout exception from datasource ~p.", [Id]),
+			?DEBUG("ems_odbc_pool param_query catch timeout exception from datasource id ~p.", [Id]),
 			{error, eunavailable_odbc_connection}
 	end.
 
@@ -96,7 +115,7 @@ param_query(#service_datasource{id = Id, owner = Owner, timeout = Timeout}, Sql,
 		gen_server:call(Owner, {param_query, Sql, Params}, Timeout)
 	catch
 		_ : _ ->
-			?DEBUG("ems_odbc_pool param_query catch timeout exception from datasource ~p.", [Id]),
+			?DEBUG("ems_odbc_pool param_query catch timeout exception from datasource id ~p.", [Id]),
 			{error, eunavailable_odbc_connection}
 	end.
 
@@ -105,7 +124,25 @@ param_query(#service_datasource{id = Id, owner = Owner}, Sql, Params, Timeout) -
 		gen_server:call(Owner, {param_query, Sql, Params}, Timeout)
 	catch
 		_ : _ ->
-			?DEBUG("ems_odbc_pool param_query catch timeout exception from datasource ~p.", [Id]),
+			?DEBUG("ems_odbc_pool param_query catch timeout exception from datasource id ~p.", [Id]),
+			{error, eunavailable_odbc_connection}
+	end.
+
+select_count(#service_datasource{id = Id, owner = Owner, timeout = Timeout}, Sql) ->
+	try
+		gen_server:call(Owner, {select_count, Sql}, Timeout)
+	catch
+		_ : _ ->
+			?DEBUG("ems_odbc_pool select_count timeout exception from datasource id ~p.", [Id]),
+			{error, eunavailable_odbc_connection}
+	end.
+
+select(#service_datasource{id = Id, owner = Owner}, Offset, Limit) ->
+	try
+		gen_server:call(Owner, {select, Offset, Limit})
+	catch
+		_ : _ ->
+			?DEBUG("ems_odbc_pool select timeout exception from datasource id ~p.", [Id]),
 			{error, eunavailable_odbc_connection}
 	end.
 
@@ -201,15 +238,14 @@ do_create_connection(Datasource = #service_datasource{id = Id,
 					 PidModule) ->
 	try
 		Pool = find_pool(Id),
-		PoolCount = queue:len(Pool),
-		case PoolCount of
+		PoolSize = queue:len(Pool),
+		case PoolSize of
 			0 ->
 				ConnectionCount = ems_db:current_counter(ConnectionCountMetricName),
 				case ConnectionCount =< MaxPoolSize of
 					true ->
 						case ems_odbc_pool_worker:start_link(Datasource) of
 							{ok, WorkerPid} ->
-								?DEBUG("ems_odbc_pool start new worker from datasource ~p.", [Id]),
 								PidModuleRef = erlang:monitor(process, PidModule),
 								Datasource2 = ems_odbc_pool_worker:get_datasource(WorkerPid),
 								Datasource3 = Datasource2#service_datasource{owner = WorkerPid, 
@@ -218,16 +254,21 @@ do_create_connection(Datasource = #service_datasource{id = Id,
 								ems_odbc_pool_worker:notify_use(WorkerPid, Datasource3),
 								erlang:put(PidModuleRef, Datasource3),
 								erlang:put(WorkerPid, Datasource3),
-								ems_db:inc_counter(ConnectionCountMetricName),								
+								ConnectionCount2 = ems_db:inc_counter(ConnectionCountMetricName),								
 								ems_db:inc_counter(ConnectionCreatedMetricName),								
+								ems_logger:info("ems_odbc_pool start new worker (Ds: ~p ConnectionCount: ~p).", [Id, ConnectionCount2]),
 								{ok, Datasource3};
-							_ -> 
+							{error, Reason} -> 
 								ems_db:inc_counter(ConnectionUnavailableMetricName),								
-								{error, eunavailable_odbc_connection}
+								case ems_db:is_database_in_restricted_mode(Reason) of	
+									true -> {error, eodbc_restricted_connection};
+									false -> {error, eunavailable_odbc_connection}
+								end
 						end;
 					false -> 
 						ems_db:inc_counter(ConnectionMaxPoolSizeExceededMetricName),
-						{error, eunavailable_odbc_connection}	
+						ems_logger:info("ems_odbc_pool connection limit (Ds: ~p ConnectionCount: ~p).", [Id, ConnectionCount]),
+						{error, eodbc_connection_limit}	
 				end;
 			_ -> 
 				{{value, Datasource2}, Pool2} = queue:out(Pool),
@@ -243,10 +284,11 @@ do_create_connection(Datasource = #service_datasource{id = Id,
 				erlang:put(PidModuleRef, Datasource3),
 				erlang:put(WorkerPid, Datasource3),
 				ems_db:inc_counter(ConnectionReuseMetricName),
+				ems_logger:info("ems_odbc_pool reuse worker (Ds: ~p PoolSize: ~p).", [Id, PoolSize-1]),
 				{ok, Datasource3}
 		end
 	catch
-		_:_ -> {error, eunavailable_odbc_connection}	
+		_:_ -> {error, ecreate_odbc_connection}	
 	end.
 
 -spec do_release_connection(#service_datasource{}) -> ok.
@@ -255,8 +297,8 @@ do_release_connection(Datasource = #service_datasource{id = Id,
 													   pid_module_ref = PidModuleRef,
 													   max_pool_size = MaxPoolSize,
 													   connection_count_metric_name = ConnectionCountMetricName}) ->
+	ConnectionCount = ems_db:dec_counter(ConnectionCountMetricName),								
 	try
-		ems_db:dec_counter(ConnectionCountMetricName),								
 		erlang:demonitor(PidModuleRef),
 		erlang:erase(PidModuleRef),
 		Pool = find_pool(Id),
@@ -271,20 +313,32 @@ do_release_connection(Datasource = #service_datasource{id = Id,
 								Pool2 = queue:in(Datasource#service_datasource{pid_module = undefined, 
 																			   pid_module_ref = undefined}, Pool),
 								erlang:put(Id, Pool2),
+								ems_logger:info("ems_odbc_pool release worker (Ds: ~p PoolSize: ~p).", [Id, PoolSize+1]),
 								ok;
 							_ ->
-								gen_server:stop(Owner),
+								case erlang:is_process_alive(Owner) of
+									true -> 
+										ems_logger:info("ems_odbc_pool shutdown worker (Ds: ~p PoolSize: ~p ConnectionCount: ~p).", [Id, PoolSize, ConnectionCount-1]),
+										gen_server:stop(Owner);
+									false -> ok
+								end,
 								ok
 						end;
 					false -> 
-						?DEBUG("ems_odbc_pool shutdown worker datasource ~p.", [Id]),
-						gen_server:stop(Owner),
+						case erlang:is_process_alive(Owner) of
+							true -> 
+								ems_logger:info("ems_odbc_pool shutdown worker due connection limit (Ds: ~p PoolSize: ~p ConnectionCount: ~p).", [Id, PoolSize, ConnectionCount-1]),
+								gen_server:stop(Owner);
+							false -> ok
+						end,
 						ok
 				end;
 			false -> ok
 		end
 	catch
-		_:_ -> ok	
+		_:Reason -> 
+			?DEBUG("ems_odbc_pool do_release_connection exception (Ds: ~p ConnectionCount: ~p Reason: ~p).", [Id, ConnectionCount, Reason]),
+			ok
 	end.
 	
 

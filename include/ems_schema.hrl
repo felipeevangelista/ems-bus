@@ -6,6 +6,12 @@
 %% @copyright ErlangMS Team
 %%********************************************************************
 
+-record(encode_request_state, {http_max_content_length,
+							   http_header_default,
+							   http_header_options,
+							   show_debug_response_headers,
+							   current_node}).
+
 -record(sequence, {key :: atom(), 
 				   index :: non_neg_integer()}).
 
@@ -44,13 +50,17 @@
 			   nome_mae :: binary(),						%% 27 - nome_ae
 			   nacionalidade :: non_neg_integer(),			%% 28 - nacionalidade
 			   remap_user_id :: non_neg_integer(),			%% 29 - remap_user_id
-			   admin :: boolean(),							%% 30 - admin					-> alguns web services podem ser acedidos somente por admins
+			   admin = false :: boolean(),					%% 30 - admin					-> alguns web services podem ser acedidos somente por admins
 			   ctrl_path :: string(),						%% 31 - ctrl_path
 			   ctrl_file :: string(),						%% 32 - ctrl_file
 			   ctrl_insert :: binary(),						%% 33 - ctrl_insert				-> Data que foi inserido no banco mnesia
 			   ctrl_update :: binary(), 					%% 34 - ctrl_update				-> Data que foi atualiado no banco mnesia			
 			   ctrl_modified :: binary(),					%% 35 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-			   ctrl_hash :: non_neg_integer()				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+			   ctrl_hash :: non_neg_integer(),				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+			   ctrl_last_login :: binary(),					%% 37 - ctrl_last_login			-> Atualizado toda vez que ems_user:find_index_by_login_and_password é executado
+			   ctrl_login_count = 0 :: non_neg_integer(),	%% 38 - ctrl_login_count		-> Incrementado toda vez que ems_user:find_index_by_login_and_password é executado
+			   ctrl_last_login_scope :: atom(),				%% 39 - ctrl_last_login_scope		-> Qual tabela que encontrou o usuário
+			   ctrl_last_login_client :: binary()			%% 40 - ctrl_last_login_client		-> Em qual cliente logou
 		}).
 		
 -define(USER_SCHEMA_DESCRIPTOR, {
@@ -90,7 +100,11 @@
 			   binary_type,									%% 33 - ctrl_insert
 			   binary_type, 								%% 34 - ctrl_update
 			   binary_type,									%% 35 - ctrl_modified
-			   non_neg_integer_type							%% 36 - ctrl_hash 	
+			   non_neg_integer_type,						%% 36 - ctrl_hash 	
+			   binary_type,									%% 37 - ctrl_last_login
+			   non_neg_integer_type, 						%% 38 - ctrl_login_count
+			   atom_type,									%% 39 - ctrl_last_login_scope
+			   binary_type									%% 37 - ctrl_last_login_client
 			}).		
 		
 %
@@ -150,7 +164,9 @@
 			   request_code :: non_neg_integer(),	 			%% 51 - request_code
 			   request_protocol :: atom(),						%% 52 - request_protocol
    			   request_date :: binary(),						%% 53 - request_date
-   			   request_time :: binary()							%% 54 - request_time
+   			   request_time :: binary(),						%% 54 - request_time
+   			   request_payload :: binary(),						%% 55 - request_payload
+   			   request_params_url :: binary()					%% 56 - request_params_url
 		}).
 
 
@@ -209,16 +225,18 @@
 			   non_neg_integer_type,							%% 51 - request_code
 			   atom_type,										%% 52 - request_protocol
 			   binary_type,										%% 53 - request_date
-			   binary_type										%% 54 - request_time
+			   binary_type,										%% 54 - request_time
+			   binary_type,										%% 55 - request_payload
+			   binary_type										%% 56 - request_params_url
 			}).		
 
 		
 -record(user_dados_funcionais, {
-			   id :: non_neg_integer(), 					%%  1 - id
+			   id :: non_neg_integer(), 					%%  1 - matricula
 			   type :: non_neg_integer(),					%%  2 - type     interno  1 = tecnico  2 = docente  3 = discente
 			   subtype :: non_neg_integer(),				%%  3 - subtype  se aluno,  1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
 			   active :: boolean(),							%%  4 - active
-			   matricula :: non_neg_integer(),				%%  5 - matricula
+			   user_id :: non_neg_integer(),				%%  5 - id do usuário
 			   ctrl_path :: string(),						%% 14 - ctrl_path
 			   ctrl_file :: string(),						%% 15 - ctrl_file
 			   ctrl_insert :: binary(),						%% 16 - ctrl_insert				-> Data que foi inserido no banco mnesia
@@ -228,12 +246,12 @@
 		}).
 		
 -define(USER_DADOS_FUNCIONAIS_SCHEMA_DESCRIPTOR, {
-			   atom_type,									%%  0 - nome da tabela	
+			   atom_type,									%%  1 - matricula
 			   non_neg_integer_type, 						%%  1 - id   
 			   non_neg_integer_type,						%%  2 - type
 			   non_neg_integer_type,						%%  3 - subtype
 			   boolean_type,								%%  4 - active
-			   non_neg_integer_type,						%%  5 - matricula
+			   non_neg_integer_type,						%%  5 - id do usuário
 			   string_type,									%%  6 - ctrl_path
 			   string_type,									%%  7 - ctrl_file
 			   binary_type,									%%  8 - ctrl_insert
@@ -567,7 +585,7 @@
 					version :: binary(), 									%% 17 - version									-> Versão do contrato do serviço
 					owner :: binary(),  									%% 18 - owner									-> Quem é o proprietário pelo serviço. Ex.: auth
 					group :: binary(),										%% 19 - group									-> Quem é o grupo do serviço. Ex.: auth/user
-					async :: boolean(),										%% 20 - async									-> Indica se o serviço será processado em segundo plano (chamada assíncrona)
+					async = false :: boolean(),										%% 20 - async									-> Indica se o serviço será processado em segundo plano (chamada assíncrona)
 					querystring :: list(map()),								%% 21 - querystring								-> Definição da querystring para o contrato do serviço
 					qtd_querystring_req :: non_neg_integer(), 				%% 22 - qtd_querystring_req						-> Indica quantas querystrings são obrigatórias
 					host :: atom(),  										%% 23 - host									-> Atom do host onde está o módulo do serviço que vai processar a requisição
@@ -592,8 +610,8 @@
 					pool_max :: non_neg_integer(),							%% 42 - pool_max
 					timeout :: non_neg_integer(),							%% 43 - timeout									-> Tempo que o dispatcher aguarda em milisegundos o processamento de um serviço antes de retornar etimeout_service para o cliente
 					timeout_alert_threshold :: non_neg_integer(),  			%% 44 - timeout_alert_threshold					-> Emite um alert no log após aguardar um determinado serviço por x milisegundos. O valor 0 (zero) desliga o threshold.
-					log_show_response :: boolean(),							%% 45 - log_show_response						-> Se true, imprime o response no log
-					log_show_payload :: boolean(),							%% 46 - log_show_payload						-> Se true, imprime o payload no log
+					log_show_response = false :: boolean(),					%% 45 - log_show_response						-> Se true, imprime o response no log
+					log_show_payload = false :: boolean(),					%% 46 - log_show_payload						-> Se true, imprime o payload no log
 					expires :: non_neg_integer(),							%% 47 - expires									-> Cabeçalho HTTP expires
 					cache_control :: binary(),								%% 48 - cache_control							-> Cabeçalho HTTP cache-control
 					enable = false :: boolean(),							%% 49 - enable				
@@ -631,9 +649,11 @@
 					service_resend_msg1 :: atom(),							%% 81 - service_resend_msg1
 					http_max_content_length :: non_neg_integer(),			%% 82 - http_max_content_length
 					http_headers :: map(),									%% 83 - http_headers
-					restricted :: boolean(),								%% 84 - restricted								-> Serviço restrito aos admins
+					restricted = false :: boolean(),						%% 84 - restricted								-> Serviço restrito aos admins
 					glyphicon :: binary(),									%% 85 - glyphicon								-> classe css do glyphicon
-					metadata :: binary()									%% 86 - metadata 								-> Representação em json do que será enviado para o web service /catalog
+					metadata :: binary(),									%% 86 - metadata 								-> Representação em json do que será enviado para o web service /catalog
+					show_debug_response_headers = false :: boolean(),		%% 87 - show_debug_response_headers				-> Add debug headers in HTTP response headers
+					result_cache_shared = true :: boolean()					%% 88 - result_cache_shared						-> true if resulta cache is shared between requests
 				}).
 
 
@@ -724,7 +744,9 @@
 			   undefined, 									%% 83 - http_headers
 			   boolean_type,								%% 84 - restricted
 			   binary_type,									%% 85 - glyphicon
-			   binary_type									%% 86 - metadata
+			   binary_type,									%% 86 - metadata
+			   boolean_type,								%% 87 - show_debug_response_headers
+			   boolean_type									%% 88 - result_cache_shared
 		}).
 
 
@@ -743,7 +765,7 @@
 					  operation :: atom(),						%% 11 - operation				Descreve a operação sendo realizada
 					  uri :: binary(),							%% 12 - uri						URI da requisição do serviço
 					  url :: string(),							%% 13 - url						URL da requisição do serviço
-					  url_masked :: boolean(),					%% 14 - url_masked				Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
+					  url_masked = false :: boolean(),			%% 14 - url_masked				Indica se a url está mascarada. Ex.: /erl.ms/L2F1dGgvY2xpZW50Lz9maWx0ZXI9InsgICJuYW1lIiA6ICJQb3N0bWFuIiB9Ig==
 					  version :: string(),						%% 15 - version					Versão do cabeçalho HTTP
 					  payload :: binary(),						%% 16 - payload					Corpo da requisição (aceita somente JSON)
 					  payload_map :: map(),						%% 17 - payload_map				Corpo da requisição convertida para map após o parser e validação
@@ -785,7 +807,8 @@
 					  scope :: binary(),						%% 54 - scope
 					  oauth2_grant_type :: binary(),			%% 55 - oauth2_grant_type
 					  oauth2_access_token :: binary(),			%% 56 - oauth2_access_token
-					  oauth2_refresh_token :: binary()			%% 57 - oauth2_refresh_token
+					  oauth2_refresh_token :: binary(),			%% 57 - oauth2_refresh_token
+					  status_text :: binary()					%% 58 - status_text				Status exibido no log 
 				  }).
 
 

@@ -56,7 +56,9 @@
 				log_show_response_url_list = [],			% show response if url in 
 				log_show_payload_url_list = [],				% show payload if url in 
 				log_ult_msg,								% last print message
-				log_ult_reqhash 							% last reqhash of print message
+				log_ult_reqhash, 							% last reqhash of print message
+				log_file_path,
+				log_file_archive_path
  			   }). 
 
 
@@ -133,13 +135,10 @@ mode_debug(false) ->
 
 sync() ->
 	info("ems_logger sync log_buffer."),
-	gen_server:call(?SERVER, sync_log_buffer). 		
+	gen_server:cast(?SERVER, sync_log_buffer). 
 
-log_request(Request = #request{content_length = ContentLength}) -> 
-	case ContentLength > ?LOG_SHOW_PAYLOAD_MAX_LENGTH_LOG_REQUEST of
-		true -> gen_server:cast(?SERVER, {log_request, Request#request{payload = <<>>, content_length = 0}});
-		false -> gen_server:cast(?SERVER, {log_request, Request})
-	end.
+log_request(Request) -> 
+	gen_server:cast(?SERVER, {log_request, Request}).
 
 set_level(Level) -> 
 	info("ems_logger set log_level ~p.", [Level]),
@@ -226,30 +225,58 @@ checkpoint() ->
 format_info(Message) when is_list(Message) ->	
 	format_info(list_to_binary(Message));
 format_info(Message) ->	
-	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\n">>])).
+	Message2 = iolist_to_binary([?INFO_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message, <<"\n">>]),
+	io:format(Message2).
 
 format_info(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	io:format(iolist_to_binary([<<"INFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\n">>])).
+	Message3 = iolist_to_binary([?INFO_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message2, <<"\n">>]),
+	io:format(Message3).
 
+format_warn(Message) when is_list(Message) ->	
+	format_warn(list_to_binary(Message));
+format_warn(Message) ->	
+	Message2 = iolist_to_binary([?WARN_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?WARN_COLOR, Message, ?WHITE_BRK_COLOR]),
+	io:format(Message2).
 
-format_warn(Message) ->	io:format("\033[0;33m~s\033[0m", [Message]).
-format_warn(Message, Params) ->	io:format("\033[0;33m~s\033[0m", [io_lib:format(Message, Params)]).
+format_warn(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	Message3 = iolist_to_binary([?WARN_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?WARN_COLOR, Message2, ?WHITE_BRK_COLOR]),
+	io:format(Message3).
 
-format_error(Message) -> io:format("\033[0;31m~s\033[0m", [Message]).
-format_error(Message, Params) -> io:format("\033[0;31m~s\033[0m", [io_lib:format(Message, Params)]).
+format_error(Message) when is_list(Message) ->	
+	format_error(list_to_binary(Message));
+format_error(Message) ->	
+	Message2 = iolist_to_binary([?ERROR_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?RED_COLOR, Message, ?WHITE_BRK_COLOR]),
+	io:format(Message2).																							
 
-format_debug(Message) -> io:format("\033[0;34m~s\033[0m", [Message]).
-format_debug(Message, Params) -> io:format("\033[1;34m~s\033[0m", [io_lib:format(Message, Params)]).
+format_error(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	Message3 = iolist_to_binary([?ERROR_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?RED_COLOR, Message2, ?WHITE_BRK_COLOR]),
+	io:format(Message3).
+
+format_debug(Message) when is_list(Message) ->	
+	format_debug(list_to_binary(Message));
+format_debug(Message) ->	
+	Message2 = iolist_to_binary([?DEBUG_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?DEBUG_COLOR, Message, ?WHITE_BRK_COLOR]),
+	io:format(Message2).
+
+format_debug(Message, Params) ->	
+	Message2 = io_lib:format(Message, Params),
+	Message3 = iolist_to_binary([?DEBUG_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, ?DEBUG_COLOR, Message2, ?WHITE_BRK_COLOR]),
+	io:format(Message3).
 
 format_alert(Message) when is_list(Message) ->	
 	format_alert(list_to_binary(Message));
-format_alert(Message) ->
-	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message, <<"\033[0m\n">>])).
+format_alert(Message) ->	
+	Message2 = iolist_to_binary([?ALERT_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message, <<"\n">>]),
+	io:format(Message2).
 
-format_alert(Message, Params) ->
+format_alert(Message, Params) ->	
 	Message2 = io_lib:format(Message, Params),
-	io:format(iolist_to_binary([<<"\033[0;46mINFO ">>, ems_util:timestamp_binary(), <<"  ">>, Message2, <<"\033[0m\n">>])).
+	Message3 = iolist_to_binary([?ALERT_MESSAGE,   ?LIGHT_GREEN_COLOR, ems_util:timestamp_binary(), ?WHITE_SPACE_COLOR, Message2, <<"\n">>]),
+	io:format(Message3).
+
 
 
 
@@ -258,19 +285,19 @@ format_alert(Message, Params) ->
 %% gen_server callbacks
 %%====================================================================
  
-init(#service{properties = Props}) ->
-	Checkpoint = maps:get(<<"log_file_checkpoint">>, Props, ?LOG_FILE_CHECKPOINT),
-	LogFileMaxSize = maps:get(<<"log_file_max_size">>, Props, ?LOG_FILE_MAX_SIZE),
+init(_Service) ->
 	Conf = ems_config:getConfig(),
-	Debug = Conf#config.ems_debug,
-	mode_debug(Debug),
-	State = #state{log_file_checkpoint = Checkpoint,
-				   log_file_max_size = LogFileMaxSize,
-				   log_file_handle = undefined,
+	mode_debug(Conf#config.ems_debug),
+	State = #state{log_file_checkpoint = Conf#config.log_file_checkpoint,
+				   log_file_max_size = Conf#config.log_file_max_size,
 		 		   log_show_response = Conf#config.log_show_response,
 				   log_show_payload = Conf#config.log_show_payload,
 				   log_show_response_max_length = Conf#config.log_show_response_max_length,
- 				   log_show_payload_max_length = Conf#config.log_show_payload_max_length},
+ 				   log_show_payload_max_length = Conf#config.log_show_payload_max_length,
+ 				   log_file_name = undefined,
+ 				   log_file_handle = undefined,
+ 				   log_file_path = Conf#config.log_file_path,
+ 				   log_file_archive_path = Conf#config.log_file_archive_path},
 	State2 = checkpoint_arquive_log(State, false),
     {ok, State2}.
     
@@ -381,55 +408,86 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec checkpoint_arquive_log(#state{}, boolean()) -> #state{} | {error, atom()}.
 checkpoint_arquive_log(State = #state{log_file_handle = CurrentIODevice, 
-									  log_file_name = CurrentLogFilename}, Immediate) ->
-	case Immediate of
-		true -> 
-			ems_db:inc_counter(ems_logger_immediate_archive_log_checkpoint),
-			ems_logger:info("ems_logger immediate archive log file checkpoint.");
-		false -> 
-			ems_db:inc_counter(ems_logger_archive_log_checkpoint),
-			ems_logger:info("ems_logger archive log file checkpoint.")
-	end,
-	close_filename_device(CurrentIODevice, CurrentLogFilename),
-	case open_filename_device() of
-		{ok, LogFilename, IODevice2} ->
-			ems_logger:info("ems_logger open ~p.", [LogFilename]),
-			State2 = State#state{log_file_name = LogFilename, 
-								 log_file_handle = IODevice2};
-		{error, Reason} ->
+									  log_file_name = CurrentLogFilename,
+									  log_file_archive_path = LogFileArchivePath}, Immediate) ->
+	try
+		% Fecha o arquivo atual se existir
+		case CurrentLogFilename =/= undefined andalso CurrentIODevice =/= undefined andalso filelib:is_regular(CurrentLogFilename) of
+			true ->
+				?DEBUG("ems_logger close current log file \033[01;34m~p\033[0m.", [CurrentLogFilename]),
+				file:close(CurrentIODevice),
+
+				% Cria um nome de arquivo para arquivamento
+				{{Ano,Mes,Dia},{Hora,Min,_}} = calendar:local_time(),
+				MesAbrev = ems_util:mes_abreviado(Mes),
+				ArchiveLogFilename = lists:flatten(io_lib:format("~s/~p/~s/~s_~s_~2..0w~2..0w~4..0w_~2..0w~2..0w.log", [LogFileArchivePath, Ano, MesAbrev, "server", MesAbrev, Dia, Mes, Ano, Hora, Min])),
+
+				% Renomear o arquivo atual para arquivar com outro nome
+				case filelib:ensure_dir(ArchiveLogFilename) of
+					ok ->
+						case file:copy(CurrentLogFilename, ArchiveLogFilename) of
+							{ok, _BytesCopied} ->
+								file:delete(CurrentLogFilename),
+								case Immediate of
+									true -> 
+										ems_db:inc_counter(ems_logger_immediate_archive_log_checkpoint),
+										ems_logger:info("ems_logger immediate archive log file \033[01;34m~p\033[0m.", [ArchiveLogFilename]);
+									false -> 
+										ems_db:inc_counter(ems_logger_archive_log_checkpoint),
+										ems_logger:info("ems_logger archive log file \033[01;34m~p\033[0m.", [ArchiveLogFilename])
+								end;
+							{error, Reason2} ->
+								ems_db:inc_counter(ems_logger_archive_log_error),
+								ems_logger:error("ems_logger archive log file failed on rename file \033[01;34m~p\033[0m to \033[01;34m~p\033[0m. Reason: ~p.", [CurrentLogFilename, ArchiveLogFilename, Reason2])
+						end;
+					_ -> 
+						ems_db:inc_counter(ems_logger_create_archive_path_failed),
+						ems_logger:error("ems_logger archive log file failed on create archive path \033[01;34m~p\033[0m.", [LogFileArchivePath])
+				end,
+				% Mesmo que possa ocorrer arquivo ao arquivar, precisamos criar o novo arquivo de log
+				State2 = create_new_logfile(State);
+			false -> 
+				% Como o arquivo não existe, apenas cria novo arquivo de log
+				State2 = create_new_logfile(State)
+		end,
+		set_timeout_archive_log_checkpoint(),
+		State2
+	catch
+		_:Reason3 ->
 			ems_db:inc_counter(ems_logger_archive_log_error),
-			ems_logger:error("ems_logger archive log file checkpoint exception: ~p.", [Reason]),
-			State2 = State
-	end,
-	set_timeout_archive_log_checkpoint(),
-	State2.
+			ems_logger:error("ems_logger archive log file checkpoint exception. Reason: ~p.", [Reason3]),
+			set_timeout_archive_log_checkpoint(),
+			State#state{log_file_name = undefined,
+						log_file_handle = undefined}
+	end.
 
-    
-open_filename_device() -> 
-	{{Ano,Mes,Dia},{Hora,Min,_}} = calendar:local_time(),
-	MesAbrev = ems_util:mes_abreviado(Mes),
-	LogFilename = lists:flatten(io_lib:format("~s/~p/~s/~s_~s_~2..0w~2..0w~4..0w_~2..0w~2..0w.log", [?LOG_PATH, Ano, MesAbrev, "emsbus", MesAbrev, Dia, Mes, Ano, Hora, Min])),
-	open_filename_device(LogFilename).
 
-open_filename_device(LogFilename) ->
+   
+create_new_logfile(State = #state{log_file_path = LogFilePath}) -> 
+	LogFilename = filename:join([LogFilePath, "server.log"]),
 	case filelib:ensure_dir(LogFilename) of
 		ok ->
-			case file:open(LogFilename, [append, {delayed_write, 256, 2}]) of
+			case file:open(LogFilename, [append]) of
 				{ok, IODevice} -> 
-					{ok, LogFilename, IODevice};
-				{error, enospc} = Error ->
-					ems_db:inc_counter(ems_logger_open_file_enospc),
-					ems_logger:error("ems_logger open_filename_device does not have disk storage space to write to the log files."),
-					Error;
-				{error, Reason} = Error -> 
-					ems_db:inc_counter(ems_logger_open_file_error),
-					ems_logger:error("ems_logger open_filename_device failed to open log file. Reason: ~p.", [Reason]),
-					Error
+					ems_logger:info("ems_logger open new logfile \033[01;34m~p\033[0m.", [LogFilename]),
+					State#state{log_file_name = LogFilename, 
+								log_file_handle = IODevice};
+				{error, enospc} ->
+					ems_db:inc_counter(ems_logger_enospc),
+					ems_logger:error("ems_logger create_new_logfile does not have disk storage space to write to the log files."),
+					State#state{log_file_name = undefined, 
+								log_file_handle = undefined};
+				{error, Reason} -> 
+					ems_db:inc_counter(ems_logger_create_file_error),
+					ems_logger:error("ems_logger create_new_logfile failed to open log file ~p to write. Reason: ~p.", [LogFilename, Reason]),
+					State#state{log_file_name = undefined, 
+								log_file_handle = undefined}
 			end;
-		{error, Reason} = Error -> 
-			ems_db:inc_counter(ems_logger_open_file_error),
-			ems_logger:error("ems_logger open_filename_device failed to create log file dir. Reason: ~p.", [Reason]),
-			Error
+		{error, Reason} -> 
+			ems_db:inc_counter(ems_logger_create_path_failed),
+			ems_logger:error("ems_logger create_new_logfile failed to create log file dir. Reason: ~p.", [Reason]),
+			State#state{log_file_name = undefined, 
+						log_file_handle = undefined}
 	end.
 
 log_file_head(#state{log_file_name = LogFilename}, N) ->
@@ -447,11 +505,6 @@ log_file_tail(#state{log_file_name = LogFilename}, N) ->
 			ems_logger:error("ems_logger log_file_tail failed to open log file for read. Reason: ~p.", [Reason]),
 			Error
 	end.
-
-close_filename_device(undefined, _) -> ok;
-close_filename_device(IODevice, LogFilename) -> 
-	?DEBUG("ems_logger close log file ~p.", [LogFilename]),
-	file:close(IODevice).
 
 set_timeout_for_sync_log_buffer(#state{flag_checkpoint_sync_log_buffer = false, log_file_checkpoint=Timeout}) ->    
 	erlang:send_after(Timeout, self(), checkpoint);
@@ -475,16 +528,16 @@ write_msg(Tipo, Msg, State = #state{log_level = Level, log_ult_msg = UltMsg})  -
 			case Tipo of
 				info  -> 
 					ems_db:inc_counter(ems_logger_write_info),
-					Msg1 = iolist_to_binary([<<"INFO ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\n">>]);
+					Msg1 = iolist_to_binary([?INFO_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, Msg, <<"\n">>]);
 				error -> 
 					ems_db:inc_counter(ems_logger_write_error),
-					Msg1 = iolist_to_binary([<<"\033[0;31mERROR ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\033[0m\n">>]);
+					Msg1 = iolist_to_binary([?ERROR_MESSAGE, ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?RED_COLOR, Msg, ?WHITE_BRK_COLOR]);
 				warn  -> 
 					ems_db:inc_counter(ems_logger_write_warn),
-					Msg1 = iolist_to_binary([<<"\033[0;33mWARN ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\033[0m\n">>]);
+					Msg1 = iolist_to_binary([?WARN_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?WARN_COLOR, Msg, ?WHITE_BRK_COLOR]);
 				debug -> 
 					ems_db:inc_counter(ems_logger_write_debug),
-					Msg1 = iolist_to_binary([<<"\033[1;34mDEBUG ">>, ems_clock:local_time_str(), <<"  ">>, Msg, <<"\033[0m\n">>])
+					Msg1 = iolist_to_binary([?DEBUG_MESSAGE, ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?DEBUG_COLOR, Msg, ?WHITE_BRK_COLOR])
 			end,
 			case (Level == error andalso Tipo /= error) andalso (Tipo /= debug) of
 				true ->
@@ -544,48 +597,61 @@ sync_log_buffer_screen(State) ->
 	State#state{log_log_buffer_screen = [], flag_checkpoint_screen = false, log_ult_msg = undefined, log_ult_reqhash = undefined}.
 
 
+sync_log_buffer(State = #state{log_buffer = []}) -> State#state{flag_checkpoint_sync_log_buffer = false};
 sync_log_buffer(State = #state{log_buffer = Buffer,
 							   log_file_name = CurrentLogFilename,
 							   log_file_max_size = LogFileMaxSize,
-							   log_file_handle = CurrentIODevice}) ->
-	ems_db:inc_counter(ems_logger_sync_log_buffer),
-	FileSize = filelib:file_size(CurrentLogFilename),
-	case FileSize > LogFileMaxSize of 	% check limit log file max size
-		true -> 
-			ems_db:inc_counter(ems_logger_sync_log_buffer_file_size_exceeded),
-			ems_logger:info("ems_logger is writing to a log file that has already exceeded the allowed limit."),
-			State2 = checkpoint_arquive_log(State, true);
-		false ->
-			case FileSize == 0 of % Check file deleted
-				true ->
-					close_filename_device(CurrentIODevice, CurrentLogFilename),
-					{ok, LogFilename, IODevice} = open_filename_device(),
-					State2 = State#state{log_buffer = [], 
-										 log_file_handle = IODevice,
-										 log_file_name = LogFilename,
-										 flag_checkpoint_sync_log_buffer = false};
-				false ->
-					State2 = State#state{log_buffer = [], 
-										 flag_checkpoint_sync_log_buffer = false}
-			end
-	end,
-	Msg = lists:reverse(Buffer),
-	case file:write(State2#state.log_file_handle, Msg) of
-		ok -> ok;
-		{error, enospc} -> 
-			ems_db:inc_counter(ems_logger_sync_log_buffer_enospc),
-			ems_logger:error("ems_logger does not have disk storage space to write to the log files.");
-		{error, ebadf} ->
-			ems_db:inc_counter(ems_logger_sync_log_buffer_ebadf),
-			ems_logger:error("ems_logger does no have log file descriptor valid.");
-		{error, Reason} ->
-			ems_db:inc_counter(ems_logger_sync_log_buffer_error),
-			ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Reason]);
-		_ ->
-			ems_db:inc_counter(ems_logger_sync_log_buffer_error),
-			ems_logger:error("ems_logger was unable to unload the log log_buffer cache.")
-	end,
-	State2.
+							   log_file_handle = CurrentLogFileHandle}) ->
+	try
+		case CurrentLogFileHandle == undefined of
+			true -> 
+				State2 = checkpoint_arquive_log(State, true);
+			false ->
+				FileSize = filelib:file_size(CurrentLogFilename),
+				case FileSize > LogFileMaxSize of 	% check limit log file max size
+					true -> 
+						ems_db:inc_counter(ems_logger_sync_log_buffer_file_size_exceeded),
+						ems_logger:info("ems_logger is writing to a log file that has already exceeded the allowed limit."),
+						State2 = checkpoint_arquive_log(State, true);
+					false ->
+						case filelib:is_regular(CurrentLogFilename) of % Check file deleted
+							false ->
+								ems_db:inc_counter(ems_logger_sync_buffer_file_deleted),
+								ems_logger:error("ems_logger is writing to a log file deleted."),
+								State2 = checkpoint_arquive_log(State, true);
+							true ->
+								State2 = State#state{log_buffer = [], 
+													 flag_checkpoint_sync_log_buffer = false}
+						end
+				end
+		end,
+		Msg = lists:reverse(Buffer),
+		case file:write(State2#state.log_file_handle, Msg) of
+			ok -> 
+				ems_db:inc_counter(ems_logger_sync_log_buffer),
+				ok;
+			{error, enospc} -> 
+				ems_db:inc_counter(ems_logger_sync_log_buffer_enospc),
+				ems_logger:error("ems_logger does not have disk storage space to write to the log files.");
+			{error, ebadf} ->
+				ems_db:inc_counter(ems_logger_sync_log_buffer_ebadf),
+				sync_log_buffer(State#state{log_file_name = undefined,
+											log_file_handle = undefined});
+			{error, Reason} ->
+				ems_db:inc_counter(ems_logger_sync_log_buffer_error),
+				ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Reason]);
+			Error ->
+				ems_db:inc_counter(ems_logger_sync_log_buffer_error),
+				ems_logger:error("ems_logger was unable to unload the log log_buffer cache. Reason: ~p.", [Error])
+		end,
+		State2
+	catch
+		_:Reason2 ->
+			ems_db:inc_counter(ems_logger_sync_buffer_failed),
+			ems_logger:error("ems_logger sync_log_buffer exception. Reason: ~p.", [Reason2]),
+			State#state{log_buffer = [], 
+						flag_checkpoint_sync_log_buffer = false}
+	end.
 
 	
 do_log_request(Request = #request{rid = RID,
@@ -594,6 +660,7 @@ do_log_request(Request = #request{rid = RID,
 								  uri = Uri,
 								  url = Url,
 								  url_masked = UrlMasked,
+								  host = Host,
 								  version = Version,
 								  content_type_in = ContentTypeIn,
 								  content_type_out = ContentTypeOut,
@@ -606,9 +673,6 @@ do_log_request(Request = #request{rid = RID,
 								  querystring_map = Query,
 								  code = Code,
 								  reason = Reason,
-								  reason_detail = ReasonDetail,
-								  reason_exception = ReasonException,
-								  latency = Latency,
 								  result_cache = ResultCache,
 								  result_cache_rid = ResultCacheRid,
 								  response_data = ResponseData,
@@ -625,9 +689,11 @@ do_log_request(Request = #request{rid = RID,
 								  client = Client,
 								  user = User,
 								  scope = Scope,
+								  response_header = ResponseHeader,
 								  oauth2_grant_type = GrantType,
 								  oauth2_access_token = AccessToken,
-								  oauth2_refresh_token = RefreshToken
+								  oauth2_refresh_token = RefreshToken,
+								  status_text = StatusText
 			  }, 
 			  State = #state{log_show_response = ShowResponse, 
 							 log_show_response_max_length = ShowResponseMaxLength, 
@@ -656,26 +722,25 @@ do_log_request(Request = #request{rid = RID,
 				end,
 				TextData = 
 					[
-					   Type, <<" ">>,
-					   Uri, <<" ">>,
-					   atom_to_binary(Version, utf8), <<" ">>,
-					   <<" {\n\tRID: ">>,  integer_to_binary(RID),
-					   <<"  (ReqHash: ">>, integer_to_binary(ReqHash), <<")">>, 
+					   ?BLUE_COLOR, Type, ?WHITE_SPACE_COLOR, Uri, <<" ">>, atom_to_binary(Version, utf8), <<" ">>,
+					   ?TAB_GREEN_COLOR, <<"RID">>, ?WHITE_PARAM_COLOR, integer_to_binary(RID), 
+					   <<"  (">>, ?GREEN_COLOR, <<"ReqHash">>, ?WHITE_PARAM_COLOR, integer_to_binary(ReqHash), <<")">>, 
 					   case UrlMasked of
-							true -> [<<"\n\tUrl: ">>, Url];
+							true -> [?TAB_GREEN_COLOR, <<"UrlMasked">>, ?WHITE_PARAM_COLOR, Url];
 							false -> <<>>
 					   end,
-					   <<"\n\tAccept: ">>, Accept,
-					   <<"\n\tContent-Type in: ">>, ContentTypeIn, 
-						<<"\n\tContent-Type out: ">>, ContentTypeOut,
-						<<"\n\tPeer: ">>, IpBin, <<"  Referer: ">>, case Referer of
-																		undefined -> <<>>;
-																		_ -> Referer
-																	end,
-						<<"\n\tUser-Agent: ">>, ems_util:user_agent_atom_to_binary(UserAgent), <<"  Version: ">>, UserAgentVersion,	
-						<<"\n\tService: ">>, ServiceService,
-						<<"\n\tParams: ">>, list_to_binary(io_lib:format("~p", [Params])), 
-						<<"\n\tQuery: ">>, list_to_binary(io_lib:format("~p", [Query])), 
+					   ?TAB_GREEN_COLOR, <<"Accept">>, ?WHITE_PARAM_COLOR, Accept,
+					   ?TAB_GREEN_COLOR, <<"Content-Type in">>, ?WHITE_PARAM_COLOR, ContentTypeIn, ?SPACE_GREEN_COLOR, <<"out">>, ?WHITE_PARAM_COLOR, ContentTypeOut,
+					   ?TAB_GREEN_COLOR, <<"Host">>, ?WHITE_PARAM_COLOR, Host, ?SPACE_GREEN_COLOR, <<"Peer">>, ?WHITE_PARAM_COLOR, IpBin, 
+					   ?SPACE_GREEN_COLOR, <<"Referer">>, ?WHITE_PARAM_COLOR, 
+												case Referer of
+													undefined -> <<>>;
+													_ -> Referer
+												end,
+						?TAB_GREEN_COLOR, <<"User-Agent">>, ?WHITE_PARAM_COLOR, ems_util:user_agent_atom_to_binary(UserAgent), ?SPACE_GREEN_COLOR, <<"Version">>, ?WHITE_PARAM_COLOR, UserAgentVersion,	
+						?TAB_GREEN_COLOR, <<"Service">>, ?WHITE_PARAM_COLOR, ServiceService,
+						?TAB_GREEN_COLOR, <<"Params">>, ?WHITE_PARAM_COLOR, list_to_binary(io_lib:format("~p", [Params])), 
+						?TAB_GREEN_COLOR, <<"Query">>, ?WHITE_PARAM_COLOR, list_to_binary(io_lib:format("~p", [Query])), 
 						case (ShowPayload orelse 
 							   Reason =/= ok orelse 
 							   ShowPayloadService orelse 
@@ -688,13 +753,13 @@ do_log_request(Request = #request{rid = RID,
 														true -> Payload;
 														false -> iolist_to_binary(io_lib:format("~p",[Payload]))
 										  		    end,
-									     [<<"\n\tPayload: ">>, integer_to_list(ContentLength), 
-									      <<" bytes  Content: \033[1;34m">>, Payload2, <<"\033[0m">>,
+									     [?TAB_GREEN_COLOR, <<"Payload">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLength), 
+									      <<" bytes ">>, ?GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, Payload2, ?WHITE_COLOR,
 											 case Reason =/= ok of
-												true -> <<"\033[0;31m">>;
+												true -> ?RED_COLOR;
 												false -> <<>>
 											 end]; 
-									false -> [<<"\n\tPayload: ">>, integer_to_list(ContentLength), <<" bytes  Content: large content">>]
+									false -> [?TAB_GREEN_COLOR, <<"Payload">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLength), <<" bytes">>, ?SPACE_GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, <<"large content">>]
 								end;
 							false -> <<>>
 						end,
@@ -712,13 +777,13 @@ do_log_request(Request = #request{rid = RID,
 							     case ContentLengthResponse > 0 of
 									true ->
 										case ContentLengthResponse =< ShowResponseMaxLength of
-											true -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), 
-													 <<" bytes  Content: \033[1;34m">>, ResponseData2, <<"\033[0m">>,
+											true -> [?TAB_GREEN_COLOR, <<"Response">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLengthResponse), 
+													 <<" bytes  ">>, ?GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, ResponseData2, ?WHITE_COLOR,
 													 case Reason =/= ok of
-														true -> <<"\033[0;31m">>;
+														true -> ?RED_COLOR;
 														false -> <<>>
 													 end]; 
-											false -> [<<"\n\tResponse: ">>, integer_to_list(ContentLengthResponse), <<" bytes  Content: Large content">>]
+											false -> [?TAB_GREEN_COLOR, <<"Response">>, ?WHITE_PARAM_COLOR, integer_to_list(ContentLengthResponse), <<" bytes  ">>, ?GREEN_COLOR, <<"Content">>, ?WHITE_PARAM_COLOR, <<"Large content">>]
 										end;
 									false -> <<>>
 								end;
@@ -734,94 +799,93 @@ do_log_request(Request = #request{rid = RID,
 							   case ResultCacheMin > 0 of
 									true -> 
 									   case ResultCache of 
-											true ->  [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
-											false -> [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)">>] 
+											true ->  [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)  ">>, ?WARN_COLOR, <<" <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>, ?WHITE_COLOR];
+											false -> [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheMin), <<"min)">>] 
 										end;
 									false ->
 									   case ResultCacheSec > 0 of
 											true -> 
 											   case ResultCache of 
-													true ->  [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
-													false -> [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)">>] 
+													true ->  [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)  ">>, ?WARN_COLOR, <<" <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>, ?WHITE_COLOR];
+													false -> [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms (">>, integer_to_binary(ResultCacheSec), <<"sec)">>] 
 												end;
 											false ->
 											   case ResultCache of 
-													true ->  [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>];
-													false -> [<<"\n\tResult-Cache: ">>, integer_to_list(ResultCacheService), <<"ms">>]
+													true ->  [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms ">>, ?WARN_COLOR, <<" <<RID: ">>, integer_to_binary(ResultCacheRid), <<">>">>, ?WHITE_COLOR];
+													false -> [?TAB_GREEN_COLOR, <<"Result-Cache">>, ?WHITE_PARAM_COLOR, integer_to_list(ResultCacheService), <<"ms">>]
 												end
 										end
 								end;
 							false -> <<>>
 						end,
-					    <<"\n\tCache-Control In: ">>, CacheControl,
-						<<"  ETag: ">>, case Etag of
+					    ?TAB_GREEN_COLOR, <<"Cache-Control In">>, ?WHITE_PARAM_COLOR, CacheControl,
+						?SPACE_GREEN_COLOR, <<"ETag">>, ?WHITE_PARAM_COLOR, case Etag of
 											undefined -> <<>>;
 											_ -> Etag
 										end,
-						<<"\n\tIf-Modified-Since: ">>, case IfModifiedSince of
+						?TAB_GREEN_COLOR, <<"If-Modified-Since">>, ?WHITE_PARAM_COLOR, case IfModifiedSince of
 															undefined -> <<>>;
 															_ -> IfModifiedSince
 												   end,
-					   <<"  If-None-Match: ">>, case IfNoneMatch of
+					   ?SPACE_GREEN_COLOR, <<"If-None-Match">>, ?WHITE_PARAM_COLOR, case IfNoneMatch of
 													undefined -> <<>>;
 													_ -> IfNoneMatch
 										   end,
-					   <<"\n\tAuthorization mode: ">>, case AuthorizationService of
-															basic -> <<"basic, oauth2">>;
+					   ?TAB_GREEN_COLOR, <<"Authorization type">>, ?WHITE_PARAM_COLOR, case AuthorizationService of
+															basic -> 
+																case Authorization of
+																	<<>> -> <<"basic, oauth2">>;
+																	_ -> <<"oauth2">>
+																end;
 															oauth2 -> <<"oauth2">>;
 															_ -> <<"public">>
 													   end,
-					   <<"\n\tAuthorization header: <<">>, case Authorization of
-															undefined -> <<>>;
-															_ -> Authorization
-														 end, <<">>">>,
+					   case Authorization of
+							<<>> -> <<>>;
+							_ -> [?WARN_COLOR, <<" <<">>, Authorization, <<">>">>, ?WHITE_COLOR]
+					   end,
 					   case GrantType of
 									undefined -> <<>>;
-									_ -> [<<"\n\tOAuth2 grant type: ">>, GrantType]
+									_ -> [?TAB_GREEN_COLOR, <<"OAuth2">>, <<" ">>, ?GREEN_COLOR, <<"grant-type">>, ?WHITE_PARAM_COLOR, GrantType]
 					   end,
 					   case AccessToken of
 							undefined -> <<>>;
-							_ ->  [<<"\n\tOAuth2 access token: ">>, AccessToken]
+							_ ->  [?SPACE_GREEN_COLOR, <<"token">>, ?WHITE_PARAM_COLOR, AccessToken]
 					   end,
 					   case RefreshToken of
 							undefined -> <<>>;
-							_ ->  [<<"\n\tOAuth2 refresh token: ">>, RefreshToken]
+							_ ->  [?SPACE_GREEN_COLOR, <<"refresh token">>, ?WHITE_PARAM_COLOR, RefreshToken]
 					   end,
 					   case Scope of
 							undefined -> <<>>;
-							_ -> [<<"\n\tOAuth2 scope: ">>, Scope]
+							_ -> [?SPACE_GREEN_COLOR, <<"scope">>, ?WHITE_PARAM_COLOR, Scope]
 					   end,
-					  <<"\n\tClient: ">>, case Client of
+					  ?TAB_GREEN_COLOR, <<"Client">>, ?WHITE_PARAM_COLOR, 
+									  case Client of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ -> [integer_to_binary(Client#client.id), <<" ">>, Client#client.name]
 									   end,
-					   <<"\n\tUser: ">>, case User of
+					   ?SPACE_GREEN_COLOR, <<"User">>, ?WHITE_PARAM_COLOR, 
+										case User of
 											public -> <<"public">>;
 											undefined -> <<>>;
 											_ ->  [integer_to_binary(User#user.id), <<" ">>,  User#user.login]
 										 end,
-					   <<"\n\tNode: ">>, case Node of
+					   ?TAB_GREEN_COLOR, <<"Node">>, ?WHITE_PARAM_COLOR, 
+										case Node of
 											undefined -> <<>>;
 											_ -> Node
 										 end,
-					   <<"\n\tFilename: ">>, case Filename of
-												undefined -> <<>>;
-												_ -> Filename
-											 end,
-					   <<"\n\tStatus: ">>, integer_to_binary(Code), 
-					   <<" <<">>, case is_atom(Reason) of
-										true -> 
-										   case ReasonDetail =/= undefined andalso is_atom(ReasonDetail) of
-												true ->
-												   case ReasonException =/= undefined andalso is_atom(ReasonException) of
-														true -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8), <<", ">>, atom_to_binary(ReasonException, utf8)];
-														false -> [atom_to_binary(Reason, utf8), <<", ">>, atom_to_binary(ReasonDetail, utf8)]
-												   end;
-												false -> atom_to_binary(Reason, utf8)
-										   end;
-										false -> <<"error">>
-								  end, <<">> (">>, integer_to_binary(Latency), <<"ms)\n}">>],
+					   case Filename of
+							undefined -> <<>>;
+							_ -> [?TAB_GREEN_COLOR, <<"Filename">>, ?WHITE_PARAM_COLOR, Filename]
+						end,
+						case Code of
+							302 ->  [?TAB_GREEN_COLOR, <<"Redirect-to">>, ?WHITE_PARAM_COLOR, maps:get(<<"location">>, ResponseHeader, <<>>)];
+							_ -> <<>>
+						end,
+					   ?TAB_GREEN_COLOR, <<"Status">>, ?WHITE_PARAM_COLOR, StatusText, <<"\n}">>],
 					   
 				TextBin = iolist_to_binary(TextData),
 				NewState = case Code >= 400 of
@@ -835,7 +899,7 @@ do_log_request(Request = #request{rid = RID,
 		end
 	catch 
 		_:ExceptionReason -> 
-			io:format("ems_logger do_log_request format invalid message. Reason: ~p.\n", [ExceptionReason]),
+			format_error("ems_logger do_log_request format invalid message. Reason: ~p.\nRequest: \033[1;31m~p\033[0m\n.", [ExceptionReason, Request]),
 			State#state{log_ult_reqhash = ReqHash}
 	end.
 	

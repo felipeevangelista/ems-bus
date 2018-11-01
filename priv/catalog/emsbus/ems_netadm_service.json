@@ -7,6 +7,7 @@
 		"service" : "ems_netadm_service:info",
 		"url": "/netadm/info",
 		"result_cache" : 0,
+		"restricted" : true,
 		"async": "false",
 		"type": "GET",
 		"lang" : "erlang"
@@ -20,7 +21,7 @@
 		"service" : "ems_netadm_service:restart",
 		"url": "/netadm/restart",
 		"async": "false",
-		"result_cache" : 0,
+		"restricted" : true,
 		"type": "POST",
 		"lang" : "erlang"
 	},
@@ -34,8 +35,8 @@
 		"url": "/netadm/pid",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -48,8 +49,8 @@
 		"url": "/netadm/avgcpu",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -62,8 +63,8 @@
 		"url": "/netadm/cpus",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -76,8 +77,8 @@
 		"url": "/netadm/cpudetailed",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -90,8 +91,8 @@
 		"url": "/netadm/tasks",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -104,8 +105,8 @@
 		"url": "/netadm/uptime",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -118,8 +119,8 @@
 		"url": "/netadm/names",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -132,8 +133,8 @@
 		"url": "/netadm/world",
 		"async": "false",
 		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -145,8 +146,9 @@
 		"service" : "ems_netadm_service:hostfile",
 		"url": "/netadm/hostfile",
 		"async": "false",
+		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -158,8 +160,9 @@
 		"service" : "ems_netadm_service:hostname",
 		"url": "/netadm/hostname",
 		"async": "false",
+		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -171,8 +174,9 @@
 		"service" : "ems_netadm_service:localhost",
 		"url": "/netadm/localhost",
 		"async": "false",
+		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -184,8 +188,9 @@
 		"service" : "ems_netadm_service:memory",
 		"url": "/netadm/memory",
 		"async": "false",
+		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -198,8 +203,8 @@
 		"url": "/netadm/timestamp",
 		"result_cache" : 0,
 		"async": "false",
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -212,8 +217,8 @@
 		"url": "/netadm/threads",
 		"result_cache" : 0,
 		"async": "false",
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -225,9 +230,9 @@
 		"service" : "ems_netadm_service:config",
 		"url": "/netadm/config",
 		"result_cache" : 0,
+		"restricted" : true,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -239,9 +244,9 @@
 		"service" : "ems_netadm_service:version",
 		"url": "/netadm/version",
 		"result_cache" : 0,
+		"restricted" : true,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -253,9 +258,9 @@
 		"service" : "ems_netadm_service:servername",
 		"url": "/netadm/servername",
 		"result_cache" : 0,
+		"restricted" : true,
 		"async": "false",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 
@@ -267,7 +272,8 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/netadm/datasource/:id",
 		"type": "GET",
-		"authorization": "basic",
+		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "service_datasource",
@@ -285,7 +291,8 @@
 		"service" : "ems_api_query_service:find",
 		"url": "/netadm/datasource",
 		"type": "GET",
-		"authorization": "basic",
+		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "service_datasource",
@@ -336,7 +343,7 @@
 		"url": "/netadm/loader/stat",
 		"type": "GET",
 		"result_cache" : 0,
-		"authorization": "basic",
+		"restricted" : true,
 		"lang" : "erlang"
 	},
 
@@ -350,6 +357,7 @@
 		"use_re" : true,
 		"async": "false",
 		"type": "POST",
+		"restricted" : true,
 		"lang" : "erlang",
 		"pool_size" : 1,
 		"pool_max" : 1,
@@ -366,6 +374,7 @@
 		"use_re" : true,
 		"async": "false",
 		"type": "POST",
+		"restricted" : true,
 		"lang" : "erlang",
 		"pool_size" : 1,
 		"pool_max" : 1,
@@ -379,8 +388,9 @@
 		"version": "1.0.0",
 		"service" : "ems_netadm_service:stat_counter",
 		"url": "/netadm/stat/counter",
+		"result_cache" : 0,
+		"restricted" : true,
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang"
 	},
 	
@@ -392,7 +402,7 @@
 		"service" : "ems_netadm_service:stat_collect",
 		"url": "/netadm/stat/collect",
 		"type": "POST",
-		"authorization": "basic",
+		"restricted" : true,
 		"lang" : "erlang"
 	},
 
@@ -404,8 +414,9 @@
 		"service" : "ems_api_query_service:find",
 		"url": "/netadm/stat/history",
 		"type": "GET",
-		"authorization": "basic",
 		"lang" : "erlang",
+		"result_cache" : 0,
+		"restricted" : true,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "stat_counter_hist"

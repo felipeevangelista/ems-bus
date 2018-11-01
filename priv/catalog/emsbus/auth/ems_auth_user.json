@@ -7,13 +7,16 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -36,13 +39,16 @@
 		"url": "/auth/user",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -88,13 +94,16 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/lru/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_cache_lru",
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -117,13 +126,16 @@
 		"url": "/auth/user/lru",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_cache_lru",
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -169,13 +181,16 @@
 		"service" : "ems_api_query_service:find_by_id",
 		"url": "/auth/user/fs/:id",
 		"type": "GET",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_fs",
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -198,13 +213,16 @@
 		"url": "/auth/user/fs",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_fs",
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
-						"nome_mae", "nacionalidade", "dt_expire_password", "ctrl_insert", "ctrl_update"]
+						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
+						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -250,6 +268,7 @@
 		"url": "/auth/user/:id/history",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_history"],
@@ -300,12 +319,15 @@
 		"url": "/auth/user/history",
 		"type": "GET",
 		"lang" : "erlang",
+		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : "user_history"
 		},
 		"schema_in" : "user_history",
 		"schema_out" : "user_history",
+		"log_show_payload" : false,
+		"log_show_response" : false,
 		"querystring": [
 				{
 					"name": "filter",

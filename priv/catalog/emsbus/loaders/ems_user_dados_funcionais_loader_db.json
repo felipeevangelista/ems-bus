@@ -7,58 +7,60 @@
 	"url": "/emsbus/ems_user_dados_funcionais_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 3600000,
+	"update_checkpoint" : 120000,
 	"datasource" : "ds_ems_user_loader",
-	"start_timeout" : 8000,
+	"start_timeout" : 12000,
 	"middleware" : "ems_user_dados_funcionais_loader_middleware",
 	"group" : [],
 	"pool_size" : 1,
 	"pool_max" : 1,
 	"enable" : false,
+	"sql_load_packet_length" : 3000,
 	"sql_load" : 
-				"select distinct 
-					   u.UsuId as id, 
-					   Isnull(ca.categocargo, 4) as Type, 
-					   0 as SubType,
-					   case 
-						 when c.dtdesliga < Getdate() then 0 
-						 else u.UsuSituacao 
-					   end as Active, 
-					   df.MatSipes as Matricula 
-				from   bdacesso.dbo.tb_usuario u  
-					   join bdpessoa.dbo.tb_pessoa p 
+				"select 
+					df.MatSipes as id,
+					u.UsuId as user_id, 
+					Isnull(ca.categocargo, 4) as type, 
+					0 as subtype,
+					case 
+						when c.dtdesliga < Getdate() then 0 
+						else u.UsuSituacao 
+					end as active  
+				from   bdacesso.dbo.tb_usuario u  with (nolock) 
+					   join bdpessoa.dbo.tb_pessoa p with (nolock) 
 						 ON u.usupesidpessoa = p.pescodigopessoa 
-					   left join sipes.dbo.dadosfuncionais df 
+					   left join sipes.dbo.dadosfuncionais df with (nolock) 
 							  ON p.pescodigopessoa = df.pescodigopessoa 
-					   left join sipes.dbo.contratos c 
+					   left join sipes.dbo.contratos c with (nolock) 
 							  ON df.matsipes = c.matsipes 
-					   left join sipes.dbo.cargos ca 
+					   left join sipes.dbo.cargos ca with (nolock) 
 							  ON c.codcargo = ca.codcargo 
+				where df.MatSipes is not null
                 ",
 	"sql_update" : 
-				"select distinct 
-					   u.UsuId as id, 
-					   Isnull(ca.categocargo, 4) as Type, 
-					   0 as SubType, 
-					   case 
-						 when c.dtdesliga < Getdate() then 0 
-						 else u.UsuSituacao 
-					   end as Active, 
-					   df.MatSipes as Matricula 
-				from   bdacesso.dbo.tb_usuario u  
-					   join bdpessoa.dbo.tb_pessoa p 
-						 ON u.usupesidpessoa = p.pescodigopessoa 
-					   left join sipes.dbo.dadosfuncionais df 
-							  ON p.pescodigopessoa = df.pescodigopessoa 
-					   left join sipes.dbo.contratos c 
-							  ON df.matsipes = c.matsipes 
-					   left join sipes.dbo.cargos ca 
-							  ON c.codcargo = ca.codcargo 
-				where u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
-					  u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?
+				"select 
+					df.MatSipes as id,
+					u.UsuId as user_id, 
+					Isnull(ca.categocargo, 4) as type, 
+					0 as subtype,
+					case 
+						when c.dtdesliga < Getdate() then 0 
+						else u.UsuSituacao 
+					end as active  
+				from   bdacesso.dbo.tb_usuario u  with (nolock) 
+					join bdpessoa.dbo.tb_pessoa p with (nolock) 
+						ON u.usupesidpessoa = p.pescodigopessoa 
+					left join sipes.dbo.dadosfuncionais df with (nolock) 
+							ON p.pescodigopessoa = df.pescodigopessoa 
+					left join sipes.dbo.contratos c with (nolock) 
+							ON df.matsipes = c.matsipes 
+					left join sipes.dbo.cargos ca with (nolock) 
+							ON c.codcargo = ca.codcargo 
+				where df.MatSipes is not null and (u.UsuDataAlteracao >= ? or p.PesDataAlteracao >= ? or 
+												   u.UsuDataCadastramento >= ? or p.PesDataCadastramento >= ?)
                 ",
 
 			
-	"fields" : ["id", "type", "subtype", "active", "matricula"]
+	"fields" : ["id", "user_id", "type", "subtype", "active"]
 				
 }

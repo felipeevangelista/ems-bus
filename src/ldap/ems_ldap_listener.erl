@@ -67,12 +67,11 @@ stop() ->
 init({IpAddress, 
 	  #service{protocol = Protocol,
 			   tcp_port = Port, 
-			   tcp_max_connections = MaxConnections,
 			   tcp_allowed_address_t = AllowedAddress,
-			   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials,
-			   properties = Props}, 
+			   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials}, 
 	  ListenerName,
 	  ServerName}) ->
+	Conf = ems_config:getConfig(),
 	ProtocolStr = binary_to_list(Protocol),
 	IpAddressStr = inet_parse:ntoa(IpAddress),
 	BindCnSuccessMetricName = erlang:binary_to_atom(iolist_to_binary([ServerName, <<"_bind_cn_success">>]), utf8),
@@ -87,28 +86,20 @@ init({IpAddress,
 	HostDeniedMetricName = erlang:binary_to_atom(iolist_to_binary([ServerName, <<"_host_denied">>]), utf8),
 	ErrorMetricName = erlang:binary_to_atom(iolist_to_binary([ServerName, <<"_error_denied">>]), utf8),
 	RequestCapabilitiesMetricName = erlang:binary_to_atom(iolist_to_binary([ServerName, <<"_request_capabilities">>]), utf8),
-	LdapAdmin = ems_config:getConfig(<<"ldap_admin">>, ServerName, maps:get(<<"ldap_admin">>, Props)),
-	case ems_util:parse_ldap_name(LdapAdmin) of
+	case ems_util:parse_ldap_name(Conf#config.ldap_admin) of
 		{ok, _, LdapAdminCnValue, LdapAdminBaseFilterValue} -> 
 			LdapAdminCn = LdapAdminCnValue,
 			LdapAdminBaseFilter = LdapAdminBaseFilterValue;
 		{error, Reason} -> 
-			LdapAdminCn = LdapAdmin,
+			LdapAdminCn = Conf#config.ldap_admin,
 			LdapAdminBaseFilter = <<>>,
-			ems_logger:error("ems_ldap_listener parse ldap_admin fail. Reason: ~p.", [Reason])
+			ems_logger:error("ems_ldap_listener parse ldap_admin ~p failed. Reason: ~p.", [Conf#config.ldap_admin, Reason])
 	end,
-	LdapPasswdAdmin0 = ems_config:getConfig(<<"ldap_password_admin">>, ServerName, maps:get(<<"ldap_password_admin">>, Props)),
-    LdapPasswdAdminCrypto = ems_config:getConfig(<<"ldap_password_admin_crypto">>, ServerName, maps:get(<<"ldap_password_admin_crypto">>, Props)),
-    LdapPasswdAdmin = case LdapPasswdAdminCrypto of
-							<<"SHA1">> -> LdapPasswdAdmin0;
-							_ -> ems_util:criptografia_sha1(LdapPasswdAdmin0)
-					  end,
-    LdapBaseSearch = ems_config:getConfig(<<"ldap_base_search">>, ServerName, maps:get(<<"ldap_base_search">>, Props)),
-    State = #state{ldap_admin = LdapAdmin,
+    State = #state{ldap_admin = Conf#config.ldap_admin,
 				   ldap_admin_cn = LdapAdminCn,
 				   ldap_admin_base_filter = LdapAdminBaseFilter,
-				   ldap_admin_password = LdapPasswdAdmin,
-				   base_search = LdapBaseSearch,
+				   ldap_admin_password = Conf#config.ldap_password_admin,
+				   base_search = Conf#config.ldap_base_search,
 				   tcp_allowed_address_t = AllowedAddress,
 				   listener_name = ListenerName,
 				   server_name = ServerName,
@@ -126,15 +117,15 @@ init({IpAddress,
 				   request_capabilities_metric_name = RequestCapabilitiesMetricName,
 				   auth_allow_user_inative_credentials = AuthAllowUserInativeCredentials
 			   },
-	Ret = ranch:start_listener(ListenerName, 100, ranch_tcp, [{ip, IpAddress},
-															  {port, Port}, 
-															  {max_connections, MaxConnections}], 
+	Ret = ranch:start_listener(ListenerName, ranch_tcp, #{socket_opts => [{ip, IpAddress}, 
+																	      {port, Port}]}, 
+	
 							   ems_ldap_handler, [State]),
 	case Ret of
 		{ok, _PidCowboy} -> 
 			ems_logger:info("ems_ldap_listener listener ~s in ~s:~p.", [ProtocolStr, IpAddressStr, Port]);
 		{error,eaddrinuse} -> 
-			ems_logger:error("ems_ldap_listener can not listen ~s on port ~p because it is already in use on IP ~s by other process.", [ProtocolStr, Port, IpAddressStr])
+			ems_logger:error("ems_ldap_listener cannot listen ~s on port ~p because it is already in use on IP ~s by other process.", [ProtocolStr, Port, IpAddressStr])
 	end,
 	{ok, State}.
 		
