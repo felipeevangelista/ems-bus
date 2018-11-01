@@ -160,8 +160,7 @@ check_erlang_version(){
 
 # Remove all deps except jiffy
 function clean_deps(){
-	#echo "Clearing the deps folder (except jiffy) before build..."
-	#find ./deps  -maxdepth 1 -type d -not -name "*jiffy*" | sed '1d' | xargs rm -rf 
+	echo "Clearing the deps folder..."
 	rm -rf ./deps
 }
 
