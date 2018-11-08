@@ -582,11 +582,7 @@ new_from_map(Map, Conf) ->
 					end,
 
 		put(parse_step, cpf),
-		% O Cpf pode ser número ou string. Converte para string
-		case maps:get(<<"cpf">>, Map, <<>>) of
-			CpfValue when is_integer(CpfValue) -> Cpf0 = integer_to_list(CpfValue);
-			CpfValue ->	Cpf0 = binary_to_list(CpfValue)
-		end,
+		Cpf0 = binary_to_list(?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>))),
 		% O Cpf pode não ter zeros na frente, deve colocar zeros se necessário e validar
 		CpfLen = string:len(Cpf0),
 		case CpfLen =:= 0 orelse ((CpfLen =:= 11 andalso ems_util:is_cpf_valid(Cpf0)) orelse
