@@ -90,6 +90,12 @@ create_database(Nodes) ->
 								  {attributes, record_info(fields, user)},
 								  {record_name, user}]),
 
+    mnesia:create_table(user2_db, [{type, set},
+								  {disc_copies, Nodes},
+								  {index, [#user.codigo, #user.login, #user.name, #user.cpf, #user.email]},
+								  {attributes, record_info(fields, user)},
+								  {record_name, user}]),
+
     mnesia:create_table(user_history, [{type, set},
 									  {disc_copies, Nodes},
 									  {index, [#user_history.user_id]},
@@ -295,6 +301,7 @@ create_database(Nodes) ->
 							ctrl_params,
 							user_fs, 
 							user_db,
+							user2_db,
 							user_history,
 							user_aluno_ativo_db,
 							user_aluno_inativo_db,

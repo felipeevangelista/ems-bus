@@ -163,6 +163,7 @@
 		 utf8_string_win/1,
 		 utf8_string_linux/1,
 		 criptografia_sha1/1,
+		 criptografia_md5/1,
 		 head_file/2,
 		 replace_all_vars_binary/2,
 		 replace_all_vars/2,
@@ -197,7 +198,8 @@
 		 os_command/1,
 		 os_command/2,
 		 integer_to_list_def/2,
-		 str_trim/1
+		 str_trim/1,
+		 binary_to_hex/1
 		]).
 
 -spec version() -> string().
@@ -890,15 +892,6 @@ date_dec_second(Timestamp, Seconds) ->
 
 date_add_day(Timestamp, Days) ->
     calendar:gregorian_seconds_to_datetime(calendar:datetime_to_gregorian_seconds(Timestamp) + (Days * 86400)).
-
-% Return a encrypted password in binary format        
-criptografia_sha1(<<>>) -> <<>>;
-criptografia_sha1("") -> <<>>;	
-criptografia_sha1(undefined) -> <<>>;
-criptografia_sha1(null) -> <<>>;
-criptografia_sha1(Password) when is_binary(Password) -> 
-	criptografia_sha1(binary_to_list(Password));
-criptografia_sha1(Password) -> base64:encode(sha1:binstring(Password)).
 
 boolean_to_binary(true) -> <<"true"/utf8>>;
 boolean_to_binary(1) -> <<"true"/utf8>>;
@@ -3718,5 +3711,30 @@ str_trim(S) ->
 		"19" -> string:strip(S);
 		_ -> string:trim(S)
 	end.
+
+-spec binary_to_hex(binary()) -> binary().
+binary_to_hex(Bin) when is_binary(Bin) ->
+    << <<(hex(H)),(hex(L))>> || <<H:4,L:4>> <= Bin >>.
+
+hex(C) when C < 10 -> $0 + C;
+hex(C) -> $a + C - 10.
+
+% Return a encrypted password in binary format        
+criptografia_sha1(<<>>) -> <<>>;
+criptografia_sha1("") -> <<>>;	
+criptografia_sha1(undefined) -> <<>>;
+criptografia_sha1(null) -> <<>>;
+criptografia_sha1(Password) when is_binary(Password) -> 
+	criptografia_sha1(binary_to_list(Password));
+criptografia_sha1(Password) -> base64:encode(sha1:binstring(Password)).
+
+% Return a encrypted password in binary format        
+criptografia_md5(<<>>) -> <<>>;
+criptografia_md5("") -> <<>>;	
+criptografia_md5(undefined) -> <<>>;
+criptografia_md5(null) -> <<>>;
+criptografia_md5(Password) when is_binary(Password) -> 
+	criptografia_md5(binary_to_list(Password));
+criptografia_md5(Password) -> binary_to_hex(crypto:hash(md5, Password)).
 
 

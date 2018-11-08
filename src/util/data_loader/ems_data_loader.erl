@@ -578,16 +578,24 @@ do_load_data_pump(CtrlInsert,
 				Params = [],
 				SqlLoad2 = SqlLoad;
 			false ->
-				case Offset > 1 of
-					true ->	
+				case Datasource#service_datasource.type of
+					sqlserver ->
+						case Offset > 1 of
+							true ->	
+								Params = [{sql_integer, [Offset]},
+										  {sql_integer, [Offset+SqlLoadPacketLength-1]}
+										 ],
+								SqlLoad2 = io_lib:format("select ~s from ( select ~s, row_number() over (order by id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ? and ?", [SqlFields, SqlFields, SqlLoad]);
+							false -> 
+								% Quando o offset é 1, usamos select top para obter um pouco mais de performance na primeira query
+								Params = [],
+								SqlLoad2 = io_lib:format("select top ~p ~s from ( ~s ) _t_sql order by id", [Offset+SqlLoadPacketLength-1, SqlFields, SqlLoad])
+						end;
+					postgresql ->
 						Params = [{sql_integer, [Offset]},
 								  {sql_integer, [Offset+SqlLoadPacketLength-1]}
 								 ],
-						SqlLoad2 = io_lib:format("select ~s from ( select ~s, row_number() over (order by id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ? and ?", [SqlFields, SqlFields, SqlLoad]);
-					false -> 
-						% Quando o offset é 1, usamos select top para obter um pouco mais de performance na primeira query
-						Params = [],
-						SqlLoad2 = io_lib:format("select top ~p ~s from ( ~s ) _t_sql order by id", [Offset+SqlLoadPacketLength-1, SqlFields, SqlLoad])
+						SqlLoad2 = io_lib:format("select ~s from ( select ~s, row_number() over (order by id) AS _RowNumber from ( ~s ) _t_sql ) _t where _t._RowNumber between ? and ?", [SqlFields, SqlFields, SqlLoad])
 				end
 		end,
 		SqlLoad3 = re:replace(SqlLoad2, "\\s+", " ", [global,{return,list}]),
