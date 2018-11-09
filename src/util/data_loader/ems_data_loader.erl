@@ -256,7 +256,8 @@ handle_info(check_sync_full, State = #state{name = Name,
 								ems_logger:info("~s sync full checkpoint successfully", [Name]),
 								ems_util:flush_messages(),
 								erlang:send_after(3600000, self(), check_sync_full),
-								{noreply, State3#state{wait_count = 0}, UpdateCheckpoint};
+								erlang:garbage_collect(self(), [{async, undefined}]),
+								{noreply, State3#state{wait_count = 0}, UpdateCheckpoint + 180000};  % adiciona 180 segundos para priorizar os demais loaders
 							{error, Reason} -> 
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, 0, 0, 0, 0, 0, Reason),
 								ems_db:inc_counter(ErrorCheckpointMetricName),
@@ -416,7 +417,7 @@ do_check_count_checkpoint(State = #state{name = Name,
 								?DEBUG("~s do_check_count_checkpoint get ids from table...", [Name]),
 								case ems_odbc_pool:param_query(Datasource2, SqlIds, []) of
 									{_, _, Result2} ->
-										ems_odbc_pool:release_connection(Datasource2),
+										ems_odbc_pool:shutdown_connection(Datasource2),
 										Codigos = [N || {N} <- Result2],
 										RemoveCount = do_check_remove_records(Codigos, State),
 										case RemoveCount > 0 of
@@ -436,17 +437,17 @@ do_check_count_checkpoint(State = #state{name = Name,
 										end,
 										{ok, State};
 									Error3 -> 
-										ems_odbc_pool:release_connection(Datasource2),
+										ems_odbc_pool:shutdown_connection(Datasource2),
 										?DEBUG("~s do_check_count_checkpoint exception to execute sql ~p.", [Name, SqlIds]),
 										Error3
 								end;
 							true ->
-								ems_odbc_pool:release_connection(Datasource2),
+								ems_odbc_pool:shutdown_connection(Datasource2),
 								?DEBUG("~s do_check_count_checkpoint skip remove records.", [Name]),
 								{ok, State}
 						end;
 					Error4 -> 
-						ems_odbc_pool:release_connection(Datasource2),
+						ems_odbc_pool:shutdown_connection(Datasource2),
 						?DEBUG("~s do_check_count_checkpoint exception to execute sql ~p. Reason: ~p.", [Name, SqlCount, Error4]),
 						Error4
 				end,
@@ -504,7 +505,8 @@ do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 		case ems_odbc_pool:get_connection(Datasource) of
 			{ok, Datasource2} -> 
 				Result = do_load_table(CtrlInsert, Conf, State#state{datasource = Datasource2}),
-				ems_odbc_pool:release_connection(Datasource2),
+				%% faz shutdown da conexão em vez de voltar ao pool pois consome muita ram
+				ems_odbc_pool:shutdown_connection(Datasource2), 
 				ems_db:inc_counter(LoadCheckpointMetricName),
 				Result;
 			Error3 -> Error3
