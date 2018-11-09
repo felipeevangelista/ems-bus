@@ -315,11 +315,11 @@ handle_info(check_count_records, State = #state{name = Name,
 handle_info({_Pid, {error, _Reason}}, State = #state{timeout_on_error = TimeoutOnError}) ->
 	{noreply, State, TimeoutOnError};
 			
-handle_info(_Msg, State = #state{timeout_on_error = TimeoutOnError}) ->
-	{noreply, State, TimeoutOnError}.
+handle_info(_Msg, State = #state{update_checkpoint = UpdateCheckpoint}) ->
+	{noreply, State, UpdateCheckpoint}.
 		
-terminate(Reason, #service{name = Name}) ->
-    ems_logger:warn("~s was terminated. Reason: ~p.", [Name, Reason]),
+terminate(Reason, #state{name = Name}) ->
+    ems_logger:info("~s terminate. Reason: ~p.", [Name, Reason]),
     ok.
  
 code_change(_OldVsn, State, _Extra) ->
@@ -477,6 +477,7 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 			case do_load(LastUpdateStr, Conf, State) of
 				{ok, State2} -> 
 					ems_db:set_param(LastUpdateParamName, NextUpdate),
+					erlang:garbage_collect(self(), [{async, undefined}]),
 					State3 = State2#state{last_update = NextUpdate, 
 										  loading = false,
 										  allow_clear_table_full_sync = false},
@@ -505,7 +506,7 @@ do_load(CtrlInsert, Conf, State = #state{datasource = Datasource,
 		case ems_odbc_pool:get_connection(Datasource) of
 			{ok, Datasource2} -> 
 				Result = do_load_table(CtrlInsert, Conf, State#state{datasource = Datasource2}),
-				%% faz shutdown da conexão em vez de voltar ao pool pois consome muita ram
+				%% faz shutdown da conexão em vez de voltar ao pool pois consome muita ram durante as cargas de dados completa
 				ems_odbc_pool:shutdown_connection(Datasource2), 
 				ems_db:inc_counter(LoadCheckpointMetricName),
 				Result;

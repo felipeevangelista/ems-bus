@@ -154,11 +154,10 @@ handle_info({_Pid, {error, Reason}}, State = #state{name = Name,
 	{noreply, State, UpdateCheckpoint};
 			
 handle_info(Msg, State = #state{name = Name, update_checkpoint = UpdateCheckpoint}) ->
-	ems_logger:warn("~s unknown message: ~p.", [Name, Msg]),
 	{noreply, State, UpdateCheckpoint}.
 			
 terminate(Reason, #service{name = Name}) ->
-    ems_logger:warn("~s was terminated. Reason: ~p.", [Name, Reason]),
+    ems_logger:warn("~s was terminate. Reason: ~p.", [Name, Reason]),
     ok.
  
 code_change(_OldVsn, State, _Extra) ->
@@ -191,6 +190,7 @@ do_check_load_or_update(State = #state{name = Name,
 					ems_db:set_param(LastUpdateParamName, NextUpdate),
 					State2 = State#state{last_update = NextUpdate},
 					ems_util:flush_messages(),
+					erlang:garbage_collect(self(), [{async, undefined}]),
 					{ok, State2};
 				Error -> Error
 			end;
