@@ -108,8 +108,3 @@ execute(Request = #request{timestamp = Timestamp,
 			end
 	end.
 
-
-
-
-
-

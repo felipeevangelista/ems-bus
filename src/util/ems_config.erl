@@ -402,8 +402,12 @@ parse_config(Json, Filename) ->
 
 		put(parse_step, rest_base_url),
 		case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
-			<<>> ->	RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
-			RestBaseUrlValue -> RestBaseUrl = ems_util:remove_ult_backslash_url_binary(RestBaseUrlValue)
+			<<>> ->	
+				RestBaseUrlDefined = false,
+				RestBaseUrl = iolist_to_binary([<<"http://"/utf8>>, TcpListenMainIp, <<":2301"/utf8>>]);
+			RestBaseUrlValue -> 
+				RestBaseUrlDefined = true,
+				RestBaseUrl = ems_util:remove_ult_backslash_url_binary(RestBaseUrlValue)
 		end,
 
 		put(parse_step, rest_auth_url),
@@ -425,10 +429,10 @@ parse_config(Json, Filename) ->
 		RestUrlMask = ems_util:parse_bool(get_p(<<"rest_url_mask">>, Json, false)),
 
 		put(parse_step, rest_user),
-		RestUser = binary_to_list(get_p(<<"rest_user">>, Json, <<>>)),
+		RestUser = binary_to_list(get_p(<<"rest_user">>, Json, <<"erlangms">>)),
 
 		put(parse_step, rest_passwd),
-		RestPasswd = binary_to_list(get_p(<<"rest_passwd">>, Json, <<>>)),
+		RestPasswd = binary_to_list(get_p(<<"rest_passwd">>, Json, ems_util:criptografia_sha1(<<"123456">>))),
 
 		put(parse_step, host_alias),
 		HostAlias = get_p(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
@@ -591,6 +595,7 @@ parse_config(Json, Filename) ->
 				 rest_environment = RestEnvironment,
 				 rest_user = RestUser,
 				 rest_passwd = RestPasswd,
+				 rest_base_url_defined = RestBaseUrlDefined,
 				 config_file = Filename,
 				 params = Json,
 				 client_path_search = select_config_file(<<"clients.json">>, get_p(<<"client_path_search">>, Json, ?CLIENT_PATH)),

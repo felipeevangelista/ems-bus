@@ -3741,7 +3741,8 @@ criptografia_md5(Password) -> binary_to_hex(crypto:hash(md5, Password)).
 
 flush_messages() ->
 	receive
-	_ -> flush_messages()
-	after 0 ->
-	ok
+	_ -> 
+		flush_messages()
+	after 500 ->
+		ok
 	end.
