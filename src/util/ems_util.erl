@@ -15,6 +15,7 @@
 -export([version/0,
 		 server_name/0,
 		 sleep/1,
+		 flush_messages/0,
 		 json_encode/1,
 		 json_decode/1,
 		 hd_or_empty/1,
@@ -3738,3 +3739,9 @@ criptografia_md5(Password) when is_binary(Password) ->
 criptografia_md5(Password) -> binary_to_hex(crypto:hash(md5, Password)).
 
 
+flush_messages() ->
+	receive
+	_ -> flush_messages()
+	after 0 ->
+	ok
+	end.

@@ -242,24 +242,25 @@ handle_info(check_sync_full, State = #state{name = Name,
 											wait_count = WaitCount
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-		case (Hour >= 5 andalso Hour =< 23) of
+		case (Hour == 5 orelse (Hour >= 8 andalso Hour =< 20 and (Hour rem 2 =:= 0))) of
 			true ->
-				?DEBUG("~s handle check_sync_full execute now.", [Name]),
 				case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader, check_sync_full, WaitCount) of
 					true ->
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
-						ems_logger:info("~s sync full checkpoint now.", [Name]),
+						ems_logger:info("~s sync full begin now.", [Name]),
 						State2 = State#state{last_update = undefined,
 											 allow_clear_table_full_sync = (Hour == 5)},  % limpar a tabela somente às 5h da manhã
 						case do_check_load_or_update_checkpoint(State2) of
 							{ok, State3 = #state{insert_count = InsertCount, update_count = UpdateCount, error_count = ErrorCount, disable_count = DisableCount, skip_count = SkipCount}} ->
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),
 								ems_logger:info("~s sync full checkpoint successfully", [Name]),
+								ems_util:flush_messages(),
 								erlang:send_after(3600000, self(), check_sync_full),
 								{noreply, State3#state{wait_count = 0}, UpdateCheckpoint};
 							{error, Reason} -> 
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, 0, 0, 0, 0, 0, Reason),
 								ems_db:inc_counter(ErrorCheckpointMetricName),
+								ems_util:flush_messages(),
 								erlang:send_after(3600000, self(), check_sync_full),
 								ems_logger:error("~s sync full wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
 								{noreply, State#state{wait_count = 0}, TimeoutOnError}
@@ -292,11 +293,13 @@ handle_info(check_count_records, State = #state{name = Name,
 			case do_check_count_checkpoint(State) of
 				{ok, State2} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, undefined),
+					ems_util:flush_messages(),
 					erlang:send_after(CheckRemoveRecordsCheckpoint, self(), check_count_records),
 					{noreply, State2#state{wait_count = 0}, UpdateCheckpoint};
 				{error, Reason} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, Reason),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
+					ems_util:flush_messages(),
 					erlang:send_after(CheckRemoveRecordsCheckpoint, self(), check_count_records),
 					?DEBUG("~s check_count_records wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
 					{noreply, State#state{wait_count = 0}, TimeoutOnError}
@@ -335,6 +338,7 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 				{ok, State2 = #state{insert_count = InsertCount, update_count = UpdateCount, error_count = ErrorCount, disable_count = DisableCount, skip_count = SkipCount}} ->
 					do_after_load_or_update_checkpoint(State2),
 					ems_data_loader_ctl:notify_finish_work(Name, check_load_or_update_checkpoint, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),
+					ems_util:flush_messages(),
 					case Loading of
 						true -> {noreply, State2#state{wait_count = 0}, UpdateCheckpoint + 60000};
 						false -> {noreply, State2#state{wait_count = 0}, UpdateCheckpoint}
@@ -343,11 +347,13 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, eodbc_restricted_connection),
 					TimeoutOnError2 = TimeoutOnError * 5,
 					ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while database in backup or restricted connection. Reason: ~p.", [Name, TimeoutOnError2, eodbc_restricted_connection]),
+					ems_util:flush_messages(),
 					{noreply, State#state{wait_count = 0}, TimeoutOnError2};
 				{error, Reason} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, Reason),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
 					ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
+					ems_util:flush_messages(),
 					{noreply, State#state{wait_count = 0}, TimeoutOnError}
 			end;
 		false ->

@@ -607,7 +607,6 @@ new_from_map(Map, Conf) ->
 						Cpf = <<>>
 				end
 		end,
-		
 		put(parse_step, dt_expire_password),
 		DtExpirePassword = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
 							  <<>> -> undefined;
