@@ -40,7 +40,7 @@ find_by_user(Id, Fields) ->
 	end.
 	
 find_by_cpf_and_client(Cpf, ClientId, Fields) -> 
-	case ems_db:find(?CLIENT_DEFAULT_SCOPE, [id], [{cpf, "==", Cpf}]) of
+	case ems_db:find(?CLIENT_DEFAULT_SCOPE, [id, remap_user_id], [{cpf, "==", Cpf}]) of
 		{ok, ListIdsUserByCpfMap} -> find_by_cpf_and_client_(ListIdsUserByCpfMap, ClientId, Fields, []);
 		_ -> {error, enoent}
 	end.
@@ -48,13 +48,24 @@ find_by_cpf_and_client(Cpf, ClientId, Fields) ->
 find_by_cpf_and_client_([], _, _, Result) -> {ok, Result};
 find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
 	UserId = maps:get(<<"id">>, UserByCpfMap),
+	RemapUserId = maps:get(<<"remap_user_id">>, UserByCpfMap),
 	io:format("ems_user_permission:find_by_user_and_client(~p, ~p, ~p).\n", [UserId, ClientId, Fields]),
 	case find_by_user_and_client(UserId, ClientId, Fields) of
 		{ok, Records} -> 
 			Result2 = Result ++ Records;
 		_ -> Result2 = Result
 	end,
-	find_by_cpf_and_client_(T, ClientId, Fields, Result2).
+	case RemapUserId of
+		null -> Result3 = Result2;
+		undefined -> Result3 = Result2;
+		_ ->
+			case find_by_user_and_client(RemapUserId, ClientId, Fields) of
+				{ok, Records2} -> 
+					Result3 = Result2 ++ Records2;
+				_ -> Result3 = Result2
+			end
+	end,
+	find_by_cpf_and_client_(T, ClientId, Fields, Result3).
 	
 	
 -spec find_by_user_and_client(non_neg_integer(), non_neg_integer(), list()) -> {ok, list(#user_perfil{})} | {error, enoent}.
