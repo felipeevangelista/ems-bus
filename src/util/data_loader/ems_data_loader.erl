@@ -296,6 +296,7 @@ handle_info(check_count_records, State = #state{name = Name,
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, undefined),
 					ems_util:flush_messages(),
 					erlang:send_after(CheckRemoveRecordsCheckpoint, self(), check_count_records),
+					erlang:garbage_collect(self(), [{async, undefined}]),
 					{noreply, State2#state{wait_count = 0}, UpdateCheckpoint};
 				{error, Reason} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, Reason),
@@ -340,6 +341,7 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 					do_after_load_or_update_checkpoint(State2),
 					ems_data_loader_ctl:notify_finish_work(Name, check_load_or_update_checkpoint, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),
 					ems_util:flush_messages(),
+					erlang:garbage_collect(self(), [{async, undefined}]),
 					case Loading of
 						true -> {noreply, State2#state{wait_count = 0}, UpdateCheckpoint + 60000};
 						false -> {noreply, State2#state{wait_count = 0}, UpdateCheckpoint}
@@ -670,7 +672,7 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 								  {sql_timestamp, [DateInitial]}],
 						Result = case ems_odbc_pool:param_query(Datasource2, SqlUpdate, Params) of
 							{_,_,[]} -> 
-								ems_odbc_pool:release_connection(Datasource2),
+								ems_odbc_pool:shutdown_connection(Datasource2), 
 								ems_db:inc_counter(UpdateMissMetricName),
 								?DEBUG("~s do_update has no records to update.", [Name]),
 								ems_logger:info("~s sync 0 inserts, 0 updates, 0 disabled, 0 skips, 0 errors since ~s.", [Name, ems_util:timestamp_str(LastUpdate)]),
@@ -679,7 +681,7 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 												 disable_count = 0,
 												 skip_count = 0}};
 							{_, _, Records} ->
-								ems_odbc_pool:release_connection(Datasource2),
+								ems_odbc_pool:shutdown_connection(Datasource2), 
 								{ok, InsertCount, UpdateCount, ErrorCount, DisabledCount, SkipCount} = ems_data_pump:data_pump(Records, list_to_binary(CtrlUpdate), Conf, Name, Middleware, update, 0, 0, 0, 0, 0, SourceType, Fields),
 								ems_db:counter(InsertMetricName, InsertCount),
 								ems_db:counter(UpdateMetricName, UpdateCount),
@@ -693,7 +695,7 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 												 disable_count = DisabledCount,
 												 skip_count = SkipCount}};
 							{error, Reason2} = Error2 -> 
-								ems_odbc_pool:release_connection(Datasource2),
+								ems_odbc_pool:shutdown_connection(Datasource2), 
 								?DEBUG("~s do_update failed to execute sql ~p. Reason: ~p.", [Name, SqlUpdate, Reason2]),
 								Error2
 						end,

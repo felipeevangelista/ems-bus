@@ -153,7 +153,7 @@ handle_info({_Pid, {error, Reason}}, State = #state{name = Name,
 	ems_logger:warn("~s is unable to load or update data. Reason: ~p.", [Name, Reason]),
 	{noreply, State, UpdateCheckpoint};
 			
-handle_info(Msg, State = #state{name = Name, update_checkpoint = UpdateCheckpoint}) ->
+handle_info(_Msg, State = #state{update_checkpoint = UpdateCheckpoint}) ->
 	{noreply, State, UpdateCheckpoint}.
 			
 terminate(Reason, #service{name = Name}) ->

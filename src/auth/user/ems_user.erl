@@ -109,6 +109,7 @@ find_index_by_login_and_password([Table|T], LoginBin,
 											PasswordStrLower, 
 											PasswordStrUpper, 
 											Client) ->
+	io:format("index by Table ~p\n", [Table]),
 	case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
 		[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
 			case PasswordUser =:= PasswordBinCryptoSHA1 
@@ -472,9 +473,10 @@ to_resource_owner(undefined, _) -> <<"{}"/utf8>>;
 to_resource_owner(User, ClientId) ->
 	case User#user.remap_user_id == undefined of
 		true -> 
-			{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]),
+			io:format("ems_user_perfil:find_by_cpf_and_client(~p, ~p, [id, name]).\n", [User#user.cpf, ClientId]),
+			{ok, ListaPerfil} = ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]),
 			ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
+			{ok, ListaPermission} = ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
 			ListaPermissionJson = ems_schema:to_json(ListaPermission),
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
@@ -491,10 +493,24 @@ to_resource_owner(User, ClientId) ->
 								<<"\"lista_permission\":"/utf8>>, ListaPermissionJson, 
 							<<"}"/utf8>>]);
 		false ->
-			{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name]),
-			ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
-			ListaPermissionJson = ems_schema:to_json(ListaPermission),
+			ListaPerfilFinal = case ems_user_perfil:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name]) of
+									{ok, ListaPerfil} -> 
+										case ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]) of
+											{ok, ListaPerfil2} -> ListaPerfil ++ ListaPerfil2;
+											_ -> ListaPerfil
+										end;
+									_ -> []
+								end,
+			ListaPerfilJson = ems_schema:to_json(ListaPerfilFinal),
+			ListaPermissionFinal = case ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+										{ok, ListaPermission} ->
+											case ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+												{ok, ListaPermission2} -> ListaPermission ++ ListaPermission2;
+												_ -> ListaPermission
+											end;
+										_ -> []
+									end,
+			ListaPermissionJson = ems_schema:to_json(ListaPermissionFinal),
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
 								<<"\"remap_user_id\":"/utf8>>, integer_to_binary(User#user.remap_user_id), <<","/utf8>>,
