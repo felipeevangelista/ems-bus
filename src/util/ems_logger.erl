@@ -42,8 +42,6 @@
 %  Armazena o estado do ems_logger. 
 -record(state, {log_buffer = [],             				% The messages go first to a log_buffer subsequently to the log file        
 			    log_log_buffer_screen = [],        			% The messages go first to a log_buffer subsequently to screen
-			    flag_checkpoint_sync_log_buffer = false,    % checkpoint to unload the log_buffer to the log file
-			    flag_checkpoint_screen = false, 			% checkpoint to unload the screen log_buffer
 				log_file_checkpoint,      					% timeout archive log checkpoing
 				log_file_name,		      					% log file name
 				log_file_handle,							% IODevice of file
@@ -58,7 +56,9 @@
 				log_ult_msg,								% last print message
 				log_ult_reqhash, 							% last reqhash of print message
 				log_file_path,
-				log_file_archive_path
+				log_file_archive_path,
+				log_file_sync_log_buffer_time_ref,
+				log_file_sync_log_buffer_tela_time_ref
  			   }). 
 
 
@@ -381,11 +381,11 @@ handle_call({log_file_tail, N}, _From, State) ->
 
 handle_info(checkpoint_tela, State) ->
    NewState = sync_log_buffer_screen(State),
-   {noreply, NewState};
+   {noreply, NewState#state{log_file_sync_log_buffer_tela_time_ref = undefined, log_ult_msg = undefined}};
 
 handle_info(checkpoint, State) ->
    NewState = sync_log_buffer(State),
-   {noreply, NewState};
+   {noreply, NewState#state{log_file_sync_log_buffer_time_ref = undefined, log_ult_msg = undefined}};
 
 handle_info(checkpoint_archive_log, State) ->
 	Reply = checkpoint_arquive_log(State, false),
@@ -506,23 +506,16 @@ log_file_tail(#state{log_file_name = LogFilename}, N) ->
 			Error
 	end.
 
-set_timeout_for_sync_log_buffer(#state{flag_checkpoint_sync_log_buffer = false, log_file_checkpoint=Timeout}) ->    
-	erlang:send_after(Timeout, self(), checkpoint);
-
-set_timeout_for_sync_log_buffer(_State) ->    
-	ok.
-
-set_timeout_for_sync_tela(#state{flag_checkpoint_screen = false}) ->    
-	erlang:send_after(2000, self(), checkpoint_tela);
-
-set_timeout_for_sync_tela(_State) ->    
-	ok.
 
 set_timeout_archive_log_checkpoint() ->    
 	erlang:send_after(?LOG_ARCHIVE_CHECKPOINT, self(), checkpoint_archive_log).
 
-write_msg(Tipo, Msg, State = #state{log_level = Level, log_ult_msg = UltMsg})  ->
-	%% test overflow duplicated messages
+write_msg(Tipo, Msg, State = #state{log_level = Level, 
+									log_ult_msg = UltMsg, 
+									log_file_checkpoint = LogFileCheckpoint,
+									log_file_sync_log_buffer_time_ref = CurrentSyncLogBufferTimeRef,
+									log_file_sync_log_buffer_tela_time_ref = CurrentSyncLogBufferTelaTimeRef})  ->
+	%% discart overflow duplicated messages
 	case UltMsg == undefined orelse UltMsg =/= Msg of
 		true ->
 			case Tipo of
@@ -541,43 +534,59 @@ write_msg(Tipo, Msg, State = #state{log_level = Level, log_ult_msg = UltMsg})  -
 			end,
 			case (Level == error andalso Tipo /= error) andalso (Tipo /= debug) of
 				true ->
-					case length(State#state.log_buffer) == 200 of
+					case length(State#state.log_buffer) >= 80 of
 						true -> 
-							ems_db:inc_counter(ems_logger_immediate_sync_log_buffer),
 							State2 = sync_log_buffer_screen(State),
-							State2#state{log_buffer = [Msg1|State#state.log_buffer], 
-										 flag_checkpoint_sync_log_buffer = true,
-										 log_ult_msg = Msg};
+							case CurrentSyncLogBufferTelaTimeRef of
+								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
+								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
+							end,
+							State2#state{log_buffer = [Msg1], 
+										 log_ult_msg = undefined,
+										 log_file_sync_log_buffer_tela_time_ref = SyncLogBufferTelaTimeRef};
 						false -> 
-							set_timeout_for_sync_log_buffer(State),
+							case CurrentSyncLogBufferTelaTimeRef of
+								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
+								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
+							end,
 							State#state{log_buffer = [Msg1|State#state.log_buffer], 
-									    flag_checkpoint_sync_log_buffer = true,
-										log_ult_msg = Msg}
+									    log_file_sync_log_buffer_tela_time_ref = SyncLogBufferTelaTimeRef}
 					end;
 				false ->
-					case length(State#state.log_buffer) == 200 of
+					case length(State#state.log_buffer) >= 80 of
 						true -> 
-							ems_db:inc_counter(ems_logger_immediate_sync_log_buffer),
 							State2 = sync_log_buffer_screen(State),
 							State3 = sync_log_buffer(State2),
-							State3#state{log_buffer = [Msg1|State#state.log_buffer], 
-										 log_log_buffer_screen = [Msg1|State#state.log_log_buffer_screen], 
-										 flag_checkpoint_sync_log_buffer = true, 
-										 flag_checkpoint_screen = true,
-										 log_ult_msg = Msg};
+							case CurrentSyncLogBufferTelaTimeRef of
+								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
+								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
+							end,
+							case CurrentSyncLogBufferTimeRef of
+								undefined -> SyncLogBufferTimeRef = erlang:send_after(LogFileCheckpoint, self(), checkpoint);
+								_ -> SyncLogBufferTimeRef = CurrentSyncLogBufferTimeRef
+							end,
+							State3#state{log_buffer = [Msg1], 
+										 log_log_buffer_screen = [Msg1],
+										 log_ult_msg = undefined,
+										 log_file_sync_log_buffer_time_ref = SyncLogBufferTimeRef,
+										 log_file_sync_log_buffer_tela_time_ref = SyncLogBufferTelaTimeRef};
 						false ->
-							set_timeout_for_sync_log_buffer(State),
-							set_timeout_for_sync_tela(State),
+							case CurrentSyncLogBufferTelaTimeRef of
+								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
+								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
+							end,
+							case CurrentSyncLogBufferTimeRef of
+								undefined -> SyncLogBufferTimeRef = erlang:send_after(LogFileCheckpoint, self(), checkpoint);
+								_ -> SyncLogBufferTimeRef = CurrentSyncLogBufferTimeRef
+							end,
 							State#state{log_buffer = [Msg1|State#state.log_buffer], 
 										log_log_buffer_screen = [Msg1|State#state.log_log_buffer_screen], 
-										flag_checkpoint_sync_log_buffer = true, 
-										flag_checkpoint_screen = true,
-										log_ult_msg = Msg}
+										log_ult_msg = Msg,
+										log_file_sync_log_buffer_time_ref = SyncLogBufferTimeRef,
+										log_file_sync_log_buffer_tela_time_ref = SyncLogBufferTelaTimeRef}
 					end
 			end;
-		false -> 
-			ems_db:inc_counter(ems_logger_write_dup),
-			State
+		false -> State
 	end.
 	
 write_msg(Tipo, Msg, Params, State) ->
@@ -594,10 +603,10 @@ sync_log_buffer_screen(State) ->
 	catch
 		_:_ -> ok
 	end,
-	State#state{log_log_buffer_screen = [], flag_checkpoint_screen = false, log_ult_msg = undefined, log_ult_reqhash = undefined}.
+	State#state{log_log_buffer_screen = [], log_ult_msg = undefined, log_ult_reqhash = undefined}.
 
 
-sync_log_buffer(State = #state{log_buffer = []}) -> State#state{flag_checkpoint_sync_log_buffer = false};
+sync_log_buffer(State = #state{log_buffer = []}) -> State;
 sync_log_buffer(State = #state{log_buffer = Buffer,
 							   log_file_name = CurrentLogFilename,
 							   log_file_max_size = LogFileMaxSize,
@@ -620,8 +629,7 @@ sync_log_buffer(State = #state{log_buffer = Buffer,
 								ems_logger:error("ems_logger is writing to a log file deleted."),
 								State2 = checkpoint_arquive_log(State, true);
 							true ->
-								State2 = State#state{log_buffer = [], 
-													 flag_checkpoint_sync_log_buffer = false}
+								State2 = State#state{log_buffer = []}
 						end
 				end
 		end,
@@ -649,8 +657,7 @@ sync_log_buffer(State = #state{log_buffer = Buffer,
 		_:Reason2 ->
 			ems_db:inc_counter(ems_logger_sync_buffer_failed),
 			ems_logger:error("ems_logger sync_log_buffer exception. Reason: ~p.", [Reason2]),
-			State#state{log_buffer = [], 
-						flag_checkpoint_sync_log_buffer = false}
+			State#state{log_buffer = []}
 	end.
 
 	
