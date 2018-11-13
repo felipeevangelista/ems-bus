@@ -17,7 +17,6 @@
 start(_StartType, StartArgs) ->
 	io:format("\n"),
 	ems_logger:format_info("Loading ~s instance ( \033[0;32mPID:\033[0m \033[01;34m~s\033[0m  \033[0;32mErlang/OTP Version:\033[0m \033[01;34m~s\033[0m )", [?SERVER_NAME, os:getpid(), erlang:system_info(otp_release)]),
-	erlang:system_flag(min_heap_size, 22000),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->

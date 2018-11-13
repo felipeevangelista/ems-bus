@@ -242,7 +242,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 											wait_count = WaitCount
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
-		case (Hour == 5 orelse (Hour >= 8 andalso Hour =< 20 and (Hour rem 2 =:= 0))) of
+		case (Hour == 5 orelse (Hour >= 8 andalso Hour =< 20 andalso (Hour rem 2 =:= 0))) of
 			true ->
 				case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader, check_sync_full, WaitCount) of
 					true ->
@@ -479,7 +479,6 @@ do_check_load_or_update_checkpoint(State = #state{name = Name,
 			case do_load(LastUpdateStr, Conf, State) of
 				{ok, State2} -> 
 					ems_db:set_param(LastUpdateParamName, NextUpdate),
-					erlang:garbage_collect(self(), [{async, undefined}]),
 					State3 = State2#state{last_update = NextUpdate, 
 										  loading = false,
 										  allow_clear_table_full_sync = false},

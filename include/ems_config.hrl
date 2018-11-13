@@ -187,6 +187,8 @@
 -define(OAUTH2_DEFAULT_AUTHORIZATION, oauth2).
 -define(AUTHORIZATION_TYPE_DEFAULT, <<"oauth2">>).
 
+-define(DEFAULT_PASSWD, <<"fEqNCco3Yq9h5ZUglD3CZJT4lBs=">>).
+
 % Mensagens de saída json comuns
 -define(CONTENT_TYPE_JSON, <<"application/json; charset=utf-8"/utf8>>).
 -define(CACHE_CONTROL_NO_CACHE, <<"max-age=31536000, private, no-cache, no-store, must-revalidate"/utf8>>).

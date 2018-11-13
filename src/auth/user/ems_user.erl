@@ -109,7 +109,6 @@ find_index_by_login_and_password([Table|T], LoginBin,
 											PasswordStrLower, 
 											PasswordStrUpper, 
 											Client) ->
-	io:format("index by Table ~p\n", [Table]),
 	case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
 		[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
 			case PasswordUser =:= PasswordBinCryptoSHA1 
@@ -473,7 +472,6 @@ to_resource_owner(undefined, _) -> <<"{}"/utf8>>;
 to_resource_owner(User, ClientId) ->
 	case User#user.remap_user_id == undefined of
 		true -> 
-			io:format("ems_user_perfil:find_by_cpf_and_client(~p, ~p, [id, name]).\n", [User#user.cpf, ClientId]),
 			{ok, ListaPerfil} = ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]),
 			ListaPerfilJson = ems_schema:to_json(ListaPerfil),
 			{ok, ListaPermission} = ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),

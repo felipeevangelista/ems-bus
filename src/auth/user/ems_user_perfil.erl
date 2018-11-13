@@ -41,22 +41,25 @@ all() ->
 -spec find_by_user(non_neg_integer(), list()) -> {ok, list(#user_perfil{})} | {error, enoent}.
 find_by_user(Id, Fields) -> 
 	case ems_db:find([user_perfil_db, user_perfil_fs], Fields, [{user_id, "==", Id}]) of
-		{ok, Record} -> {ok, Record};
+		{ok, Records} -> {ok, Records};
 		_ -> {error, enoent}
 	end.
 
 
 find_by_cpf_and_client(Cpf, ClientId, Fields) -> 
-	case ems_db:find(?CLIENT_DEFAULT_SCOPE, [id, remap_user_id], [{cpf, "==", Cpf}]) of
-		{ok, ListIdsUserByCpfMap} -> find_by_cpf_and_client_(ListIdsUserByCpfMap, ClientId, Fields, []);
-		_ -> {error, enoent}
+	case ems_client:find_by_id(ClientId) of
+		{ok, Client} ->
+			case ems_db:find(Client#client.scope, [id, remap_user_id], [{cpf, "==", Cpf}]) of
+				{ok, ListIdsUserByCpfMap} -> find_by_cpf_and_client_(ListIdsUserByCpfMap, ClientId, Fields, []);
+				_ -> {ok, []}
+			end;
+		{error, enoent} -> {ok, []}
 	end.
 
 find_by_cpf_and_client_([], _, _, Result) -> {ok, Result};
 find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
 	UserId = maps:get(<<"id">>, UserByCpfMap),
 	RemapUserId = maps:get(<<"remap_user_id">>, UserByCpfMap),
-	io:format("ems_user_perfil:find_by_user_and_client(~p, ~p, ~p).\n", [UserId, ClientId, Fields]),
 	case find_by_user_and_client(UserId, ClientId, Fields) of
 		{ok, Records} -> 
 			Result2 = Result ++ Records;
@@ -66,14 +69,12 @@ find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
 		null -> Result3 = Result2;
 		undefined -> Result3 = Result2;
 		_ ->
-			io:format("   RemapuserId   ems_user_perfil:find_by_user_and_client(~p, ~p, ~p).\n", [RemapUserId, ClientId, Fields]),
-			case find_by_user_and_client(RemapUserId, ClientId, Fields) of
+			case ems_db:find([user_perfil_db, user_perfil_fs], Fields, [{user_id, "==", RemapUserId}]) of
 				{ok, Records2} -> 
 					Result3 = Result2 ++ Records2;
 				_ -> Result3 = Result2
 			end
 	end,
-	io:format("result3 is ~p\n", [Result3]),
 	find_by_cpf_and_client_(T, ClientId, Fields, Result3).
 	
 	
@@ -81,7 +82,7 @@ find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
 find_by_user_and_client(UserId, ClientId, Fields) -> 
 	case ems_db:find([user_perfil_db, user_perfil_fs], Fields, [{user_id, "==", UserId}, {client_id, "==", ClientId}]) of
 		{ok, Records} -> {ok, Records};
-		_ -> {error, enoent}
+		_ -> {ok, []}
 	end.
 
 

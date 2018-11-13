@@ -40,16 +40,19 @@ find_by_user(Id, Fields) ->
 	end.
 	
 find_by_cpf_and_client(Cpf, ClientId, Fields) -> 
-	case ems_db:find(?CLIENT_DEFAULT_SCOPE, [id, remap_user_id], [{cpf, "==", Cpf}]) of
-		{ok, ListIdsUserByCpfMap} -> find_by_cpf_and_client_(ListIdsUserByCpfMap, ClientId, Fields, []);
-		_ -> {error, enoent}
+	case ems_client:find_by_id(ClientId) of
+		{ok, Client} ->
+			case ems_db:find(Client#client.scope, [id, remap_user_id], [{cpf, "==", Cpf}]) of
+				{ok, ListIdsUserByCpfMap} -> find_by_cpf_and_client_(ListIdsUserByCpfMap, ClientId, Fields, []);
+				_ -> {ok, []}
+			end;
+		{error, enoent} -> {ok, []}
 	end.
 
 find_by_cpf_and_client_([], _, _, Result) -> {ok, Result};
 find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
 	UserId = maps:get(<<"id">>, UserByCpfMap),
 	RemapUserId = maps:get(<<"remap_user_id">>, UserByCpfMap),
-	io:format("ems_user_permission:find_by_user_and_client(~p, ~p, ~p).\n", [UserId, ClientId, Fields]),
 	case find_by_user_and_client(UserId, ClientId, Fields) of
 		{ok, Records} -> 
 			Result2 = Result ++ Records;
@@ -72,7 +75,7 @@ find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
 find_by_user_and_client(Id, ClientId, Fields) -> 
 	case ems_db:find([user_permission_db, user_permission_fs], Fields, [{user_id, "==", Id}, {client_id, "==", ClientId}]) of
 		{ok, Record} -> {ok, Record};
-		_ -> {error, enoent}
+		_ -> {ok, []}
 	end.
 
 

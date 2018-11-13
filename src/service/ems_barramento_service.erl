@@ -29,9 +29,20 @@ execute(Request = #request{timestamp = Timestamp,
 			RestUrl = ems_util:url_mask_str(erlang:iolist_to_binary([<<"/auth/client?filter={\"name\":\"">>, AppName, <<"\"}&fields=id,version&limit=1">>])),
 			RestUri = binary_to_list(Conf#config.rest_base_url) ++ RestUrl,
 			GrantQuery = binary_to_list(iolist_to_binary([<<"grant_type=password&username=">>, Conf#config.rest_user, <<"&password=">>, Conf#config.rest_passwd])),
+			% Tenta autenticar no barramento rest com o usuário e senha do usuário erlangms
+			% Na segunda tentativa, tenta pela senha padrão (barramento utilizado pelo desenvolvedor)
 			case httpc:request(post, {[RestAuthUrl], [], "application/x-www-form-urlencoded", GrantQuery}, [], []) of
-				{ok, {_, _, AuthPayload}} ->
-					case ems_util:json_decode_as_map(list_to_binary(AuthPayload)) of
+				{ok, {_, _, AuthPayload}} -> ResultAuth = {ok, AuthPayload};
+				_ -> 
+					GrantQuery2 = binary_to_list(iolist_to_binary([<<"grant_type=password&username=">>, Conf#config.rest_user, <<"&password=">>, <<"fEqNCco3Yq9h5ZUglD3CZJT4lBs=">>])),
+					case httpc:request(post, {[RestAuthUrl], [], "application/x-www-form-urlencoded", GrantQuery2}, [], []) of
+						{ok, {_, _, AuthPayload2}} -> ResultAuth = {ok, AuthPayload2};
+						_ -> ResultAuth = {error, einvalid_client_request_authorization}
+					end
+			end,
+			case ResultAuth of
+				{ok, ResultAuthPayload} ->
+					case ems_util:json_decode_as_map(list_to_binary(ResultAuthPayload)) of
 						{ok, AuthParams} -> 
 							case maps:is_key(<<"error">>, AuthParams) of
 								true -> 
@@ -100,9 +111,9 @@ execute(Request = #request{timestamp = Timestamp,
 													response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 							}
 					end;
-				_ ->
+				{error, Reason} ->
 					{error, Request#request{code = 400, 
-											reason = einvalid_client_request_authorization,
+											reason = Reason,
 											response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 					}
 			end
