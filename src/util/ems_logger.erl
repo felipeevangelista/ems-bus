@@ -450,13 +450,14 @@ checkpoint_arquive_log(State = #state{log_file_handle = CurrentIODevice,
 				% Como o arquivo não existe, apenas cria novo arquivo de log
 				State2 = create_new_logfile(State)
 		end,
-		set_timeout_archive_log_checkpoint(),
+		erlang:send_after(?LOG_ARCHIVE_CHECKPOINT, self(), checkpoint_archive_log),
 		State2
 	catch
 		_:Reason3 ->
 			ems_db:inc_counter(ems_logger_archive_log_error),
 			ems_logger:error("ems_logger archive log file checkpoint exception. Reason: ~p.", [Reason3]),
-			set_timeout_archive_log_checkpoint(),
+			erlang:send_after(?LOG_ARCHIVE_CHECKPOINT, self(), checkpoint_archive_log),
+			ems_util:flush_messages(),
 			State#state{log_file_name = undefined,
 						log_file_handle = undefined}
 	end.
@@ -506,9 +507,6 @@ log_file_tail(#state{log_file_name = LogFilename}, N) ->
 			Error
 	end.
 
-
-set_timeout_archive_log_checkpoint() ->    
-	erlang:send_after(?LOG_ARCHIVE_CHECKPOINT, self(), checkpoint_archive_log).
 
 write_msg(Tipo, Msg, State = #state{log_level = Level, 
 									log_ult_msg = UltMsg, 
