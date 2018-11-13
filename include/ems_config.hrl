@@ -118,8 +118,8 @@
 -define(LOG_ARCHIVE_CHECKPOINT, 1000 * 60 * 60 * 24).  % Por default são 24 horas
 
 % Define o tamanho máximo default que pode ser impresso no log do payload e response para depuração
--define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 256000).
--define(LOG_SHOW_RESPONSE_MAX_LENGTH, 256000).
+-define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 512000).
+-define(LOG_SHOW_RESPONSE_MAX_LENGTH, 512000).
 
 % Mostra cabeçalhos de depuração
 -define(SHOW_DEBUG_RESPONSE_HEADERS, true).
