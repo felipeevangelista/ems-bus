@@ -476,7 +476,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		% Valida a URL e adverte como um warning se tem verbos de ligação ou está em maiúscula
 		case (string:to_lower(UrlStr) /= UrlStr) 
 			orelse string:len(UrlStr) > 100 
-			orelse ems_util:str_contains(UrlStr, ["salva", "gera", "confirma", "cancela", "busca", "avisa", "possui", "valida", "conclui", "lista", "carrega", "obter", "garante", "altera", "exclui", "atualiza", "processa"]) of
+			orelse ems_util:str_contains(UrlStr, ["salva", "gera", "confirma", "cancela", "busca", "avisa", "possui", "validar", "conclui", "listar", "listagem", "carrega", "obter", "garante", "altera", "exclui", "atualiza", "processa"]) of
 				true -> ems_logger:format_warn("ems_catalog url \033[01;34m~p\033[0m does not comply good RESTful practices. Use short URLs in lowercase without unnecessary articles or link verbs.", [UrlStr]);
 				false -> ok
 		end,
