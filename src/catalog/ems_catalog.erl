@@ -472,6 +472,14 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 				put(parse_step, url),
 				Url2 = ems_util:parse_url_service(get_p(<<"url">>, Map, <<>>))
 		end,
+		UrlStr = binary_to_list(Url2),
+		% Valida a URL e adverte como um warning se tem verbos de ligação ou está em maiúscula
+		case (string:to_lower(UrlStr) /= UrlStr) 
+			orelse string:len(UrlStr) > 100 
+			orelse ems_util:str_contains(UrlStr, ["salva", "gera", "confirma", "cancela", "busca", "avisa", "possui", "valida", "conclui", "lista", "carrega", "obter", "garante", "altera", "exclui", "atualiza", "processa"]) of
+				true -> ems_logger:format_warn("ems_catalog url \033[01;34m~p\033[0m does not comply good RESTful practices. Use short URLs in lowercase without unnecessary articles or link verbs.", [UrlStr]);
+				false -> ok
+		end,
 
 		put(parse_step, type),
 		Type = ems_util:parse_type_service(get_p(<<"type">>, Map, <<"GET">>)),
@@ -766,7 +774,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 	catch
 		_Exception:Reason -> 
 			ems_db:inc_counter(edata_loader_invalid_catalog),
-			ems_logger:warn("ems_catalog parse invalid service specification on ~p. Reason: ~p\n\t~p.\n", [get(parse_step), Reason, Map]),
+			ems_logger:warn("ems_catalog parse invalid service specification on \033[01;34m~p\033[0m. Reason: ~p\n\t~p.\n", [get(parse_step), Reason, Map]),
 			{error, Reason}
 	end.
 

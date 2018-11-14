@@ -202,7 +202,8 @@
 		 os_command/2,
 		 integer_to_list_def/2,
 		 str_trim/1,
-		 binary_to_hex/1
+		 binary_to_hex/1,
+		 str_contains/2
 		]).
 
 -spec version() -> string().
@@ -3882,6 +3883,7 @@ criptografia_md5(Password) when is_binary(Password) ->
 criptografia_md5(Password) -> binary_to_hex(crypto:hash(md5, Password)).
 
 
+-spec flush_messages() -> ok.
 flush_messages() ->
 	receive
 	_ -> 
@@ -3889,3 +3891,13 @@ flush_messages() ->
 	after 500 ->
 		ok
 	end.
+
+-spec str_contains(string(), list(string())) -> boolean().
+str_contains(_, []) -> false;
+str_contains(Str, [H|T]) ->
+	case string:str(Str, H) > 0 of
+		true -> true;
+		false -> str_contains(Str, T)
+	end.
+	
+
