@@ -324,6 +324,7 @@ parse_datasource(DsName, _Rowid, Conf) ->
 		Ds -> Ds
 	end.
 		
+		
 
 	
 parse_node_service(undefined) -> <<>>;
@@ -584,10 +585,15 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		Public = ems_util:parse_bool(get_p(<<"public">>, Map, true)),
 		
 		put(parse_step, content_type),
-		ContentType = case maps:is_key(<<"content_type">>, Map) of
-							true ->  get_p(<<"content_type">>, Map, ?CONTENT_TYPE_JSON);
-							false -> get_p(<<"content-type">>, Map, ?CONTENT_TYPE_JSON)
-					  end,
+		ContentType0 = ems_util:parse_content_type(case maps:is_key(<<"content_type">>, Map) of
+														true ->  get_p(<<"content_type">>, Map, ?CONTENT_TYPE_JSON);
+														false -> get_p(<<"content-type">>, Map, ?CONTENT_TYPE_JSON)
+												  end),
+		% Se for application/json substitui pelo application/json; charset=utf-8
+		case ContentType0 of
+			<<"application/json">> -> ContentType = ?CONTENT_TYPE_JSON;  
+			_ -> ContentType = ContentType0
+		end,
 		
 		put(parse_step, path),
 		Path0 = ems_util:parse_file_name_path(get_p(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),
