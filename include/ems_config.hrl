@@ -324,6 +324,7 @@
 				 ems_debug = false :: boolean(),							%% Habilita o modo debug
 				 ems_result_cache  :: non_neg_integer(),
 				 ems_result_cache_shared :: non_neg_integer(),
+				 ems_result_cache_enabled = true :: boolean(),
 				 ems_datasources :: map(),
 				 show_debug_response_headers = false :: boolean(),	%% Add debug headers in HTTP response headers
 				 tcp_listen_address :: list(),

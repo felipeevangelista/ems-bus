@@ -396,6 +396,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 								 cat_restricted_services_owner = RestrictedServicesOwner,
 								 ems_result_cache = ResultCacheDefault,
 								 ems_result_cache_shared = ResultCacheSharedDefault,
+								 ems_result_cache_enabled = ResultCacheEnabledDefault,
 								 ems_hostname = HostNameDefault,
 								 authorization = AuthorizationDefault,
 								 oauth2_with_check_constraint = Oauth2WithCheckConstraintDefault,
@@ -520,9 +521,13 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		end,
 		
 		put(parse_step, result_cache),
-		case Type of
-			<<"GET">> -> ResultCache = ems_util:parse_result_cache(get_p(<<"result_cache">>, Map, ResultCacheDefault));
-			_ -> ResultCache = 0
+		case ResultCacheEnabledDefault of
+			true ->
+				case Type of
+					<<"GET">> -> ResultCache = ems_util:parse_result_cache(get_p(<<"result_cache">>, Map, ResultCacheDefault));
+					_ -> ResultCache = 0
+				end;
+			false -> ResultCache = 0
 		end,
 
 		put(parse_step, result_cache_shared),

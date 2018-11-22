@@ -62,6 +62,7 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mshow_debug_response_headers\033[0m: \033[01;34m~p\033[0m.", [Conf#config.show_debug_response_headers]),
 			ems_logger:info("  \033[0;32mresult_cache\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.ems_result_cache]),
 			ems_logger:info("  \033[0;32mresult_cache_shared\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_result_cache_shared]),
+			ems_logger:info("  \033[0;32mresult_cache_enabled\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_result_cache_enabled]),
 			ems_logger:info("  \033[0;32mjava_home\033[0m: \033[01;34m~s\033[0m.", [Conf#config.java_home]),
 			ems_logger:info("  \033[0;32mjava_jar_path\033[0m: \033[01;34m~s\033[0m.", [Conf#config.java_jar_path]),
 			ems_logger:info("  \033[0;32mjava_thread_pool\033[0m: \033[01;34m~p\033[0m.", [Conf#config.java_thread_pool]),

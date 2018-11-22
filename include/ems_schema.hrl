@@ -31,7 +31,7 @@
 															%%			  		 			      1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
 															%%   					              6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 
 															%%           					     10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
-			   passwd_crypto :: binary(),					%% 11 - passwd_crypto 			-> Algoritmo criptografia: SHA1
+			   passwd_crypto :: binary(),					%% 11 - passwd_crypto 			-> Algoritmo criptografia: SHA1, MD5
 			   type_email :: non_neg_integer(),				%% 12 - type_email				-> undefined = desconhecido  1 = Institucional  2 = Pessoal
 			   active :: boolean(),							%% 13 - active
 			   endereco :: binary(),						%% 14 - endereco

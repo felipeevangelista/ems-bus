@@ -446,6 +446,9 @@ parse_config(Json, Filename) ->
 		put(parse_step, result_cache_shared),
 		ResultCacheShared = ems_util:parse_bool(get_p(<<"result_cache_shared">>, Json, ?RESULT_CACHE_SHARED)),
 
+		put(parse_step, result_cache_enabled),
+		ResultCacheEnabled = ems_util:parse_bool(get_p(<<"result_cache_enabled">>, Json, true)),
+
 		put(parse_step, tcp_allowed_address),
 		TcpAllowedAddress = parse_tcp_allowed_address(get_p(<<"tcp_allowed_address">>, Json, all)),
 		
@@ -552,6 +555,7 @@ parse_config(Json, Filename) ->
 								_ -> ems_util:criptografia_sha1(LdapPasswordAdmin0)
 						  end,
 
+
 		put(parse_step, config),
 		Conf = #config{ 
 				 cat_host_alias = HostAlias,
@@ -573,6 +577,7 @@ parse_config(Json, Filename) ->
 				 ems_debug = Debug,
 				 ems_result_cache = ResultCache,
 				 ems_result_cache_shared = ResultCacheShared,
+				 ems_result_cache_enabled = ResultCacheEnabled,
 				 ems_datasources = Datasources,
 				 show_debug_response_headers = ShowDebugResponseHeaders,
 				 tcp_listen_address	= TcpListenAddress,
