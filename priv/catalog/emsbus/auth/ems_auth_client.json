@@ -9,10 +9,11 @@
 		"url": "/auth/client/:id",
 		"type": "GET",
 		"result_cache" : 0,
+		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
-			"fields" : ["id", "name", "secret", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -28,10 +29,11 @@
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
+		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
-			"fields" : ["id", "name", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -78,10 +80,11 @@
 		"url": "/auth/client/fs/:id",
 		"type": "GET",
 		"result_cache" : 0,
+		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],
-			"fields" : ["id", "name", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -97,10 +100,11 @@
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
+		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],
-			"fields" : ["id", "name", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",

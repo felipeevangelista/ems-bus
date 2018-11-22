@@ -53,6 +53,11 @@
 	{
 		"catalog": "/emsbus/auth/ems_netadm_auth_user", 
 		"file": "ems_netadm_auth_user.json"
+	},
+	
+	{
+		"catalog": "/emsbus/auth/ems_netadm_auth_client", 
+		"file": "ems_netadm_auth_client.json"
 	}	
 
 ]
