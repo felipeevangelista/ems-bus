@@ -54,6 +54,7 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mlog_show_payload\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_show_payload]),
 			ems_logger:info("  \033[0;32mlog_show_response_max_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_response_max_length]),
 			ems_logger:info("  \033[0;32mlog_show_payload_max_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_payload_max_length]),
+			ems_logger:info("  \033[0;32mlog_show_odbc_pool_activity\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_odbc_pool_activity]),
 			ems_logger:info("  \033[0;32mlog_file_checkpoint\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.log_file_checkpoint]),
 			ems_logger:info("  \033[0;32mlog_file_max_size\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_file_max_size]),
 			ems_logger:info("  \033[0;32mlog_file_path\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_file_path]),

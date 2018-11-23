@@ -253,10 +253,10 @@ parse_static_file_path(StaticFilePathMap) ->
 	
 
 parse_datasources_([], _, _, Result) -> maps:from_list(Result);
-parse_datasources_([DsName|T], Datasources, Variables, Result) ->
+parse_datasources_([DsName|T], Datasources, Conf, Result) ->
 	M = maps:get(DsName, Datasources),
-	Ds = ems_db:create_datasource_from_map(M, undefined, #{}, Variables),
-	parse_datasources_(T, Datasources, Variables, [{DsName, Ds} | Result]).
+	Ds = ems_db:create_datasource_from_map(M, undefined, Conf),
+	parse_datasources_(T, Datasources, Conf, [{DsName, Ds} | Result]).
 								
 parse_datasources(DatasourcesMap, Variables) ->
 	parse_datasources_(maps:keys(DatasourcesMap), DatasourcesMap, Variables, []).
@@ -397,9 +397,6 @@ parse_config(Json, Filename) ->
 		put(parse_step, catalog_path),
 		CatPathSearch = parse_cat_path_search(maps:to_list(get_p(<<"catalog_path">>, Json, #{})), StaticFilePath, StaticFilePathProbing),
 
-		put(parse_step, datasources),
-		Datasources = parse_datasources(get_p(<<"datasources">>, Json, #{}), CustomVariables),
-
 		put(parse_step, rest_base_url),
 		case ems_util:get_param_or_variable(<<"rest_base_url">>, Json, <<>>) of
 			<<>> ->	
@@ -432,7 +429,7 @@ parse_config(Json, Filename) ->
 		RestUser = binary_to_list(get_p(<<"rest_user">>, Json, <<"erlangms">>)),
 
 		put(parse_step, rest_passwd),
-		RestPasswd = binary_to_list(get_p(<<"rest_passwd">>, Json, ems_util:criptografia_sha1(<<"123456">>))),
+		RestPasswd = binary_to_list(get_p(<<"rest_passwd">>, Json, <<"fEqNCco3Yq9h5ZUglD3CZJT4lBs=">>)),
 
 		put(parse_step, host_alias),
 		HostAlias = get_p(<<"host_alias">>, Json, #{<<"local">> => HostnameBin}),
@@ -490,6 +487,12 @@ parse_config(Json, Filename) ->
 
 		put(parse_step, log_file_archive_path),
 		LogFileArchivePath = get_p(<<"log_file_archive_path">>, Json, ?LOG_FILE_ARCHIVE_PATH),
+
+		put(parse_step, log_show_odbc_pool_activity),
+		LogShowOdbcPoolActivity = ems_util:parse_bool(get_p(<<"log_show_odbc_pool_activity">>, Json, ?LOG_SHOW_ODBC_POOL_ACTIVITY)),
+
+		put(parse_step, log_show_data_loader_activity),
+		LogShowDataLoaderActivity = ems_util:parse_bool(get_p(<<"log_show_data_loader_activity">>, Json, ?LOG_SHOW_DATA_LOADER_ACTIVITY)),
 
 		put(parse_step, rest_environment),
 		RestEnvironment = ems_util:get_param_or_variable(<<"rest_environment">>, Json, HostnameBin),
@@ -553,11 +556,10 @@ parse_config(Json, Filename) ->
 		LdapPasswordAdmin = case LdapPasswdAdminCrypto of
 								<<"SHA1">> -> LdapPasswordAdmin0;
 								_ -> ems_util:criptografia_sha1(LdapPasswordAdmin0)
-						  end,
+							end,
 
-
-		put(parse_step, config),
-		Conf = #config{ 
+		put(parse_step, config_0),
+		Conf0 = #config{ 
 				 cat_host_alias = HostAlias,
 				 cat_host_search = get_p(<<"host_search">>, Json, <<>>),							
 				 cat_node_search = get_p(<<"node_search">>, Json, <<>>),
@@ -578,7 +580,6 @@ parse_config(Json, Filename) ->
 				 ems_result_cache = ResultCache,
 				 ems_result_cache_shared = ResultCacheShared,
 				 ems_result_cache_enabled = ResultCacheEnabled,
-				 ems_datasources = Datasources,
 				 show_debug_response_headers = ShowDebugResponseHeaders,
 				 tcp_listen_address	= TcpListenAddress,
 				 tcp_listen_address_t = TcpListenAddress_t,
@@ -623,6 +624,8 @@ parse_config(Json, Filename) ->
 				 log_file_max_size = LogFileMaxSize,
 				 log_file_path = LogFilePath,
 				 log_file_archive_path = LogFileArchivePath,
+				 log_show_odbc_pool_activity = LogShowOdbcPoolActivity,
+				 log_show_data_loader_activity = LogShowDataLoaderActivity,
 				 rest_default_querystring = Querystring,
 				 java_jar_path = JarPath,
 				 java_home = JavaHome,
@@ -638,8 +641,15 @@ parse_config(Json, Filename) ->
 				 ldap_base_search = LdapBaseSearch,
 				 custom_variables = CustomVariables
 			},
-		ems_db:set_param(config_variables, Conf),
-		{ok, Conf}
+
+		put(parse_step, datasources),
+		Datasources = parse_datasources(get_p(<<"datasources">>, Json, #{}), Conf0),
+
+		put(parse_step, config_1),
+		Conf1 = Conf0#config{ems_datasources = Datasources},
+
+		ems_db:set_param(config_variables, Conf1),
+		{ok, Conf1}
 	catch
 		_:Reason -> 
 			ems_logger:format_error("ems_config cannot parse ~p in configuration file ~p. Reason: ~p.", [get(parse_step), Filename, Reason]),

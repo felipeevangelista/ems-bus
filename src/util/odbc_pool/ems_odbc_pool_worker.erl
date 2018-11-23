@@ -216,10 +216,10 @@ handle_info({check_valid_connection, QueryCount}, State = #state{datasource = #s
 			end
 	end;
 
-handle_info(close_idle_connection, State = #state{datasource = #service_datasource{id = Id},
+handle_info(close_idle_connection, State = #state{datasource = #service_datasource{id = Id, log_show_odbc_pool_activity = LogShowPoolActivity},
 												  check_valid_connection_ref = CheckValidConnectionRef,
 												  query_count = QueryCount}) ->
-   ems_logger:info("ems_odbc_pool_worker close_idle_connection (Ds: ~p QueryCount: ~p).", [Id, QueryCount]),
+   ems_logger:info("ems_odbc_pool_worker close_idle_connection (Ds: ~p QueryCount: ~p).", [Id, QueryCount], LogShowPoolActivity),
    erlang:cancel_timer(CheckValidConnectionRef),
    do_disconnect(State),
    {stop, normal, State#state{close_idle_connection_ref = undefined, 
@@ -231,7 +231,7 @@ handle_info(Msg, State) ->
 
 terminate(Reason, State) ->
     do_disconnect(State),
-	ems_logger:info("ems_odbc_pool_worker terminate. Reason: ~p.", [Reason]),   
+	?DEBUG("ems_odbc_pool_worker terminate. Reason: ~p.", [Reason]),   
     ok.
  
 code_change(_OldVsn, State, _Extra) ->

@@ -59,7 +59,8 @@
 				update_count,
 				error_count,
 				disable_count,
-				skip_count
+				skip_count,
+				log_show_data_loader_activity
 			}).
 
 -define(SERVER, ?MODULE).
@@ -116,6 +117,7 @@ init(#service{name = Name,
 			  start_timeout = StartTimeout,
 			  properties = Props}) ->
 	NameStr = binary_to_list(Name),
+	Conf = ems_config:getConfig(),
 	LastUpdateParamName = erlang:binary_to_atom(iolist_to_binary([Name, <<"_last_update_param_name">>]), utf8),
 	LastUpdate = ems_db:get_param(LastUpdateParamName),
 	UpdateCheckpoint = maps:get(<<"update_checkpoint">>, Props, ?DATA_LOADER_UPDATE_CHECKPOINT),
@@ -152,6 +154,7 @@ init(#service{name = Name,
 		true -> erlang:send_after(CheckRemoveRecordsCheckpoint + 90000 + rand:uniform(10000), self(), check_count_records);
 		false -> ok
 	end,
+	LogShowDataLoaderActivity =  ems_util:parse_bool(maps:get(<<"log_show_data_loader_activity">>, Props, Conf#config.log_show_data_loader_activity)),
 	State = #state{name = NameStr,
 				   datasource = Datasource, 
 				   update_checkpoint = UpdateCheckpoint,
@@ -188,8 +191,9 @@ init(#service{name = Name,
 				   update_count = 0,
 				   error_count = 0,
 				   disable_count = 0,
-				   skip_count = 0
-},
+				   skip_count = 0,
+				   log_show_data_loader_activity = LogShowDataLoaderActivity
+	},
 	{ok, State, StartTimeout}.
     
 handle_cast(shutdown, State) ->
@@ -239,7 +243,8 @@ handle_info(check_sync_full, State = #state{name = Name,
 											error_checkpoint_metric_name = ErrorCheckpointMetricName,
 											loading = Loading,
 											group = GroupDataLoader,
-											wait_count = WaitCount
+											wait_count = WaitCount,
+											log_show_data_loader_activity = LogShowDataLoaderActivity
 										}) ->
 		{{_, _, _}, {Hour, _, _}} = calendar:local_time(),
 		case (Hour == 5 orelse (Hour >= 8 andalso Hour =< 20 andalso (Hour rem 2 =:= 0))) of
@@ -247,13 +252,13 @@ handle_info(check_sync_full, State = #state{name = Name,
 				case not Loading andalso ems_data_loader_ctl:permission_to_execute(Name, GroupDataLoader, check_sync_full, WaitCount) of
 					true ->
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
-						ems_logger:info("~s sync full begin now.", [Name]),
+						ems_logger:info("~s sync full begin now.", [Name], LogShowDataLoaderActivity),
 						State2 = State#state{last_update = undefined,
 											 allow_clear_table_full_sync = (Hour == 5)},  % limpar a tabela somente às 5h da manhã
 						case do_check_load_or_update_checkpoint(State2) of
 							{ok, State3 = #state{insert_count = InsertCount, update_count = UpdateCount, error_count = ErrorCount, disable_count = DisableCount, skip_count = SkipCount}} ->
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),
-								ems_logger:info("~s sync full checkpoint successfully", [Name]),
+								ems_logger:info("~s sync full checkpoint successfully", [Name], LogShowDataLoaderActivity),
 								ems_util:flush_messages(),
 								erlang:send_after(3600000, self(), check_sync_full),
 								erlang:garbage_collect(self(), [{async, undefined}]),
@@ -263,12 +268,12 @@ handle_info(check_sync_full, State = #state{name = Name,
 								ems_db:inc_counter(ErrorCheckpointMetricName),
 								ems_util:flush_messages(),
 								erlang:send_after(3600000, self(), check_sync_full),
-								ems_logger:error("~s sync full wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
+								ems_logger:error("~s sync full wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason], LogShowDataLoaderActivity),
 								{noreply, State#state{wait_count = 0}, TimeoutOnError}
 						end;
 					false ->
 						TimeoutWait = get_timeout_wait(WaitCount),
-						ems_logger:warn("~s handle check_sync_full wait ~pms to execute (WaitCount: ~p).", [Name, TimeoutWait, WaitCount]),
+						ems_logger:warn("~s handle check_sync_full wait ~pms to execute (WaitCount: ~p).", [Name, TimeoutWait, WaitCount], LogShowDataLoaderActivity),
 						erlang:send_after(TimeoutWait, self(), check_sync_full),
 						{noreply, State#state{wait_count = WaitCount + 1}, UpdateCheckpoint}
 				end;
@@ -332,7 +337,8 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 														 error_checkpoint_metric_name = ErrorCheckpointMetricName,
 														 loading = Loading,
 														 group = DataLoaderGroup,
-														 wait_count = WaitCount}) ->
+														 wait_count = WaitCount,
+														 log_show_data_loader_activity = LogShowDataLoaderActivity}) ->
 	?DEBUG("~s handle_do_check_load_or_update_checkpoint execute now.", [Name]),
 	case ems_data_loader_ctl:permission_to_execute(Name, DataLoaderGroup, check_load_or_update_checkpoint, WaitCount) of
 		true ->
@@ -349,13 +355,13 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 				{error, eodbc_restricted_connection} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, eodbc_restricted_connection),
 					TimeoutOnError2 = TimeoutOnError * 5,
-					ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while database in backup or restricted connection. Reason: ~p.", [Name, TimeoutOnError2, eodbc_restricted_connection]),
+					ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while database in backup or restricted connection. Reason: ~p.", [Name, TimeoutOnError2, eodbc_restricted_connection], LogShowDataLoaderActivity),
 					ems_util:flush_messages(),
 					{noreply, State#state{wait_count = 0}, TimeoutOnError2};
 				{error, Reason} -> 
 					ems_data_loader_ctl:notify_finish_work(Name, check_count_records, WaitCount, 0, 0, 0, 0, 0, Reason),
 					ems_db:inc_counter(ErrorCheckpointMetricName),
-					ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason]),
+					ems_logger:error("~s do_check_load_or_update_checkpoint wait ~pms for next checkpoint while has database connection error. Reason: ~p.", [Name, TimeoutOnError, Reason], LogShowDataLoaderActivity),
 					ems_util:flush_messages(),
 					{noreply, State#state{wait_count = 0}, TimeoutOnError}
 			end;
@@ -369,9 +375,6 @@ handle_do_check_load_or_update_checkpoint(State = #state{name = Name,
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
-
-
 
 
 do_check_count_checkpoint(State = #state{name = Name,
@@ -467,9 +470,10 @@ do_check_count_checkpoint(State = #state{name = Name,
 
 do_check_load_or_update_checkpoint(State = #state{name = Name,
 												  last_update_param_name = LastUpdateParamName,
-												  last_update = LastUpdate}) ->
+												  last_update = LastUpdate,
+												  log_show_data_loader_activity = LogShowDataLoaderActivity}) ->
 	% garante que os dados serão atualizados mesmo que as datas não estejam sincronizadas
-	ems_logger:info("~s begin syncronize data...", [Name]),
+	ems_logger:info("~s begin syncronize data...", [Name], LogShowDataLoaderActivity),
 	NextUpdate = ems_util:date_dec_minute(calendar:local_time(), 59), 
 	LastUpdateStr = ems_util:timestamp_str(),
 	Conf = ems_config:getConfig(),
@@ -524,7 +528,8 @@ do_load_table(CtrlInsert, Conf, State = #state{name = Name,
 											   error_metric_name = ErrorsMetricName,
 											   disable_metric_name = DisabledMetricName,
 											   skip_metric_name = SkipMetricName,
-											   allow_clear_table_full_sync = AllowClearTableFullSync}) -> 
+											   allow_clear_table_full_sync = AllowClearTableFullSync,
+											   log_show_data_loader_activity = LogShowDataLoaderActivity}) -> 
 	try
 		case AllowClearTableFullSync of
 			true ->
@@ -533,7 +538,7 @@ do_load_table(CtrlInsert, Conf, State = #state{name = Name,
 						do_reset_sequence(State),
 						case do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0) of
 							{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} ->
-								ems_logger:info("~s sync full ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
+								ems_logger:info("~s sync full ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount], LogShowDataLoaderActivity),
 								ems_db:counter(InsertMetricName, InsertCount),
 								ems_db:counter(ErrorsMetricName, ErrorCount),
 								ems_db:counter(DisabledMetricName, DisabledCount),
@@ -545,13 +550,13 @@ do_load_table(CtrlInsert, Conf, State = #state{name = Name,
 							Error -> Error
 						end;
 					Error ->
-						ems_logger:error("~s do_load could not clear table before load data.", [Name]),
+						ems_logger:error("~s do_load could not clear table before load data.", [Name], LogShowDataLoaderActivity),
 						Error
 				end;
 			false ->
 				case do_load_data_pump(CtrlInsert, Conf, State, 1, 0, 0, 0, 0) of
 					{ok, InsertCount, ErrorCount, DisabledCount, SkipCount} ->
-						ems_logger:info("~s sync ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount]),
+						ems_logger:info("~s sync ~p inserts, ~p disabled, ~p skips, ~p errors.", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount], LogShowDataLoaderActivity),
 						ems_db:counter(InsertMetricName, InsertCount),
 						ems_db:counter(ErrorsMetricName, ErrorCount),
 						ems_db:counter(DisabledMetricName, DisabledCount),
@@ -579,7 +584,8 @@ do_load_data_pump(CtrlInsert,
 								 sql_load_packet_length = SqlLoadPacketLength,
 								 sql_fields = SqlFields,
 								 fields = Fields,
-								 source_type = SourceType}, 
+								 source_type = SourceType,
+								 log_show_data_loader_activity = LogShowDataLoaderActivity}, 
 				 Offset, InsertCount, ErrorCount, DisabledCount, SkipCount) -> 
 	try
 		case SqlLoadPacketLength == 0 of
@@ -620,14 +626,10 @@ do_load_data_pump(CtrlInsert,
 						{ok, InsertCount2, ErrorCount2, DisabledCount2, SkipCount2};
 					false ->
 						{ok, InsertCount2, _, ErrorCount2, DisabledCount2, SkipCount2} = ems_data_pump:data_pump(Records, list_to_binary(CtrlInsert), Conf, Name, Middleware, insert, 0, 0, 0, 0, 0, SourceType, Fields),
-						%case Params of
-						%	[] -> ems_logger:info("~s partial sync full ~p inserts, ~p disabled, ~p skips, ~p errors (Offset ~p Limit ~p).", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount, 1, Offset+SqlLoadPacketLength-1]);
-						%	_ -> ems_logger:info("~s partial sync full ~p inserts, ~p disabled, ~p skips, ~p errors (Offset ~p Limit ~p).", [Name, InsertCount, DisabledCount, SkipCount, ErrorCount, Offset, Offset+SqlLoadPacketLength-1])
-						%end,
 						do_load_data_pump(CtrlInsert, Conf, State, Offset + SqlLoadPacketLength, InsertCount + InsertCount2, ErrorCount + ErrorCount2, DisabledCount + DisabledCount2, SkipCount + SkipCount2)
 				end;
 			{error, Reason} = Error -> 
-				ems_logger:error("~s do_load_data_pump fetch exception. Reason: ~p.", [Name, Reason]),
+				ems_logger:error("~s do_load_data_pump fetch exception. Reason: ~p.", [Name, Reason], LogShowDataLoaderActivity),
 				Error
 		end
 	catch
@@ -649,7 +651,8 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 													   error_metric_name = ErrorsMetricName,
 													   disable_metric_name = DisabledMetricName,
 													   skip_metric_name = SkipMetricName,
-													   source_type = SourceType}) -> 
+													   source_type = SourceType,
+													   log_show_data_loader_activity = LogShowDataLoaderActivity}) -> 
 	try
 		% do_update is optional
 		case SqlUpdate =/= "" of
@@ -673,8 +676,7 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 							{_,_,[]} -> 
 								ems_odbc_pool:shutdown_connection(Datasource2), 
 								ems_db:inc_counter(UpdateMissMetricName),
-								?DEBUG("~s do_update has no records to update.", [Name]),
-								ems_logger:info("~s sync 0 inserts, 0 updates, 0 disabled, 0 skips, 0 errors since ~s.", [Name, ems_util:timestamp_str(LastUpdate)]),
+								ems_logger:info("~s sync 0 inserts, 0 updates, 0 disabled, 0 skips, 0 errors since ~s.", [Name, ems_util:timestamp_str(LastUpdate)], LogShowDataLoaderActivity),
 								{ok, State#state{insert_count = 0,
 												 error_count = 0,
 												 disable_count = 0,
@@ -687,7 +689,7 @@ do_update(LastUpdate, CtrlUpdate, Conf, State = #state{datasource = Datasource,
 								ems_db:counter(ErrorsMetricName, ErrorCount),
 								ems_db:counter(DisabledMetricName, DisabledCount),
 								ems_db:counter(SkipMetricName, SkipCount),
-								ems_logger:info("~s sync ~p inserts, ~p updates, ~p disabled, ~p skips, ~p errors since ~s.", [Name, InsertCount, UpdateCount, DisabledCount, SkipCount, ErrorCount, ems_util:timestamp_str(LastUpdate)]),
+								ems_logger:info("~s sync ~p inserts, ~p updates, ~p disabled, ~p skips, ~p errors since ~s.", [Name, InsertCount, UpdateCount, DisabledCount, SkipCount, ErrorCount, ems_util:timestamp_str(LastUpdate)], LogShowDataLoaderActivity),
 								{ok, State#state{insert_count = InsertCount,
 												 update_count = UpdateCount,
 												 error_count = ErrorCount,

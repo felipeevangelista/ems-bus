@@ -13,13 +13,20 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
+-compile({no_auto_import,[error/2]}).
+
 %% Server API
 -export([start/1, stop/0]).
 
 %% Client API
--export([error/1, error/2, 
-		 info/1, info/2, warn/1, warn/2, debug/1, debug/2, debug2/1, 
-		 debug2/2, in_debug/0, sync/0, log_request/1, mode_debug/1, 
+-export([error/1, error/2, error/3,
+		 info/1, info/2, info/3, 
+		 warn/1, warn/2, warn/3,
+		 debug/1, debug/2, debug/3,
+		 debug2/1, debug2/2, debug2/3,
+		 in_debug/0, mode_debug/1, 
+		 sync/0, 
+		 log_request/1, 
 		 set_level/1, 
 		 show_response/1, show_response/2, 
 		 show_payload/1, show_payload/2, 
@@ -83,17 +90,28 @@ error(Msg) ->
 error(Msg, Params) -> 
 	gen_server:cast(?SERVER, {write_msg, error, Msg, Params}). 
 
+error(Msg, Params, true) -> error(Msg, Params);
+error(_, _, false) -> ok.
+
 warn(Msg) -> 
 	gen_server:cast(?SERVER, {write_msg, warn, Msg}). 
 
 warn(Msg, Params) -> 
 	gen_server:cast(?SERVER, {write_msg, warn, Msg, Params}). 
+	
+warn(Msg, Params, true) -> 	warn(Msg, Params);
+warn(_, _, false) -> ok.
+
 
 info(Msg) -> 
 	gen_server:cast(?SERVER, {write_msg, info, Msg}).
 
 info(Msg, Params) -> 
 	gen_server:cast(?SERVER, {write_msg, info, Msg, Params}). 
+
+info(Msg, Params, true) -> info(Msg, Params);
+info(_, _, false) -> ok.
+
 
 debug(Msg) -> 
 	case in_debug() of
@@ -106,6 +124,9 @@ debug(Msg, Params) ->
 		true -> gen_server:cast(?SERVER, {write_msg, debug, Msg, Params});
 		_ -> ok
 	end.
+	
+debug(Msg, Params, true) -> debug(Msg, Params);
+debug(_, _, false) ->  ok.
 
 debug2(Msg) -> 
 	case in_debug() of
@@ -122,6 +143,9 @@ debug2(Msg, Params) ->
 			io:format(Msg2);
 		_ -> ok
 	end.
+
+debug2(Msg, Params, true) -> debug2(Msg, Params);
+debug2(_, _, false) -> ok.
 
 
 in_debug() -> ets:lookup(debug_ets, debug) =:= [{debug, true}].
@@ -532,11 +556,11 @@ write_msg(Tipo, Msg, State = #state{log_level = Level,
 			end,
 			case (Level == error andalso Tipo /= error) andalso (Tipo /= debug) of
 				true ->
-					case length(State#state.log_buffer) >= 80 of
+					case length(State#state.log_buffer) >= 120 of
 						true -> 
 							State2 = sync_log_buffer_screen(State),
 							case CurrentSyncLogBufferTelaTimeRef of
-								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
+								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(500, self(), checkpoint_tela);
 								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
 							end,
 							State2#state{log_buffer = [Msg1], 
@@ -544,7 +568,7 @@ write_msg(Tipo, Msg, State = #state{log_level = Level,
 										 log_file_sync_log_buffer_tela_time_ref = SyncLogBufferTelaTimeRef};
 						false -> 
 							case CurrentSyncLogBufferTelaTimeRef of
-								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
+								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(500, self(), checkpoint_tela);
 								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
 							end,
 							State#state{log_buffer = [Msg1|State#state.log_buffer], 
@@ -556,7 +580,7 @@ write_msg(Tipo, Msg, State = #state{log_level = Level,
 							State2 = sync_log_buffer_screen(State),
 							State3 = sync_log_buffer(State2),
 							case CurrentSyncLogBufferTelaTimeRef of
-								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
+								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(500, self(), checkpoint_tela);
 								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
 							end,
 							case CurrentSyncLogBufferTimeRef of
@@ -570,8 +594,10 @@ write_msg(Tipo, Msg, State = #state{log_level = Level,
 										 log_file_sync_log_buffer_tela_time_ref = SyncLogBufferTelaTimeRef};
 						false ->
 							case CurrentSyncLogBufferTelaTimeRef of
-								undefined -> SyncLogBufferTelaTimeRef = erlang:send_after(1000, self(), checkpoint_tela);
-								_ -> SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
+								undefined -> 
+									SyncLogBufferTelaTimeRef = erlang:send_after(500, self(), checkpoint_tela);
+								_ -> 
+									SyncLogBufferTelaTimeRef = CurrentSyncLogBufferTelaTimeRef
 							end,
 							case CurrentSyncLogBufferTimeRef of
 								undefined -> SyncLogBufferTimeRef = erlang:send_after(LogFileCheckpoint, self(), checkpoint);
@@ -584,7 +610,8 @@ write_msg(Tipo, Msg, State = #state{log_level = Level,
 										log_file_sync_log_buffer_tela_time_ref = SyncLogBufferTelaTimeRef}
 					end
 			end;
-		false -> State
+		false -> 
+			State
 	end.
 	
 write_msg(Tipo, Msg, Params, State) ->
@@ -592,17 +619,23 @@ write_msg(Tipo, Msg, Params, State) ->
 	write_msg(Tipo, Msg1, State).
 	
 	
-sync_log_buffer_screen(State = #state{log_log_buffer_screen = []}) -> State;
+sync_log_buffer_screen(State = #state{log_log_buffer_screen = [], log_ult_msg = undefined, log_ult_reqhash = undefined}) -> State;
 sync_log_buffer_screen(State) ->
 	ems_db:inc_counter(ems_logger_sync_log_buffer_screen),
-	Msg = lists:reverse(State#state.log_log_buffer_screen),
-	try
-		io:format(Msg)
-	catch
-		_:_ -> ok
-	end,
+	MsgList = lists:reverse(State#state.log_log_buffer_screen),
+	sync_log_buffer_screen_(MsgList),
 	State#state{log_log_buffer_screen = [], log_ult_msg = undefined, log_ult_reqhash = undefined}.
 
+sync_log_buffer_screen_([]) -> ok;
+sync_log_buffer_screen_([H|T]) ->
+	try
+		io:format(H),
+		sync_log_buffer_screen_(T)
+	catch
+		_:_ -> 
+			% se ocorrer algum erro, imprime as demais mensagens
+			sync_log_buffer_screen_(T)
+	end.
 
 sync_log_buffer(State = #state{log_buffer = []}) -> State;
 sync_log_buffer(State = #state{log_buffer = Buffer,
@@ -627,7 +660,7 @@ sync_log_buffer(State = #state{log_buffer = Buffer,
 								ems_logger:error("ems_logger is writing to a log file deleted."),
 								State2 = checkpoint_arquive_log(State, true);
 							true ->
-								State2 = State#state{log_buffer = []}
+								State2 = State#state{log_buffer = [], log_ult_msg = undefined, log_ult_reqhash = undefined}
 						end
 				end
 		end,

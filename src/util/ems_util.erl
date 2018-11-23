@@ -203,7 +203,8 @@
 		 integer_to_list_def/2,
 		 str_trim/1,
 		 binary_to_hex/1,
-		 str_contains/2
+		 str_contains/2,
+		 oauth2_authenticate_rest_server/3
 		]).
 
 -spec version() -> string().
@@ -3901,3 +3902,25 @@ str_contains(Str, [H|T]) ->
 	end.
 	
 
+oauth2_authenticate_rest_server(RestAuthUrl, RestUser, RestPasswd) ->
+	GrantQuery = binary_to_list(iolist_to_binary([<<"grant_type=password&username=">>, RestUser, <<"&password=">>, RestPasswd])),
+	case httpc:request(post, {[RestAuthUrl], [], "application/x-www-form-urlencoded", GrantQuery}, [], []) of
+		{ok, {_, _, ResultAuthPayload}} -> 
+			case ems_util:json_decode_as_map(list_to_binary(ResultAuthPayload)) of
+				{ok, ResultAuthPayloadMap} -> 
+					case maps:is_key(<<"error">>, ResultAuthPayloadMap) of
+						true -> 
+							{ok, <<"{}">>};
+						false -> 
+							AccessToken = maps:get(<<"access_token">>, ResultAuthPayloadMap, undefined),
+							case AccessToken of
+								undefined -> {ok, <<"{}">>};
+								_ -> {ok, AccessToken}
+							end
+					end;
+				_ ->
+					{ok, <<"{}">>}
+			end;
+		_ -> 
+			{error, eunavailable_rest_server}
+	end.
