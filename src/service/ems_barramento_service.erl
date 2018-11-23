@@ -32,10 +32,10 @@ execute(Request = #request{timestamp = Timestamp,
 				{ok, AccessToken} -> 
 					case AccessToken of
 						undefined -> 
-							ems_logger:warn("ems_barramento_service oauth2 authenticate ~s denied. Endpoint /auth/client needs to be a public endpoint.", [RestAuthUrl]),
+							ems_logger:warn("ems_barramento_service oauth2 authenticate ~s with user erlangms denied. Endpoint /auth/client needs be public.", [RestAuthUrl]),
 							AuthorizationHeader = undefied;
 						_ -> 
-							ems_logger:info("ems_barramento_service oauth2 authenticate ~s success.", [RestAuthUrl]),
+							ems_logger:info("ems_barramento_service oauth2 authenticate ~s with user erlangms. AccessToken: ~p.", [RestAuthUrl, AccessToken]),
 							AuthorizationHeader = [{"Authorization", "Bearer " ++ binary_to_list(AccessToken)}]
 					end,
 					UriClient = binary_to_list(Conf#config.rest_base_url) ++ 
@@ -44,13 +44,13 @@ execute(Request = #request{timestamp = Timestamp,
 						{ok,{_, _, ClientPayload}} ->
 							case ems_util:json_decode_as_map(list_to_binary(ClientPayload)) of
 								{ok, []} ->
-									ems_logger:info("ems_barramento_service get client ~s from endpoint ~s success.", [AppName, UriClient]),
+									ems_logger:info("ems_barramento_service get client ~s from endpoint ~s.", [AppName, UriClient]),
 									{error, Request#request{code = 400, 
-															reason = eclient_payload_isempty,
-															response_data = ?ENOENT_JSON}
+															reason = eunknow_client,
+															response_data = <<"{\"error\": \"eunknow_client\"}"/utf8>>}
 									};
 								{ok, [ClientParams]} -> 
-									ems_logger:info("ems_barramento_service get client ~s from endpoint ~s success.", [AppName, UriClient]),
+									ems_logger:info("ems_barramento_service get client ~s from endpoint ~s.", [AppName, UriClient]),
 									case maps:is_key(<<"error">>, ClientParams) of
 										true -> 
 											{error, Request#request{code = 400, 
@@ -85,18 +85,21 @@ execute(Request = #request{timestamp = Timestamp,
 									ems_logger:error("ems_barramento_service get client ~s from endpoint ~s failed. Reason: ~p", [AppName, UriClient, Reason]),
 									{error, Request#request{code = 400, 
 															reason = einvalid_decode_client_json,
+															operation = json_decode_as_map,
 															response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 									}
 							end;
 						_ -> 
 							{error, Request#request{code = 400, 
 													reason = einvalid_decode_client_json,
+													operation = httpc_request,
 													response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 							}
 					end;
 				{error, Reason} ->
 						{error, Request#request{code = 400, 
 												reason = Reason,
+												operation = oauth2_authenticate_rest_server,
 												response_data = <<"{\"error\": \"eunavailable_rest_server\"}"/utf8>>}
 						}
 			end

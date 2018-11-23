@@ -3910,16 +3910,16 @@ oauth2_authenticate_rest_server(RestAuthUrl, RestUser, RestPasswd) ->
 				{ok, ResultAuthPayloadMap} -> 
 					case maps:is_key(<<"error">>, ResultAuthPayloadMap) of
 						true -> 
-							{ok, <<"{}">>};
+							{ok, <<>>};
 						false -> 
 							AccessToken = maps:get(<<"access_token">>, ResultAuthPayloadMap, undefined),
 							case AccessToken of
-								undefined -> {ok, <<"{}">>};
+								undefined -> {ok, <<>>};
 								_ -> {ok, AccessToken}
 							end
 					end;
 				_ ->
-					{ok, <<"{}">>}
+					{error, eunavailable_rest_server}
 			end;
 		_ -> 
 			{error, eunavailable_rest_server}

@@ -9,7 +9,7 @@
 	"async": "false",
 	"type": "GET",
 	"authorization" : "public",
-	"cache_control" : "max-age=60, private",
+	"cache_control" : "max-age=120, private",
 	"result_cache" : 86400000,
 	"expires_minute" : 1,
 	"lang" : "erlang"
