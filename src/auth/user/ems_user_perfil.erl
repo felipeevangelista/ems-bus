@@ -46,6 +46,8 @@ find_by_user(Id, Fields) ->
 	end.
 
 
+find_by_cpf_and_client(<<>>, _, _) -> {ok, []};
+find_by_cpf_and_client(undefined, _, _) -> {ok, []};
 find_by_cpf_and_client(Cpf, ClientId, Fields) -> 
 	case ems_client:find_by_id(ClientId) of
 		{ok, Client} ->
@@ -79,6 +81,7 @@ find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
 	
 	
 -spec find_by_user_and_client(non_neg_integer(), non_neg_integer(), list()) -> {ok, list(#user_perfil{})} | {error, enoent}.
+find_by_user_and_client(undefined, _, _) -> {ok, []};
 find_by_user_and_client(UserId, ClientId, Fields) -> 
 	case ems_db:find([user_perfil_db, user_perfil_fs], Fields, [{user_id, "==", UserId}, {client_id, "==", ClientId}]) of
 		{ok, Records} -> {ok, Records};
