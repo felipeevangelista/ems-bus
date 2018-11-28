@@ -75,7 +75,9 @@ to_json(Client) ->
 	iolist_to_binary([
 		<<"{"/utf8>>,
 			<<"\"id\":"/utf8>>, integer_to_binary(Client#client.id), <<","/utf8>>,
-			<<"\"name\":\""/utf8>>, Client#client.name, <<"\""/utf8>>,
+			<<"\"name\":\""/utf8>>, Client#client.name, <<"\","/utf8>>,
+			<<"\"description\":\""/utf8>>, Client#client.description, <<"\","/utf8>>,
+			<<"\"active\":"/utf8>>, ems_util:boolean_to_binary(Client#client.active), 
 		<<"}"/utf8>>
 		]).
 

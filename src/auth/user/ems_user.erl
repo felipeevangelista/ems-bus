@@ -38,7 +38,7 @@
 
 -spec find_by_id(non_neg_integer()) -> {ok, #user{}} | {error, enoent}.
 find_by_id(Id) -> 
-	case ems_db:get([user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs], Id) of
+	case ems_db:get([user_db, user2_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs], Id) of
 		{ok, Record} -> {ok, Record};
 		_ -> {error, enoent}
 	end.
@@ -46,15 +46,16 @@ find_by_id(Id) ->
 -spec all() -> {ok, list()}.
 all() -> 
 	{ok, ListaUserDb} = ems_db:all(user_db),
+	{ok, ListaUser2Db} = ems_db:all(user2_db),
 	{ok, ListaUserAlunoAtivoDb} = ems_db:all(user_aluno_ativo_db),
 	{ok, ListaUserAlunoInativoDb} = ems_db:all(user_aluno_inativo_db),
 	{ok, ListaUserFs} = ems_db:all(user_fs),
-	{ok, ListaUserDb ++ ListaUserAlunoAtivoDb ++ ListaUserAlunoInativoDb ++ ListaUserFs}.
+	{ok, ListaUserDb ++ ListaUser2Db ++ ListaUserAlunoAtivoDb ++ ListaUserAlunoInativoDb ++ ListaUserFs}.
 	
 
 -spec find_by_filter(list(binary()), tuple()) -> {ok, list(#user{})} | {error, atom(), atom()}.
 find_by_filter(Fields, Filter) -> 
-	ems_db:find([user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs], Fields, Filter).
+	ems_db:find([user_db, user2_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs], Fields, Filter).
 
 
 
@@ -63,17 +64,22 @@ find_by_codigo_pessoa(Codigo) ->
 	case Codigo > 0 of
 		true ->
 			case mnesia:dirty_index_read(user_db, Codigo, #user.codigo) of
-				[] -> case mnesia:dirty_index_read(user_aluno_ativo_db, Codigo, #user.codigo) of
+				[] -> 
+					case mnesia:dirty_index_read(user2_db, Codigo, #user.codigo) of
 						[] -> 
-							case mnesia:dirty_index_read(user_aluno_inativo_db, Codigo, #user.codigo) of
-								[] -> case mnesia:dirty_index_read(user_fs, Codigo, #user.codigo) of
-										[] -> {error, enoent};
-										Records -> {ok, Records}
-									  end;
-								Records -> {ok, Records}
-							end;
+							case mnesia:dirty_index_read(user_aluno_ativo_db, Codigo, #user.codigo) of
+									[] -> 
+										case mnesia:dirty_index_read(user_aluno_inativo_db, Codigo, #user.codigo) of
+											[] -> case mnesia:dirty_index_read(user_fs, Codigo, #user.codigo) of
+													[] -> {error, enoent};
+													Records -> {ok, Records}
+												  end;
+											Records -> {ok, Records}
+										end;
+									Records -> {ok, Records}
+								  end;
 						Records -> {ok, Records}
-					  end;
+					end;
 				Records -> {ok, Records}
 			end;
 		false -> {error, enoent}
@@ -88,17 +94,30 @@ find_by_codigo_pessoa(Table, Codigo) ->
 	end.
 
 
-find_index_by_login_and_password([], _LoginBin, _LoginSemBarraBin, _PasswordBin, _PassowrdBinCrypto, _PassowrdBinLowerCrypto, _PassowrdBinUpperCrypto, _PasswordStrLower, _PasswordStrUpper, _Client) ->
+find_index_by_login_and_password([], _, _, _, _, _, _, _, _, _, _, _, _) ->
 	ems_data_loader:sync(ems_user_loader_db),
 	{error, access_denied, enoent};
-find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client) ->
+find_index_by_login_and_password([Table|T], LoginBin, 
+											LoginSemBarraBin, 
+											PasswordBin, 
+											PasswordBinCryptoSHA1, 
+											PasswordBinLowerCryptoSHA1, 
+											PasswordBinUpperCryptoSHA1, 
+											PasswordBinCryptoMD5, 
+											PasswordBinLowerCryptoMD5, 
+											PasswordBinUpperCryptoMD5, 
+											PasswordStrLower, 
+											PasswordStrUpper, 
+											Client) ->
 	case mnesia:dirty_index_read(Table, LoginBin, #user.login) of
 		[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
-			case PasswordUser =:= PassowrdBinCrypto 
+			case PasswordUser =:= PasswordBinCryptoSHA1 
 				 orelse PasswordUser =:= PasswordBin 
-				 orelse PasswordUser =:= PassowrdBinLowerCrypto 
+				 orelse PasswordUser =:= PasswordBinLowerCryptoSHA1 
+				 orelse PasswordUser =:= PasswordBinUpperCryptoSHA1 
+				 orelse PasswordUser =:= PasswordBinLowerCryptoMD5 
+				 orelse PasswordUser =:= PasswordBinUpperCryptoMD5 
 				 orelse PasswordUser =:= PasswordStrLower 
-				 orelse PasswordUser =:= PassowrdBinUpperCrypto 
 				 orelse PasswordUser =:= PasswordStrUpper of
 					true -> 
 						ClientName = case Client of
@@ -125,16 +144,18 @@ find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, Password
 						end,	
 						{ok, User2};
 					false -> 
-						find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
+						find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PasswordBinCryptoSHA1, PasswordBinLowerCryptoSHA1, PasswordBinUpperCryptoSHA1, PasswordBinCryptoMD5, PasswordBinLowerCryptoMD5, PasswordBinUpperCryptoMD5, PasswordStrLower, PasswordStrUpper, Client)
 			end;
 		_ -> 
 			case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
 				[User = #user{password = PasswordUser, ctrl_last_login_scope = CtrlLoginScope}|_] -> 
-					case PasswordUser =:= PassowrdBinCrypto 
+					case PasswordUser =:= PasswordBinCryptoSHA1 
 						 orelse PasswordUser =:= PasswordBin 
-						 orelse PasswordUser =:= PassowrdBinLowerCrypto 
+						 orelse PasswordUser =:= PasswordBinLowerCryptoSHA1 
+						 orelse PasswordUser =:= PasswordBinUpperCryptoSHA1 
+						 orelse PasswordUser =:= PasswordBinLowerCryptoMD5
+						 orelse PasswordUser =:= PasswordBinUpperCryptoMD5 
 						 orelse PasswordUser =:= PasswordStrLower 
-						 orelse PasswordUser =:= PassowrdBinUpperCrypto 
 						 orelse PasswordUser =:= PasswordStrUpper of
 							true -> 
 								ClientName = case Client of
@@ -161,9 +182,9 @@ find_index_by_login_and_password([Table|T], LoginBin, LoginSemBarraBin, Password
 								end,	
 								{ok, User2};
 							false -> 
-								find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
+								find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PasswordBinCryptoSHA1, PasswordBinLowerCryptoSHA1, PasswordBinUpperCryptoSHA1, PasswordBinCryptoMD5, PasswordBinLowerCryptoMD5, PasswordBinUpperCryptoMD5, PasswordStrLower, PasswordStrUpper, Client)
 					end;
-				_ -> find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PassowrdBinCrypto, PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, PasswordStrLower, PasswordStrUpper, Client)
+				_ -> find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PasswordBinCryptoSHA1, PasswordBinLowerCryptoSHA1, PasswordBinUpperCryptoSHA1, PasswordBinCryptoMD5, PasswordBinLowerCryptoMD5, PasswordBinUpperCryptoMD5, PasswordStrLower, PasswordStrUpper, Client)
 			end
 	end.
 
@@ -191,21 +212,36 @@ find_by_login_and_password(Login, Password, Client)  ->
 			LoginStrSemBarra = re:replace(LoginStr, "/", "", [{return, list}]),
 			LoginBin = list_to_binary(LoginStr),
 			LoginSemBarraBin = list_to_binary(LoginStrSemBarra),
+
+			PasswordBin = list_to_binary(PasswordStr),
+
 			PasswordStrLower = string:to_lower(PasswordStr),
 			PasswordStrUpper = string:to_upper(PasswordStr),
-			PasswordBin = list_to_binary(PasswordStr),
-			PassowrdBinCrypto = ems_util:criptografia_sha1(PasswordStr),
-			PassowrdBinLowerCrypto = ems_util:criptografia_sha1(PasswordStrLower),
-			PassowrdBinUpperCrypto = ems_util:criptografia_sha1(PasswordStrUpper),
+
+			PasswordBinCryptoSHA1 = ems_util:criptografia_sha1(PasswordStr),
+			PasswordBinLowerCryptoSHA1 = ems_util:criptografia_sha1(PasswordStrLower),
+			PasswordBinUpperCryptoSHA1 = ems_util:criptografia_sha1(PasswordStrUpper),
+
+			PasswordBinCryptoMD5 = ems_util:criptografia_md5(PasswordStr),
+			PasswordBinLowerCryptoMD5 = ems_util:criptografia_md5(PasswordStrLower),
+			PasswordBinUpperCryptoMD5 = ems_util:criptografia_md5(PasswordStrUpper),
+
 			case Client of
 				undefined -> LoadersFind = ?CLIENT_DEFAULT_SCOPE;
 				_ -> LoadersFind = Client#client.scope
 			end,
 			find_index_by_login_and_password(LoadersFind, 
-											 LoginBin, LoginSemBarraBin, 
-											 PasswordBin, PassowrdBinCrypto, 
-											 PassowrdBinLowerCrypto, PassowrdBinUpperCrypto, 
-											 PasswordStrLower, PasswordStrUpper,
+											 LoginBin, 
+											 LoginSemBarraBin, 
+											 PasswordBin, 
+											 PasswordBinCryptoSHA1, 
+											 PasswordBinLowerCryptoSHA1, 
+											 PasswordBinUpperCryptoSHA1, 
+											 PasswordBinCryptoMD5, 
+											 PasswordBinLowerCryptoMD5, 
+											 PasswordBinUpperCryptoMD5, 
+											 PasswordStrLower, 
+											 PasswordStrUpper,
 											 Client);
 		false -> 
 			{error, access_denied, einvalid_password_size}
@@ -235,16 +271,24 @@ find_by_login(Login) ->
 				end
 		end
 	end,
-	case IndexFind(user_db) of
+	case IndexFind(user_cache_lru) of
 		{error, enoent} -> 
-			case IndexFind(user_aluno_ativo_db) of
+			case IndexFind(user_db) of
 				{error, enoent} -> 
-					case IndexFind(user_aluno_inativo_db) of
+					case IndexFind(user2_db) of
 						{error, enoent} -> 
-							case IndexFind(user_fs) of
+							case IndexFind(user_aluno_ativo_db) of
 								{error, enoent} -> 
-									ems_data_loader:sync(ems_user_loader_db),
-									{error, access_denied, enoent};
+									case IndexFind(user_aluno_inativo_db) of
+										{error, enoent} -> 
+											case IndexFind(user_fs) of
+												{error, enoent} -> 
+													ems_data_loader:sync(ems_user_loader_db),
+													{error, access_denied, enoent};
+												{ok, Record} -> {ok, Record}
+											end;
+										{ok, Record} -> {ok, Record}
+									end;
 								{ok, Record} -> {ok, Record}
 							end;
 						{ok, Record} -> {ok, Record}
@@ -297,12 +341,16 @@ find_by_email(Email) ->
 find_by_email_(EmailBin) -> 
 	case mnesia:dirty_index_read(user_db, EmailBin, #user.email) of
 		[] -> 
-			case mnesia:dirty_index_read(user_aluno_ativo_db, EmailBin, #user.email) of
+			case mnesia:dirty_index_read(user2_db, EmailBin, #user.email) of
 				[] -> 
-					case mnesia:dirty_index_read(user_aluno_inativo_db, EmailBin, #user.email) of
+					case mnesia:dirty_index_read(user_aluno_ativo_db, EmailBin, #user.email) of
 						[] -> 
-							case mnesia:dirty_index_read(user_fs, EmailBin, #user.email) of
-								[] -> {error, enoent};
+							case mnesia:dirty_index_read(user_aluno_inativo_db, EmailBin, #user.email) of
+								[] -> 
+									case mnesia:dirty_index_read(user_fs, EmailBin, #user.email) of
+										[] -> {error, enoent};
+										[Record|_] -> {ok, Record}
+									end;
 								[Record|_] -> {ok, Record}
 							end;
 						[Record|_] -> {ok, Record}
@@ -316,17 +364,21 @@ find_by_email_(EmailBin) ->
 find_by_email_or_login(EmailBin, Where) -> 
 	case mnesia:dirty_index_read(user_db, EmailBin, Where) of
 		[] -> 
-			case mnesia:dirty_index_read(user_aluno_ativo_db, EmailBin, Where) of
+			case mnesia:dirty_index_read(user2_db, EmailBin, Where) of
 				[] -> 
-					case mnesia:dirty_index_read(user_aluno_inativo_db, EmailBin, Where) of
+					case mnesia:dirty_index_read(user_aluno_ativo_db, EmailBin, Where) of
 						[] -> 
-							case mnesia:dirty_index_read(user_fs, EmailBin, Where) of
-								[] -> {error, enoent};
+							case mnesia:dirty_index_read(user_aluno_inativo_db, EmailBin, Where) of
+								[] -> 
+									case mnesia:dirty_index_read(user_fs, EmailBin, Where) of
+										[] -> {error, enoent};
+										[Record|_] -> {ok, Record}
+									end;
 								[Record|_] -> {ok, Record}
 							end;
 						[Record|_] -> {ok, Record}
 					end;
-				[Record|_] -> {ok, Record}
+				[Record|_] -> {ok, Record}	
 			end;
 		[Record|_] -> {ok, Record}
 	end.
@@ -351,8 +403,12 @@ find_by_cpf(Cpf) ->
 		true ->
 			case mnesia:dirty_index_read(user_db, CpfBin, #user.cpf) of
 				[] -> 
-					case mnesia:dirty_index_read(user_fs, CpfBin, #user.cpf) of
-						[] -> {error, enoent};
+					case mnesia:dirty_index_read(user2_db, CpfBin, #user.cpf) of
+						[] -> 
+							case mnesia:dirty_index_read(user_fs, CpfBin, #user.cpf) of
+								[] -> {error, enoent};
+								[Record|_] -> {ok, Record}
+							end;
 						[Record|_] -> {ok, Record}
 					end;
 				[Record|_] -> {ok, Record}
@@ -370,17 +426,21 @@ find_by_cpf(Cpf) ->
 				true ->
 					case mnesia:dirty_index_read(user_db, Cpf2Bin, #user.cpf) of
 						[] -> 
-							case mnesia:dirty_index_read(user_aluno_ativo_db, Cpf2Bin, #user.cpf) of
+							case mnesia:dirty_index_read(user2_db, Cpf2Bin, #user.cpf) of
 								[] -> 
-									case mnesia:dirty_index_read(user_aluno_inativo_db, Cpf2Bin, #user.cpf) of
+									case mnesia:dirty_index_read(user_aluno_ativo_db, Cpf2Bin, #user.cpf) of
 										[] -> 
-											case mnesia:dirty_index_read(user_fs, Cpf2Bin, #user.cpf) of
-												[] -> {error, enoent};
+											case mnesia:dirty_index_read(user_aluno_inativo_db, Cpf2Bin, #user.cpf) of
+												[] -> 
+													case mnesia:dirty_index_read(user_fs, Cpf2Bin, #user.cpf) of
+														[] -> {error, enoent};
+														[Record|_] -> {ok, Record}
+													end;
 												[Record|_] -> {ok, Record}
 											end;
 										[Record|_] -> {ok, Record}
 									end;
-								[Record|_] -> {ok, Record}
+								[Record|_] -> {ok, Record}	
 							end;
 						[Record|_] -> {ok, Record}
 					end;
@@ -395,7 +455,7 @@ find_by_name(undefined) -> {error, enoent};
 find_by_name(Name) when is_list(Name) -> 
 	find_by_name(list_to_binary(Name));
 find_by_name(Name) -> 
-	case ems_db:find_first([user_db, user_aluno_ativo_db, user_aluno_inativo_db], [{name, "==", Name}]) of
+	case ems_db:find_first(?CLIENT_DEFAULT_SCOPE, [{name, "==", Name}]) of
 		{ok, Record} -> {ok, Record};
 		_ -> {error, enoent}
 	end.
@@ -410,12 +470,20 @@ get_admim_user() ->
 -spec to_resource_owner(#user{}, non_neg_integer()) -> binary().
 to_resource_owner(undefined, _) -> <<"{}"/utf8>>;
 to_resource_owner(User, ClientId) ->
-	case User#user.remap_user_id == undefined of
+	case User#user.remap_user_id == undefined orelse User#user.remap_user_id == null of
 		true -> 
-			{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]),
-			ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
-			ListaPermissionJson = ems_schema:to_json(ListaPermission),
+			case User#user.cpf of
+				<<>> ->
+					{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]),
+					ListaPerfilJson = ems_schema:to_json(ListaPerfil),
+					{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
+					ListaPermissionJson = ems_schema:to_json(ListaPermission);
+				_ ->
+					{ok, ListaPerfil} = ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]),
+					ListaPerfilJson = ems_schema:to_json(ListaPerfil),
+					{ok, ListaPermission} = ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
+					ListaPermissionJson = ems_schema:to_json(ListaPermission)
+			end,
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
 								<<"\"remap_user_id\":null,"/utf8>>, 
@@ -431,10 +499,64 @@ to_resource_owner(User, ClientId) ->
 								<<"\"lista_permission\":"/utf8>>, ListaPermissionJson, 
 							<<"}"/utf8>>]);
 		false ->
-			{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name]),
-			ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-			{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
-			ListaPermissionJson = ems_schema:to_json(ListaPermission),
+			ListaPerfilFinal = case ems_user_perfil:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name]) of
+									{ok, ListaPerfil} -> 
+										case User#user.cpf of
+											<<>> ->
+												case ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]) of
+													{ok, ListaPerfil2} -> ListaPerfil ++ ListaPerfil2;
+													_ -> ListaPerfil
+												end;
+											_ ->
+												case ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]) of
+													{ok, ListaPerfil2} -> ListaPerfil ++ ListaPerfil2;
+													_ -> ListaPerfil
+												end
+										end;
+									_ -> 
+										case User#user.cpf of
+											<<>> ->
+												case ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]) of
+													{ok, ListaPerfil2} -> ListaPerfil2;
+													_ -> []
+												end;
+											_ ->
+												case ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]) of
+													{ok, ListaPerfil2} -> ListaPerfil2;
+													_ -> []
+												end
+										end
+								end,
+			ListaPerfilJson = ems_schema:to_json(ListaPerfilFinal),
+			ListaPermissionFinal = case ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+										{ok, ListaPermission} ->
+											case User#user.cpf of
+												<<>> ->
+													case ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+														{ok, ListaPermission2} -> ListaPermission ++ ListaPermission2;
+														_ -> ListaPermission
+													end;
+												_ ->
+													case ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+														{ok, ListaPermission2} -> ListaPermission ++ ListaPermission2;
+														_ -> ListaPermission
+													end
+											end;
+										_ -> 
+											case User#user.cpf of
+												<<>> ->
+													case ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+														{ok, ListaPermission2} -> ListaPermission2;
+														_ -> []
+													end;
+												_ ->
+													case ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+														{ok, ListaPermission2} -> ListaPermission2;
+														_ -> []
+													end
+											end
+									end,
+			ListaPermissionJson = ems_schema:to_json(ListaPermissionFinal),
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
 								<<"\"remap_user_id\":"/utf8>>, integer_to_binary(User#user.remap_user_id), <<","/utf8>>,
@@ -455,7 +577,7 @@ to_resource_owner(User, ClientId) ->
 -spec to_resource_owner(#user{}) -> binary().
 to_resource_owner(undefined) -> <<"{}"/utf8>>;
 to_resource_owner(User) ->
-	case User#user.remap_user_id == undefined of
+	case User#user.remap_user_id == undefined orelse User#user.remap_user_id == null of
 		true -> 
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
@@ -492,16 +614,6 @@ to_resource_owner(User) ->
 -spec new_from_map(map(), #config{}) -> {ok, #user{}} | {error, atom()}.
 new_from_map(Map, Conf) ->
 	try
-		put(parse_step, passwd_crypto),
-		PasswdCrypto = maps:get(<<"passwd_crypto">>, Map, <<>>),
-
-		put(parse_step, password),
-		Password = maps:get(<<"password">>, Map, <<>>),
-		Password2 = case PasswdCrypto of
-						<<"SHA1">> -> ?UTF8_STRING(Password);
-						_ -> ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
-					end,
-							   
 		put(parse_step, login),
 		Login = list_to_binary(string:to_lower(binary_to_list(?UTF8_STRING(maps:get(<<"login">>, Map))))),
 
@@ -514,9 +626,49 @@ new_from_map(Map, Conf) ->
 		put(parse_step, name),
 		Name = ?UTF8_STRING(maps:get(<<"name">>, Map, Login)),
 		
+		put(parse_step, password),
+		Password = maps:get(<<"password">>, Map, <<>>),
+
+		put(parse_step, passwd_crypto),
+		PasswdCrypto0 = maps:get(<<"passwd_crypto">>, Map, <<>>),
+		case PasswdCrypto0 of
+						<<"SHA1">> -> 
+							PasswdCrypto = PasswdCrypto0,
+							Password2 = ?UTF8_STRING(Password);
+						<<"MD5">> -> 
+							PasswdCrypto = PasswdCrypto0,
+							Password2 =	?UTF8_STRING(Password);
+						_ -> 
+							PasswdCrypto = <<"SHA1">>,
+							Password2 = ems_util:criptografia_sha1(string:to_lower(binary_to_list(?UTF8_STRING(Password))))
+					end,
+
 		put(parse_step, cpf),
-		Cpf = ?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>)),
-		
+		Cpf0 = binary_to_list(?UTF8_STRING(maps:get(<<"cpf">>, Map, <<>>))),
+		% O Cpf pode não ter zeros na frente, deve colocar zeros se necessário e validar
+		CpfLen = string:len(Cpf0),
+		case CpfLen =:= 0 orelse ((CpfLen =:= 11 andalso ems_util:is_cpf_valid(Cpf0)) orelse
+								  (CpfLen =:= 14 andalso ems_util:is_cnpj_valid(Cpf0))
+								 ) of
+			true -> 
+				Cpf = list_to_binary(Cpf0);
+			false ->
+				% tenta inserir zeros na frente e valida novamente
+				case CpfLen of
+					10 -> Cpf1 = "0" ++ Cpf0;  
+					 9 -> Cpf1 = "00" ++ Cpf0;
+					 _ -> Cpf1 = Cpf0
+				end,
+				CpfLen2 = string:len(Cpf1),
+				case (CpfLen2 =:= 11 andalso ems_util:is_cpf_valid(Cpf1)) orelse
+					 (CpfLen2 =:= 14 andalso ems_util:is_cnpj_valid(Cpf1)) of
+					true -> 
+						Cpf = list_to_binary(Cpf1);
+					false -> 
+						% Cpf inválido não é armazenado no barramento. 
+						Cpf = <<>>
+				end
+		end,
 		put(parse_step, dt_expire_password),
 		DtExpirePassword = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
 							  <<>> -> undefined;
@@ -614,7 +766,7 @@ new_from_map(Map, Conf) ->
 					name = Name,
 					cpf = Cpf,
 					password = Password2,
-					passwd_crypto = <<"SHA1">>,
+					passwd_crypto = PasswdCrypto,
 					dt_expire_password = DtExpirePassword,
 					endereco = Endereco,
 					complemento_endereco = ComplementoEndereco,
@@ -656,10 +808,7 @@ new_from_map(Map, Conf) ->
 
 
 -spec get_table(user_db | user_fs | user_aluno_ativo_db | user_aluno_inativo_db) -> user_db | user_fs | user_aluno_ativo_db | user_aluno_inativo_db.
-get_table(user_db) -> user_db;
-get_table(user_fs) -> user_fs;
-get_table(user_aluno_ativo_db) -> user_aluno_ativo_db;
-get_table(user_aluno_inativo_db) -> user_aluno_inativo_db.
+get_table(SourceType) -> SourceType.
 
 -spec find(user_fs | user_db, non_neg_integer()) -> {ok, #user{}} | {error, enoent}.
 find(Table, Id) ->

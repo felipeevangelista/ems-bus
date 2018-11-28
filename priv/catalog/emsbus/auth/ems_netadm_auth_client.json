@@ -1,19 +1,18 @@
 [
 
 	{
-		"name": "/auth/client/:id",
+		"name": "/netadm/auth/client/:id",
 		"comment": "Get client by id",
-		"owner": "auth",
+		"owner": "netadm",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find_by_id",
-		"url": "/auth/client/:id",
+		"url": "/netadm/auth/client/:id",
 		"type": "GET",
 		"result_cache" : 0,
-		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
-			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "secret", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -21,19 +20,18 @@
 	},
 
 	{	
-		"name": "/auth/client",
+		"name": "/netadm/auth/client",
 		"comment": "List all clients",
-		"owner": "auth",
+		"owner": "netadm",
 		"service" : "ems_api_query_service:find",
-		"url": "/auth/client",
+		"url": "/netadm/auth/client",
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
-		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_db", "client_fs"],
-			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -72,19 +70,18 @@
 	},
 	
 	{
-		"name": "/auth/client/fs/:id",
+		"name": "/netadm/auth/client/fs/:id",
 		"comment": "Get client by id",
-		"owner": "auth",
+		"owner": "netadm",
 		"version": "1.0.0",
 		"service" : "ems_api_query_service:find_by_id",
-		"url": "/auth/client/fs/:id",
+		"url": "/netadm/auth/client/fs/:id",
 		"type": "GET",
 		"result_cache" : 0,
-		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],
-			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",
@@ -92,19 +89,18 @@
 	},
 
 	{	
-		"name": "/auth/client/fs",
+		"name": "/netadm/auth/client/fs",
 		"comment": "List all clients",
-		"owner": "auth",
+		"owner": "netadm",
 		"service" : "ems_api_query_service:find",
-		"url": "/auth/client/fs",
+		"url": "/netadm/auth/client/fs",
 		"type": "GET",
 		"lang" : "erlang",
 		"result_cache" : 0,
-		"authorization" : "public",
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["client_fs"],
-			"fields" : ["id", "name", "description", "active", "scope", "group", "glyphicon"]
+			"fields" : ["id", "name", "redirect_uri", "description", "active", "scope", "group", "glyphicon"]
 		},
 		"schema_in" : "client",
 		"schema_out" : "client",

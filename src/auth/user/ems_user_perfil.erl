@@ -15,6 +15,7 @@
 -export([all/0, 
 		 find_by_id/1,		 
 		 find_by_user_and_client/3,
+		 find_by_cpf_and_client/3,
 		 find_by_user/2,
 		 find_by_name/1, 
  		 new_from_map/2,
@@ -40,15 +41,51 @@ all() ->
 -spec find_by_user(non_neg_integer(), list()) -> {ok, list(#user_perfil{})} | {error, enoent}.
 find_by_user(Id, Fields) -> 
 	case ems_db:find([user_perfil_db, user_perfil_fs], Fields, [{user_id, "==", Id}]) of
-		{ok, Record} -> {ok, Record};
+		{ok, Records} -> {ok, Records};
 		_ -> {error, enoent}
 	end.
+
+
+find_by_cpf_and_client(<<>>, _, _) -> {ok, []};
+find_by_cpf_and_client(undefined, _, _) -> {ok, []};
+find_by_cpf_and_client(Cpf, ClientId, Fields) -> 
+	case ems_client:find_by_id(ClientId) of
+		{ok, Client} ->
+			case ems_db:find(Client#client.scope, [id, remap_user_id], [{cpf, "==", Cpf}]) of
+				{ok, ListIdsUserByCpfMap} -> find_by_cpf_and_client_(ListIdsUserByCpfMap, ClientId, Fields, []);
+				_ -> {ok, []}
+			end;
+		{error, enoent} -> {ok, []}
+	end.
+
+find_by_cpf_and_client_([], _, _, Result) -> {ok, Result};
+find_by_cpf_and_client_([UserByCpfMap|T], ClientId, Fields, Result) ->
+	UserId = maps:get(<<"id">>, UserByCpfMap),
+	RemapUserId = maps:get(<<"remap_user_id">>, UserByCpfMap),
+	case find_by_user_and_client(UserId, ClientId, Fields) of
+		{ok, Records} -> 
+			Result2 = Result ++ Records;
+		_ -> Result2 = Result
+	end,
+	case RemapUserId  of
+		null -> Result3 = Result2;
+		undefined -> Result3 = Result2;
+		_ ->
+			case ems_db:find([user_perfil_db, user_perfil_fs], Fields, [{user_id, "==", RemapUserId}]) of
+				{ok, Records2} -> 
+					Result3 = Result2 ++ Records2;
+				_ -> Result3 = Result2
+			end
+	end,
+	find_by_cpf_and_client_(T, ClientId, Fields, Result3).
+	
 	
 -spec find_by_user_and_client(non_neg_integer(), non_neg_integer(), list()) -> {ok, list(#user_perfil{})} | {error, enoent}.
+find_by_user_and_client(undefined, _, _) -> {ok, []};
 find_by_user_and_client(UserId, ClientId, Fields) -> 
 	case ems_db:find([user_perfil_db, user_perfil_fs], Fields, [{user_id, "==", UserId}, {client_id, "==", ClientId}]) of
-		{ok, Record} -> {ok, Record};
-		_ -> {error, enoent}
+		{ok, Records} -> {ok, Records};
+		_ -> {ok, []}
 	end.
 
 

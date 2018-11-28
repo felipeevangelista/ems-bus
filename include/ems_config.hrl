@@ -118,8 +118,14 @@
 -define(LOG_ARCHIVE_CHECKPOINT, 1000 * 60 * 60 * 24).  % Por default são 24 horas
 
 % Define o tamanho máximo default que pode ser impresso no log do payload e response para depuração
--define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 256000).
--define(LOG_SHOW_RESPONSE_MAX_LENGTH, 256000).
+-define(LOG_SHOW_PAYLOAD_MAX_LENGTH, 512000).
+-define(LOG_SHOW_RESPONSE_MAX_LENGTH, 512000).
+
+% Define se mostra as atividades do pool de conexão no log para depuração
+-define(LOG_SHOW_ODBC_POOL_ACTIVITY, true).
+
+% Define se mostra as atividades dos data loaders
+-define(LOG_SHOW_DATA_LOADER_ACTIVITY, true).
 
 % Mostra cabeçalhos de depuração
 -define(SHOW_DEBUG_RESPONSE_HEADERS, true).
@@ -186,6 +192,8 @@
 % Oauth2
 -define(OAUTH2_DEFAULT_AUTHORIZATION, oauth2).
 -define(AUTHORIZATION_TYPE_DEFAULT, <<"oauth2">>).
+
+-define(DEFAULT_PASSWD, <<"fEqNCco3Yq9h5ZUglD3CZJT4lBs=">>).
 
 % Mensagens de saída json comuns
 -define(CONTENT_TYPE_JSON, <<"application/json; charset=utf-8"/utf8>>).
@@ -254,7 +262,7 @@
 -define(RESULT_CACHE_MAX_SIZE_ENTRY, 524288). % 512KB
 -define(RESULT_CACHE_SHARED, true). 
 
--define(CLIENT_DEFAULT_SCOPE, [user_cache_lru, user_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs]).
+-define(CLIENT_DEFAULT_SCOPE, [user_db, user2_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs]).
 
 % Código de cores
 -ifdef(win32_plataform).
@@ -319,11 +327,12 @@
 				 ems_hostname :: binary(),							%% Nome da maquina onde o barramento está sendo executado
 				 ems_host :: atom(),								%% Atom do name da maquina onde o barramento está sendo executado
 				 ems_file_dest :: string(),							%% Nome do arquivo de configuração (útil para saber o local do arquivo)
-				 ems_debug :: boolean(),							%% Habilita o modo debug
+				 ems_debug = false :: boolean(),							%% Habilita o modo debug
 				 ems_result_cache  :: non_neg_integer(),
 				 ems_result_cache_shared :: non_neg_integer(),
+				 ems_result_cache_enabled = true :: boolean(),
 				 ems_datasources :: map(),
-				 show_debug_response_headers :: boolean(),			%% Add debug headers in HTTP response headers
+				 show_debug_response_headers = false :: boolean(),	%% Add debug headers in HTTP response headers
 				 tcp_listen_address :: list(),
 				 tcp_listen_address_t :: list(),
 				 tcp_listen_main_ip :: binary(),
@@ -342,6 +351,7 @@
 				 rest_environment :: binary(),
 				 rest_user :: string(),
 				 rest_passwd :: string(),
+				 rest_base_url_defined = false :: boolean(),
 				 config_file,
 				 http_port_offset :: non_neg_integer(),
 				 https_port_offset :: non_neg_integer(),
@@ -370,6 +380,8 @@
 				 log_show_payload = false :: boolean(),				%% Se true, imprime o payload no log
 				 log_show_response_max_length :: boolean(),			%% show response if content length < show_response_max_length
 				 log_show_payload_max_length :: boolean(),			%% show payload if content length < show_response_max_length
+				 log_show_odbc_pool_activity = true :: boolean(),	%% Se true, vai mostrar a atividade do pool de conexões
+				 log_show_data_loader_activity = true :: boolean(),	%% Se true, vai mostrar a atividade dos data loaders
 				 log_file_checkpoint :: non_neg_integer(),
 				 log_file_max_size :: non_neg_integer(),
 				 log_file_path :: string(),

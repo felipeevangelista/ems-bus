@@ -31,7 +31,7 @@
 															%%			  		 			      1 = extensao 2 = graduacao 3 = aperfeicoamento 4 = especializacao 5 = mestrado 
 															%%   					              6 = doutorado 7 = pos-doutorado 8 = residencia 9 = aluno especial - graduacao 
 															%%           					     10 = aluno especial - pos-graduacao 11 = estagio em pos-graduacao
-			   passwd_crypto :: binary(),					%% 11 - passwd_crypto 			-> Algoritmo criptografia: SHA1
+			   passwd_crypto :: binary(),					%% 11 - passwd_crypto 			-> Algoritmo criptografia: SHA1, MD5
 			   type_email :: non_neg_integer(),				%% 12 - type_email				-> undefined = desconhecido  1 = Institucional  2 = Pessoal
 			   active :: boolean(),							%% 13 - active
 			   endereco :: binary(),						%% 14 - endereco
@@ -507,12 +507,13 @@
 							 sql_check_valid_connection :: string(),					%% 30 - sql_check_valid_connection
 							 check_valid_connection_timeout :: non_neg_integer(),		%% 31 - check_valid_connection_timeout
 							 close_idle_connection_timeout :: non_neg_integer(),		%% 32 - close_idle_connection_timeout
-							 ctrl_path :: string(),										%% 33 - ctrl_path
-							 ctrl_file :: string(),										%% 34 - ctrl_file
-							 ctrl_insert :: binary(),									%% 35 - ctrl_insert				-> Data que foi inserido no banco mnesia
-							 ctrl_update :: binary(), 									%% 36 - ctrl_update				-> Data que foi atualiado no banco mnesia			
-							 ctrl_modified :: binary(),									%% 37 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-							 ctrl_hash :: non_neg_integer()								%% 38 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+							 log_show_odbc_pool_activity = true :: boolean(),			%% 33 - log_show_odbc_pool_activity
+							 ctrl_path :: string(),										%% 34 - ctrl_path
+							 ctrl_file :: string(),										%% 35 - ctrl_file
+							 ctrl_insert :: binary(),									%% 36 - ctrl_insert				-> Data que foi inserido no banco mnesia
+							 ctrl_update :: binary(), 									%% 37 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+							 ctrl_modified :: binary(),									%% 38 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+							 ctrl_hash :: non_neg_integer()								%% 39 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
 							}).
 
 -define(SERVICE_DATASOURCE_DESCRIPTOR, {
@@ -549,12 +550,13 @@
 			   boolean_type,								%% 30 - sql_check_valid_connection
 			   non_neg_integer_type, 						%% 31 - check_valid_connection_timeout
 			   non_neg_integer_type, 						%% 32 - close_idle_connection_timeout
-			   string_type,									%% 33 - ctrl_path
-			   string_type, 								%% 34 - ctrl_file
-			   binary_type, 								%% 35 - ctrl_insert
-			   binary_type, 								%% 36 - ctrl_update
-			   binary_type,									%% 37 - ctrl_modified
-			   non_neg_integer_type							%% 38 - ctrl_hash
+			   boolean_type, 								%% 33 - log_show_odbc_pool_activity
+			   string_type,									%% 34 - ctrl_path
+			   string_type, 								%% 35 - ctrl_file
+			   binary_type, 								%% 36 - ctrl_insert
+			   binary_type, 								%% 37 - ctrl_update
+			   binary_type,									%% 38 - ctrl_modified
+			   non_neg_integer_type							%% 39 - ctrl_hash
 		}).
 
 

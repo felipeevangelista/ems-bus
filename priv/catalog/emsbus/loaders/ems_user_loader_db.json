@@ -7,7 +7,7 @@
 	"url": "/emsbus/ems_user_loader_db",
 	"type": "KERNEL",
 	"lang" : "erlang",
-	"update_checkpoint" : 20000,
+	"update_checkpoint" : 60000,
 	"datasource" : "ds_ems_user_loader",
 	"start_timeout" : 5000,
 	"middleware" : "ems_user_loader_middleware",
@@ -16,7 +16,7 @@
 	"pool_max" : 1,
 	"enable" : false,
 	"source_type" : "user_db",
-	"sql_load_packet_length" : 3000,
+	"sql_load_packet_length" : 10000,
 	"sql_load" : 
 				"select 
 				   u.UsuId as id, 

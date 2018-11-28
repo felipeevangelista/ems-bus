@@ -14,44 +14,25 @@
 -export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2, after_load_or_update_checkpoint/1]).
 
 
--spec is_empty(user_db | user_aluno_ativo_db | user_aluno_inativo_db | user_fs) -> boolean().
+-spec is_empty(atom()) -> boolean().
 is_empty(user_db) -> mnesia:table_info(user_db, size) == 0;
 is_empty(user_aluno_ativo_db) -> mnesia:table_info(user_aluno_ativo_db, size) == 0;
 is_empty(user_aluno_inativo_db) ->	mnesia:table_info(user_aluno_inativo_db, size) == 0;
-is_empty(user_fs) -> mnesia:table_info(user_fs, size) == 0.
+is_empty(user_fs) -> mnesia:table_info(user_fs, size) == 0;
+is_empty(user2_db) -> mnesia:table_info(user2_db, size) == 0.
 	
 
--spec size_table(user_db | user_aluno_ativo_db | user_aluno_inativo_db | user_fs) -> non_neg_integer().
+-spec size_table(atom()) -> non_neg_integer().
 size_table(user_db) -> mnesia:table_info(user_db, size);
 size_table(user_aluno_ativo_db) -> mnesia:table_info(user_aluno_ativo_, size);
 size_table(user_aluno_inativo_db) -> mnesia:table_info(user_aluno_inativo_db, size);
-size_table(user_fs) -> mnesia:table_info(user_fs, size).
+size_table(user_fs) -> mnesia:table_info(user_fs, size);
+size_table(user2_db) -> mnesia:table_info(user2_db, size).
 	
 
--spec clear_table(user_db | user_aluno_ativo_db | user_aluno_inativo_db | user_fs) -> ok | {error, efail_clear_ets_table}.
-clear_table(user_db) ->	
-	case mnesia:clear_table(user_db) of
-		{atomic, ok} -> 
-			mnesia:clear_table(user_cache_lru),
-			ok;
-		_ -> {error, efail_clear_ets_table}
-	end;
-clear_table(user_aluno_ativo_db) ->	
-	case mnesia:clear_table(user_aluno_ativo_db) of
-		{atomic, ok} -> 
-			mnesia:clear_table(user_cache_lru),
-			ok;
-		_ -> {error, efail_clear_ets_table}
-	end;
-clear_table(user_aluno_inativo_db) ->	
-	case mnesia:clear_table(user_aluno_inativo_db) of
-		{atomic, ok} -> 
-			mnesia:clear_table(user_cache_lru),
-			ok;
-		_ -> {error, efail_clear_ets_table}
-	end;
-clear_table(user_fs) ->	
-	case mnesia:clear_table(user_fs) of
+-spec clear_table(atom()) -> ok | {error, efail_clear_ets_table}.
+clear_table(SourceType) ->	
+	case mnesia:clear_table(SourceType) of
 		{atomic, ok} -> 
 			mnesia:clear_table(user_cache_lru),
 			ok;

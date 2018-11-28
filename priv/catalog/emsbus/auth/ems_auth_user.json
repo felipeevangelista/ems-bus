@@ -10,7 +10,7 @@
 		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
-			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
+			"table_name" : ["user_db", "user2_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
@@ -42,7 +42,7 @@
 		"result_cache" : 0,
 		"datasource" : {
 			"type" : "mnesia",
-			"table_name" : ["user_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
+			"table_name" : ["user_db", "user2_db", "user_aluno_ativo_db", "user_aluno_inativo_db", "user_fs"],
 			"fields" : ["id", "codigo", "login", "name", "cpf", "email", "type", "subtype", "active", 
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
@@ -272,7 +272,7 @@
 		"datasource" : {
 			"type" : "mnesia",
 			"table_name" : ["user_history"],
-			"foreign_table_name" : ["user_db", "user_fs"],
+			"foreign_table_name" : ["user_db", "user2_db", "user_fs"],
 			"foreign_key" : "user_id"
 		},
 		"schema_in" : "user_history",

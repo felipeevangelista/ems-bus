@@ -103,5 +103,3 @@ VOLUME ~/.odbc.ini
 
 
 CMD ["/var/opt/erlangms/start_tmux.sh"]
-
-

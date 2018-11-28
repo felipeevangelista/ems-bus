@@ -15,6 +15,7 @@
 -export([version/0,
 		 server_name/0,
 		 sleep/1,
+		 flush_messages/0,
 		 json_encode/1,
 		 json_decode/1,
 		 hd_or_empty/1,
@@ -93,6 +94,7 @@
 		 open_file/1,
 		 file_last_modified/1,
 		 is_number/1,
+		 is_valid_content_type/1,
 		 is_value_field_type/2,
 		 is_cpf_valid/1, 
 		 is_cnpj_valid/1, 
@@ -105,6 +107,7 @@
 		 is_letter_lower/1,
 		 posix_error_description/1,
 		 ldap_attribute_map_to_user_field/1,
+		 parse_content_type/1,
 		 parse_oauth2_scope/1,
 		 parse_ldap_attributes/1,
 		 parse_ldap_filter/1,
@@ -163,6 +166,7 @@
 		 utf8_string_win/1,
 		 utf8_string_linux/1,
 		 criptografia_sha1/1,
+		 criptografia_md5/1,
 		 head_file/2,
 		 replace_all_vars_binary/2,
 		 replace_all_vars/2,
@@ -197,7 +201,10 @@
 		 os_command/1,
 		 os_command/2,
 		 integer_to_list_def/2,
-		 str_trim/1
+		 str_trim/1,
+		 binary_to_hex/1,
+		 str_contains/2,
+		 oauth2_authenticate_rest_server/3
 		]).
 
 -spec version() -> string().
@@ -891,15 +898,6 @@ date_dec_second(Timestamp, Seconds) ->
 date_add_day(Timestamp, Days) ->
     calendar:gregorian_seconds_to_datetime(calendar:datetime_to_gregorian_seconds(Timestamp) + (Days * 86400)).
 
-% Return a encrypted password in binary format        
-criptografia_sha1(<<>>) -> <<>>;
-criptografia_sha1("") -> <<>>;	
-criptografia_sha1(undefined) -> <<>>;
-criptografia_sha1(null) -> <<>>;
-criptografia_sha1(Password) when is_binary(Password) -> 
-	criptografia_sha1(binary_to_list(Password));
-criptografia_sha1(Password) -> base64:encode(sha1:binstring(Password)).
-
 boolean_to_binary(true) -> <<"true"/utf8>>;
 boolean_to_binary(1) -> <<"true"/utf8>>;
 boolean_to_binary(<<"true"/utf8>>) -> <<"true"/utf8>>;
@@ -1258,22 +1256,15 @@ is_cpf_valid(S) ->
 	case ems_util:is_number(S) andalso string:len(S) =:= 11 of
 		true -> 
 			C = [  X || X <- S, X > 47 andalso X < 58 ],
-			D = lists:sum( lists:zipwith(fun(X,Y) -> (X-48)*Y end, C, [1,2,3,4,5,6,7,8,9,0,0]) ) rem 11,
-			D =:= lists:nth(10, C) - 48 andalso	( lists:sum(lists:zipwith(fun(X,Y) -> (X-48)*Y end, C, [0,1,2,3,4,5,6,7,8,0,0]) ) + D * 9 ) rem 11 =:= lists:nth(11, C) - 48;
+			D = ( lists:sum( lists:zipwith(fun(X,Y) -> (X-48)*Y end, C, [1,2,3,4,5,6,7,8,9,0,0]) ) rem 11 ) rem 10,
+			D =:= lists:nth(10, C) - 48 andalso ( (lists:sum(lists:zipwith(fun(X,Y) -> (X-48)*Y end, C, [0,1,2,3,4,5,6,7,8,0,0]) ) + D * 9 ) rem 11) rem 10 =:= lists:nth(11, C) - 48;
 		false -> false
 	end.
 
 -spec is_cnpj_valid(list() | binary()) -> boolean().		
 is_cnpj_valid(S) when is_binary(S) -> 
 	is_cnpj_valid(binary_to_list(S));
-is_cnpj_valid(S) ->
-	case ems_util:is_number(S) andalso string:len(S) =:= 13 of
-		true ->
-			C = [  X || X <- S, X > 47 andalso X < 58 ],
-			D = lists:sum( lists:zipwith(fun(X,Y) -> (X-48) * Y end, C, [6,7,8,9,2,3,4,5,6,7,8,9,0,0]) ) rem 11,
-			D =:= lists:nth(13, C) - 48 andalso ( lists:sum(lists:zipwith(fun(X,Y) -> (X-48) * Y end, C, [5,6,7,8,9,2,3,4,5,6,7,8,0,0]) ) + D * 9 ) rem 11 =:= lists:nth(14, C) - 48;
-		_ -> false
-	end.
+is_cnpj_valid(S) -> string:len(S) =:= 13.
 
 
 load_erlang_module(Filename) ->
@@ -1472,6 +1463,7 @@ allow_ip_address(Ip, AllowedAddress) -> match_ip_address(AllowedAddress, Ip).
 -spec mime_type(string()) -> string().
 mime_type(".htm") -> <<"text/html">>;
 mime_type(".html") -> <<"text/html">>;
+mime_type(".json") -> <<"application/json">>;
 mime_type(".xhtml") -> <<"application/xhtml+xml">>;
 mime_type(".css") -> <<"text/css">>;
 mime_type(".js") -> <<"application/x-javascript">>;
@@ -1649,6 +1641,146 @@ mime_type(".doc") -> <<"application/msword">>;
 mime_type(".z") -> <<"application/x-compress">>;
 mime_type(".m4a") -> <<"audio/mpeg">>;
 mime_type(_) -> <<"application/octet-stream">>.
+
+-spec is_valid_content_type(binary()) -> boolean().
+is_valid_content_type(<<"text/html">>) -> true;
+is_valid_content_type(<<"application/json">>) -> true;
+is_valid_content_type(<<"application/json;charset=utf-8">>) -> true;
+is_valid_content_type(<<"application/json; charset=utf-8">>) -> true;
+is_valid_content_type(<<"application/xhtml+xml">>) -> true;
+is_valid_content_type(<<"text/css">>) -> true;
+is_valid_content_type(<<"application/x-javascript">>) -> true;
+is_valid_content_type(<<"image/png">>) -> true;
+is_valid_content_type(<<"application/xml">>) -> true;
+is_valid_content_type(<<"image/x-icon">>) -> true;
+is_valid_content_type(<<"image/gif">>) -> true;
+is_valid_content_type(<<"image/jpeg">>) -> true;
+is_valid_content_type(<<"application/pdf">>) -> true;
+is_valid_content_type(<<"image/bmp">>) -> true;
+is_valid_content_type(<<"text/plain">>) -> true;
+is_valid_content_type(<<"application/font-woff">>) -> true;
+is_valid_content_type(<<"application/acad">>) -> true;
+is_valid_content_type(<<"application/andrew-inset">>) -> true;
+is_valid_content_type(<<"application/clariscad">>) -> true;
+is_valid_content_type(<<"application/drafting">>) -> true;
+is_valid_content_type(<<"application/dsptype">>) -> true;
+is_valid_content_type(<<"application/dxf">>) -> true;
+is_valid_content_type(<<"application/excel">>) -> true;
+is_valid_content_type(<<"text/csv">>) -> true;
+is_valid_content_type(<<"application/i-deas">>) -> true;
+is_valid_content_type(<<"application/java-archive">>) -> true;
+is_valid_content_type(<<"application/mac-binhex40">>) -> true;
+is_valid_content_type(<<"application/mac-compactpro">>) -> true;
+is_valid_content_type(<<"application/vnd.ms-powerpoint">>) -> true;
+is_valid_content_type(<<"application/octet-stream">>) -> true;
+is_valid_content_type(<<"application/oda">>) -> true;
+is_valid_content_type(<<"application/ogg">>) -> true;
+is_valid_content_type(<<"application/pgp">>) -> true;
+is_valid_content_type(<<"application/postscript">>) -> true;
+is_valid_content_type(<<"application/pro_eng">>) -> true;
+is_valid_content_type(<<"application/rtf">>) -> true;
+is_valid_content_type(<<"application/smil">>) -> true;
+is_valid_content_type(<<"application/solids">>) -> true;
+is_valid_content_type(<<"application/vda">>) -> true;
+is_valid_content_type(<<"application/vnd.ms-excel">>) -> true;
+is_valid_content_type(<<"application/vnd.rim.cod">>) -> true;
+is_valid_content_type(<<"application/x-chess-pgn">>) -> true;
+is_valid_content_type(<<"application/x-cpio">>) -> true;
+is_valid_content_type(<<"application/x-csh">>) -> true;
+is_valid_content_type(<<"application/x-debian-package">>) -> true;
+is_valid_content_type(<<"application/x-director">>) -> true;
+is_valid_content_type(<<"application/x-gzip">>) -> true;
+is_valid_content_type(<<"application/x-hdf">>) -> true;
+is_valid_content_type(<<"application/x-ipix">>) -> true;
+is_valid_content_type(<<"application/x-ipscript">>) -> true;
+is_valid_content_type(<<"application/x-koan">>) -> true;
+is_valid_content_type(<<"application/x-latex">>) -> true;
+is_valid_content_type(<<"application/x-lisp">>) -> true;
+is_valid_content_type(<<"application/x-lotusscreencam">>) -> true;
+is_valid_content_type(<<"application/x-mif">>) -> true;
+is_valid_content_type(<<"application/x-msdos-program">>) -> true;
+is_valid_content_type(<<"application/x-netcdf">>) -> true;
+is_valid_content_type(<<"application/x-perl">>) -> true;
+is_valid_content_type(<<"application/x-rar-compressed">>) -> true;
+is_valid_content_type(<<"application/x-sh">>) -> true;
+is_valid_content_type(<<"application/x-shar">>) -> true;
+is_valid_content_type(<<"application/x-shockwave-flash">>) -> true;
+is_valid_content_type(<<"application/x-stuffit">>) -> true;
+is_valid_content_type(<<"application/x-sv4cpio">>) -> true;
+is_valid_content_type(<<"application/x-sv4crc">>) -> true;
+is_valid_content_type(<<"application/x-tar-gz">>) -> true;
+is_valid_content_type(<<"application/x-tar">>) -> true;
+is_valid_content_type(<<"application/x-tcl">>) -> true;
+is_valid_content_type(<<"application/x-texinfo">>) -> true;
+is_valid_content_type(<<"application/x-troff-man">>) -> true;
+is_valid_content_type(<<"application/x-troff-me">>) -> true;
+is_valid_content_type(<<"application/x-troff-ms">>) -> true;
+is_valid_content_type(<<"application/x-troff">>) -> true;
+is_valid_content_type(<<"application/x-ustar">>) -> true;
+is_valid_content_type(<<"application/x-wais-source">>) -> true;
+is_valid_content_type(<<"application/zip">>) -> true;
+is_valid_content_type(<<"audio/TSP-audio">>) -> true;
+is_valid_content_type(<<"audio/basic">>) -> true;
+is_valid_content_type(<<"audio/midi">>) -> true;
+is_valid_content_type(<<"audio/mpeg">>) -> true;
+is_valid_content_type(<<"audio/x-aiff">>) -> true;
+is_valid_content_type(<<"audio/x-mpegurl">>) -> true;
+is_valid_content_type(<<"audio/x-ms-wax">>) -> true;
+is_valid_content_type(<<"audio/x-ms-wma">>) -> true;
+is_valid_content_type(<<"audio/x-pn-realaudio-plugin">>) -> true;
+is_valid_content_type(<<"audio/x-pn-realaudio">>) -> true;
+is_valid_content_type(<<"audio/x-realaudio">>) -> true;
+is_valid_content_type(<<"audio/x-wav">>) -> true;
+is_valid_content_type(<<"chemical/x-pdb">>) -> true;
+is_valid_content_type(<<"image/cmu-raster">>) -> true;
+is_valid_content_type(<<"image/ief">>) -> true;
+is_valid_content_type(<<"image/jp2">>) -> true;
+is_valid_content_type(<<"image/tiff">>) -> true;
+is_valid_content_type(<<"image/x-portable-anymap">>) -> true;
+is_valid_content_type(<<"image/x-portable-bitmap">>) -> true;
+is_valid_content_type(<<"image/x-portable-graymap">>) -> true;
+is_valid_content_type(<<"image/x-portable-pixmap">>) -> true;
+is_valid_content_type(<<"image/x-rgb">>) -> true;
+is_valid_content_type(<<"image/x-xbitmap">>) -> true;
+is_valid_content_type(<<"image/x-xwindowdump">>) -> true;
+is_valid_content_type(<<"model/iges">>) -> true;
+is_valid_content_type(<<"model/mesh">>) -> true;
+is_valid_content_type(<<"model/vrml">>) -> true;
+is_valid_content_type(<<"text/richtext">>) -> true;
+is_valid_content_type(<<"text/sgml">>) -> true;
+is_valid_content_type(<<"text/tab-separated-values">>) -> true;
+is_valid_content_type(<<"text/vnd.sun.j2me.app-descriptor">>) -> true;
+is_valid_content_type(<<"text/x-setext">>) -> true;
+is_valid_content_type(<<"video/dl">>) -> true;
+is_valid_content_type(<<"video/flv">>) -> true;
+is_valid_content_type(<<"video/gl">>) -> true;
+is_valid_content_type(<<"video/mp4">>) -> true;
+is_valid_content_type(<<"video/mpeg">>) -> true;
+is_valid_content_type(<<"video/quicktime">>) -> true;
+is_valid_content_type(<<"video/vnd.vivo">>) -> true;
+is_valid_content_type(<<"video/x-ms-asf">>) -> true;
+is_valid_content_type(<<"video/x-ms-asx">>) -> true;
+is_valid_content_type(<<"video/x-ms-wmx">>) -> true;
+is_valid_content_type(<<"video/x-ms-wvx">>) -> true;
+is_valid_content_type(<<"video/x-msvideo">>) -> true;
+is_valid_content_type(<<"video/x-sgi-movie">>) -> true;
+is_valid_content_type(<<"www/mime">>) -> true;
+is_valid_content_type(<<"x-conference/x-cooltalk">>) -> true;
+is_valid_content_type(<<"x-world/x-vrml">>) -> true;
+is_valid_content_type(<<"audio/ogg">>) -> true;
+is_valid_content_type(<<"application/x-bzip2">>) -> true;
+is_valid_content_type(<<"application/msword">>) -> true;
+is_valid_content_type(<<"application/x-compress">>) -> true;
+is_valid_content_type(_) -> false.
+
+
+-spec parse_content_type(binary()) -> binary().
+parse_content_type(ContentType) ->
+	case is_valid_content_type(ContentType) of
+		true -> ContentType;
+		false -> erlang:error(einvalid_content_type)
+	end.
+
 
 -spec invoque_service(binary(), binary(), binary()) -> {ok, request, #request{}} | {error, request, #request{}} | {error, atom()}.
 invoque_service(Type, Url, QuerystringBin) -> 
@@ -3719,4 +3851,69 @@ str_trim(S) ->
 		_ -> string:trim(S)
 	end.
 
+-spec binary_to_hex(binary()) -> binary().
+binary_to_hex(Bin) when is_binary(Bin) ->
+    << <<(hex(H)),(hex(L))>> || <<H:4,L:4>> <= Bin >>.
 
+hex(C) when C < 10 -> $0 + C;
+hex(C) -> $a + C - 10.
+
+% Return a encrypted password in binary format        
+criptografia_sha1(<<>>) -> <<>>;
+criptografia_sha1("") -> <<>>;	
+criptografia_sha1(undefined) -> <<>>;
+criptografia_sha1(null) -> <<>>;
+criptografia_sha1(Password) when is_binary(Password) -> 
+	criptografia_sha1(binary_to_list(Password));
+criptografia_sha1(Password) -> base64:encode(sha1:binstring(Password)).
+
+% Return a encrypted password in binary format        
+criptografia_md5(<<>>) -> <<>>;
+criptografia_md5("") -> <<>>;	
+criptografia_md5(undefined) -> <<>>;
+criptografia_md5(null) -> <<>>;
+criptografia_md5(Password) when is_binary(Password) -> 
+	criptografia_md5(binary_to_list(Password));
+criptografia_md5(Password) -> binary_to_hex(crypto:hash(md5, Password)).
+
+
+-spec flush_messages() -> ok.
+flush_messages() ->
+	receive
+	_ -> 
+		flush_messages()
+	after 500 ->
+		ok
+	end.
+
+-spec str_contains(string(), list(string())) -> boolean().
+str_contains(_, []) -> false;
+str_contains(Str, [H|T]) ->
+	case string:str(Str, H) > 0 of
+		true -> true;
+		false -> str_contains(Str, T)
+	end.
+	
+
+oauth2_authenticate_rest_server(RestAuthUrl, RestUser, RestPasswd) ->
+	GrantQuery = binary_to_list(iolist_to_binary([<<"grant_type=password&username=">>, RestUser, <<"&password=">>, RestPasswd])),
+	case httpc:request(post, {[RestAuthUrl], [], "application/x-www-form-urlencoded", GrantQuery}, [], []) of
+		{ok, {_, _, ResultAuthPayload}} -> 
+			case ems_util:json_decode_as_map(list_to_binary(ResultAuthPayload)) of
+				{ok, ResultAuthPayloadMap} -> 
+					case maps:is_key(<<"error">>, ResultAuthPayloadMap) of
+						true -> 
+							{ok, <<>>};
+						false -> 
+							AccessToken = maps:get(<<"access_token">>, ResultAuthPayloadMap, undefined),
+							case AccessToken of
+								undefined -> {ok, <<>>};
+								_ -> {ok, AccessToken}
+							end
+					end;
+				_ ->
+					{error, eunavailable_rest_server}
+			end;
+		_ -> 
+			{error, eunavailable_rest_server}
+	end.

@@ -317,12 +317,13 @@ parse_ssl_path(FilenameCat, FilenameConfig, StaticFilePathDefault) ->
 
 -spec parse_datasource(map(), non_neg_integer(), #config{}) -> #service_datasource{} | undefined.
 parse_datasource(undefined, _, _) -> undefined;
-parse_datasource(M, Rowid, Conf) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid, Conf#config.ems_datasources, Conf#config.custom_variables);
+parse_datasource(M, Rowid, Conf) when erlang:is_map(M) -> ems_db:create_datasource_from_map(M, Rowid, Conf);
 parse_datasource(DsName, _Rowid, Conf) -> 
 	case maps:get(DsName, Conf#config.ems_datasources, undefined) of
 		undefined -> erlang:error(einexistent_datasource);
 		Ds -> Ds
 	end.
+		
 		
 
 	
@@ -395,6 +396,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 								 cat_restricted_services_owner = RestrictedServicesOwner,
 								 ems_result_cache = ResultCacheDefault,
 								 ems_result_cache_shared = ResultCacheSharedDefault,
+								 ems_result_cache_enabled = ResultCacheEnabledDefault,
 								 ems_hostname = HostNameDefault,
 								 authorization = AuthorizationDefault,
 								 oauth2_with_check_constraint = Oauth2WithCheckConstraintDefault,
@@ -471,6 +473,19 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 				put(parse_step, url),
 				Url2 = ems_util:parse_url_service(get_p(<<"url">>, Map, <<>>))
 		end,
+		UrlStr = binary_to_list(Url2),
+
+		% Valida a URL (se não tem expressão regular) e adverte como um warning se tem verbos de ligação ou está em maiúscula
+		case UseRE of
+			false ->
+				case (string:to_lower(UrlStr) /= UrlStr) 
+					orelse string:len(UrlStr) > 160 
+					orelse ems_util:str_contains(UrlStr, ["salva", "gera", "confirma", "cancela", "busca", "avisa", "possui", "validar", "conclui", "listar", "listagem", "carrega", "obter", "garante", "altera", "exclui", "atualiza", "processa"]) of
+						true -> ems_logger:format_warn("ems_catalog url \033[01;34m~p\033[0m does not comply good RESTful practices. Use short URLs in lowercase without unnecessary articles or link verbs.", [UrlStr]);
+						false -> ok
+				end;
+			true -> ok
+		end,
 
 		put(parse_step, type),
 		Type = ems_util:parse_type_service(get_p(<<"type">>, Map, <<"GET">>)),
@@ -511,9 +526,13 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		end,
 		
 		put(parse_step, result_cache),
-		case Type of
-			<<"GET">> -> ResultCache = ems_util:parse_result_cache(get_p(<<"result_cache">>, Map, ResultCacheDefault));
-			_ -> ResultCache = 0
+		case ResultCacheEnabledDefault of
+			true ->
+				case Type of
+					<<"GET">> -> ResultCache = ems_util:parse_result_cache(get_p(<<"result_cache">>, Map, ResultCacheDefault));
+					_ -> ResultCache = 0
+				end;
+			false -> ResultCache = 0
 		end,
 
 		put(parse_step, result_cache_shared),
@@ -584,10 +603,15 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 		Public = ems_util:parse_bool(get_p(<<"public">>, Map, true)),
 		
 		put(parse_step, content_type),
-		ContentType = case maps:is_key(<<"content_type">>, Map) of
-							true ->  get_p(<<"content_type">>, Map, ?CONTENT_TYPE_JSON);
-							false -> get_p(<<"content-type">>, Map, ?CONTENT_TYPE_JSON)
-					  end,
+		ContentType0 = ems_util:parse_content_type(case maps:is_key(<<"content_type">>, Map) of
+														true ->  get_p(<<"content_type">>, Map, ?CONTENT_TYPE_JSON);
+														false -> get_p(<<"content-type">>, Map, ?CONTENT_TYPE_JSON)
+												  end),
+		% Se for application/json substitui pelo application/json; charset=utf-8
+		case ContentType0 of
+			<<"application/json">> -> ContentType = ?CONTENT_TYPE_JSON;  
+			_ -> ContentType = ContentType0
+		end,
 		
 		put(parse_step, path),
 		Path0 = ems_util:parse_file_name_path(get_p(<<"path">>, Map, CtrlPath), StaticFilePathDefault, undefined),
@@ -760,7 +784,7 @@ new_from_map(Map, Conf = #config{cat_enable_services = EnableServices,
 	catch
 		_Exception:Reason -> 
 			ems_db:inc_counter(edata_loader_invalid_catalog),
-			ems_logger:warn("ems_catalog parse invalid service specification on ~p. Reason: ~p\n\t~p.\n", [get(parse_step), Reason, Map]),
+			ems_logger:warn("ems_catalog parse invalid service specification on \033[01;34m~p\033[0m. Reason: ~p\n\t~p.\n", [get(parse_step), Reason, Map]),
 			{error, Reason}
 	end.
 

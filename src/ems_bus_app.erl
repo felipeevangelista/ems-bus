@@ -17,7 +17,6 @@
 start(_StartType, StartArgs) ->
 	io:format("\n"),
 	ems_logger:format_info("Loading ~s instance ( \033[0;32mPID:\033[0m \033[01;34m~s\033[0m  \033[0;32mErlang/OTP Version:\033[0m \033[01;34m~s\033[0m )", [?SERVER_NAME, os:getpid(), erlang:system_info(otp_release)]),
-	erlang:system_flag(min_heap_size, 22000),
 	ems_db:start(),
 	case ems_config:start() of
 		{ok, _Pid} ->
@@ -55,6 +54,7 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mlog_show_payload\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_show_payload]),
 			ems_logger:info("  \033[0;32mlog_show_response_max_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_response_max_length]),
 			ems_logger:info("  \033[0;32mlog_show_payload_max_length\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_payload_max_length]),
+			ems_logger:info("  \033[0;32mlog_show_odbc_pool_activity\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_show_odbc_pool_activity]),
 			ems_logger:info("  \033[0;32mlog_file_checkpoint\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.log_file_checkpoint]),
 			ems_logger:info("  \033[0;32mlog_file_max_size\033[0m: \033[01;34m~p bytes\033[0m.", [Conf#config.log_file_max_size]),
 			ems_logger:info("  \033[0;32mlog_file_path\033[0m: \033[01;34m~p\033[0m.", [Conf#config.log_file_path]),
@@ -63,6 +63,7 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mshow_debug_response_headers\033[0m: \033[01;34m~p\033[0m.", [Conf#config.show_debug_response_headers]),
 			ems_logger:info("  \033[0;32mresult_cache\033[0m: \033[01;34m~pms\033[0m.", [Conf#config.ems_result_cache]),
 			ems_logger:info("  \033[0;32mresult_cache_shared\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_result_cache_shared]),
+			ems_logger:info("  \033[0;32mresult_cache_enabled\033[0m: \033[01;34m~p\033[0m.", [Conf#config.ems_result_cache_enabled]),
 			ems_logger:info("  \033[0;32mjava_home\033[0m: \033[01;34m~s\033[0m.", [Conf#config.java_home]),
 			ems_logger:info("  \033[0;32mjava_jar_path\033[0m: \033[01;34m~s\033[0m.", [Conf#config.java_jar_path]),
 			ems_logger:info("  \033[0;32mjava_thread_pool\033[0m: \033[01;34m~p\033[0m.", [Conf#config.java_thread_pool]),

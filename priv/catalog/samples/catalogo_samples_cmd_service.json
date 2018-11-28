@@ -7,7 +7,7 @@
 		"service" : "ems_cmd_service:execute",
 		"url": "/samples/logger/cat/error",
 		"script" : [ "find {{PRIV_PATH}}/log -type f -mtime -1 -name '*.log' | xargs sed '/Payload/, /Response/ d' | sed '/INFO/, /Status/ d'" ],
-		"content_type" : "plain/text",
+		"content_type" : "text/plain",
 		"type": "GET",
 		"authorization": "basic",
 		"lang" : "erlang"
@@ -21,7 +21,7 @@
 		"service" : "ems_cmd_service:execute",
 		"url": "/samples/jboss/tail",
 		"script" : [ "tail {{WILDFLY_PATH}}/standalone/log/server.log" ],
-		"content_type" : "plain/text",
+		"content_type" : "text/plain",
 		"type": "GET",
 		"authorization": "basic",
 		"lang" : "erlang"
@@ -49,7 +49,7 @@
 		"service" : "ems_cmd_service:execute",
 		"url": "/emsbus/systemctl/status",
 		"script" : [ "systemctl" ],
-		"content_type" : "plain/text",
+		"content_type" : "text/plain",
 		"type": "GET",
 		"authorization": "basic",
 		"lang" : "erlang"

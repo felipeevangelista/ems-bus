@@ -18,8 +18,9 @@
 		 sort/2, field_position/3]).
 -export([init_sequence/2, sequence/1, sequence/2, current_sequence/1]).
 -export([init_counter/2, counter/2, current_counter/1, inc_counter/1, dec_counter/1]).
--export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/4, command/2, select_count/2, is_database_in_restricted_mode/1]).
+-export([get_connection/1, release_connection/1, get_sqlite_connection_from_csv_file/1, create_datasource_from_map/3, command/2, select_count/2, is_database_in_restricted_mode/1]).
 -export([get_param/1, get_param/2, set_param/2, get_re_param/2]).
+-export([get_transient_param/1, get_transient_param/2, set_transient_param/2, get_re_transient_param/2]).
 
 -export([filter_with_sort/2]).
 
@@ -72,6 +73,11 @@ create_database(Nodes) ->
 									  {disc_copies, Nodes},
 									  {attributes, record_info(fields, ctrl_params)}]),
 
+    mnesia:create_table(ctrl_transient_params, [{type, set},
+											    {ram_copies, Nodes},
+											    {attributes, record_info(fields, ctrl_params)},
+											    {record_name, ctrl_params}]),
+
     mnesia:create_table(user_cache_lru, [{type, set},
 										  {ram_copies, Nodes},
 										  {index, [#user.login]},
@@ -85,6 +91,12 @@ create_database(Nodes) ->
 								  {record_name, user}]),
 
     mnesia:create_table(user_db, [{type, set},
+								  {disc_copies, Nodes},
+								  {index, [#user.codigo, #user.login, #user.name, #user.cpf, #user.email]},
+								  {attributes, record_info(fields, user)},
+								  {record_name, user}]),
+
+    mnesia:create_table(user2_db, [{type, set},
 								  {disc_copies, Nodes},
 								  {index, [#user.codigo, #user.login, #user.name, #user.cpf, #user.email]},
 								  {attributes, record_info(fields, user)},
@@ -293,8 +305,10 @@ create_database(Nodes) ->
 							sequence,
 							counter,
 							ctrl_params,
+							ctrl_transient_params,
 							user_fs, 
 							user_db,
+							user2_db,
 							user_history,
 							user_aluno_ativo_db,
 							user_aluno_inativo_db,
@@ -413,7 +427,6 @@ counter(Name, Inc) -> mnesia:dirty_update_counter(counter, Name, Inc).
 
 %% ************* Funções para armazenar parâmetros em crtl_params *************
 
-% Return a param value from crtl_params table
 -spec get_param(atom()) -> any().
 get_param(ParamName) -> 
 	case mnesia:dirty_read(ctrl_params, ParamName) of
@@ -448,14 +461,55 @@ get_re_param(ParamName, DefaultREPattern) ->
 		[#ctrl_params{value = Value}] -> Value
 	end.
 
-	
-% Save a param value to crtl_params table
 -spec set_param(atom(), any()) -> ok.
 set_param(ParamName, ParamValue) -> 
 	P = #ctrl_params{name = ParamName, value = ParamValue},
 	mnesia:dirty_write(ctrl_params, P).
 
 
+%% ************* Funções para armazenar parâmetros em crtl_transient_params *************
+
+-spec get_transient_param(atom()) -> any().
+get_transient_param(ParamName) -> 
+	case mnesia:dirty_read(ctrl_transient_params, ParamName) of
+		[] -> undefined;
+		[#ctrl_params{value = Value}] -> Value
+	end.
+
+-spec get_transient_param(atom(), function() | any()) -> any().
+get_transient_param(ParamName, Fun) when is_function(Fun) -> 
+	case mnesia:dirty_read(ctrl_transient_params, ParamName) of
+		[] -> 
+			Value = Fun(),
+			set_transient_param(ParamName, Value),
+			Value;
+		[#ctrl_params{value = Value}] -> Value
+	end;
+get_transient_param(ParamName, DefaultValue) -> 
+	case mnesia:dirty_read(ctrl_transient_params, ParamName) of
+		[] -> 
+			set_transient_param(ParamName, DefaultValue),
+			DefaultValue;
+		[#ctrl_params{value = Value}] -> Value
+	end.
+	
+-spec get_re_transient_param(atom(), string()) -> {re_pattern, term(), term(), term(), term()}.	
+get_re_transient_param(ParamName, DefaultREPattern) -> 
+	case mnesia:dirty_read(ctrl_transient_params, ParamName) of
+		[] -> 
+			{ok, Value} = re:compile(DefaultREPattern),
+			set_transient_param(ParamName, Value),
+			Value;
+		[#ctrl_params{value = Value}] -> Value
+	end.
+	
+-spec set_transient_param(atom(), any()) -> ok.
+set_transient_param(ParamName, ParamValue) -> 
+	P = #ctrl_params{name = ParamName, value = ParamValue},
+	mnesia:dirty_write(ctrl_transient_params, P).
+
+
+%% Funções para get and release connection
 
 % Get the connection from a datasource (postgresql, sqlserver, sqlite, ou mnesia)
 get_connection(Datasource = #service_datasource{type = postgresql}) ->
@@ -1311,8 +1365,10 @@ parse_extends_datasource(Map, GlobalDatasources) ->
 			end
 	end.
 
--spec create_datasource_from_map(map(), non_neg_integer(), map(), list()) -> #service_datasource{} | undefined.
-create_datasource_from_map(Map, Rowid, GlobalDatasources, Variables) ->
+-spec create_datasource_from_map(map(), non_neg_integer(), #config{}) -> #service_datasource{} | undefined.
+create_datasource_from_map(Map, Rowid, #config{ems_datasources = GlobalDatasources, 
+											   custom_variables = Variables, 
+											   log_show_odbc_pool_activity = LogShowOdbcPoolActivityConfig}) ->
 	try
 		put(parse_step, parse_extends_datasource),
 		M = parse_extends_datasource(Map, GlobalDatasources),
@@ -1376,6 +1432,9 @@ create_datasource_from_map(Map, Rowid, GlobalDatasources, Variables) ->
 		put(parse_step, check_valid_connection_timeout),
 		CheckValidConnectionTimeout = ems_util:parse_range(maps:get(<<"check_valid_connection_timeout">>, M, ?CHECK_VALID_CONNECTION_TIMEOUT), 1, ?MAX_CLOSE_IDLE_CONNECTION_TIMEOUT),
 
+		put(parse_step, log_show_odbc_pool_activity),
+		LogShowOdbcPoolActivity = ems_util:parse_bool(maps:get(<<"log_show_odbc_pool_activity">>, M, LogShowOdbcPoolActivityConfig)),
+
 		put(parse_step, ctrlhash),
 		CtrlHash = erlang:phash2([Rowid, Type, Driver, Connection, TableName, Fields, 
 								  PrimaryKey, ForeignKey, ForeignTableName, CsvDelimiter, 
@@ -1413,6 +1472,7 @@ create_datasource_from_map(Map, Rowid, GlobalDatasources, Variables) ->
 												remap_fields = RemapFields,
 												remap_fields_rev = RemapFieldsRev,
 												show_remap_fields = ShowRemapFields,
+												log_show_odbc_pool_activity = LogShowOdbcPoolActivity,
 												connection_count_metric_name = ConnectionCountMetricName,
 												connection_created_metric_name = ConnectionCreatedMetricName,
 												connection_closed_metric_name = ConnectionClosedMetricName,
