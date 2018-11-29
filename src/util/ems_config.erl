@@ -340,6 +340,8 @@ get_p(ParamName, Map, DefaultValue) ->
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, Filename) ->
 	try
+		{ok, InetHostname} = inet:gethostname(),
+		
 		% este primeiro parâmetro é usado em todos os demais que é do tipo string
 		put(parse_step, variables),
 		CustomVariables = parse_variables(maps:get(<<"custom_variables">>, Json, #{})),
@@ -350,8 +352,8 @@ parse_config(Json, Filename) ->
 		% permite setar o hostname no arquivo de configuração ou obter o nome da máquina pelo inet
 		case Hostname0 of
 			<<>> -> 
-				{ok, Hostname} = inet:gethostname(),
-				HostnameBin = list_to_binary(Hostname);
+				Hostname = InetHostname,
+				HostnameBin = list_to_binary(InetHostname);
 			_ ->
 				Hostname = binary_to_list(Hostname0),
 				HostnameBin = Hostname0
@@ -530,6 +532,14 @@ parse_config(Json, Filename) ->
 		put(parse_step, java_thread_pool),
 		JavaThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
 
+		put(parse_step, java_service_user_notify),
+		JavaServiceUserNotify0 = binary_to_list(get_p(<<"java_service_user_notify">>, Json, <<>>)),
+		JavaServiceUserNotify = ems_util:replace(JavaServiceUserNotify0, "_", "."),
+		JavaServiceUserNotifyModule = list_to_atom(JavaServiceUserNotify),
+
+		JavaServiceUserNotify2 = ems_util:replace(JavaServiceUserNotify0, "\\.", "_"),
+		JavaServiceUserNotifyNode = list_to_atom(JavaServiceUserNotify2 ++ "_node01@" ++ Hostname),
+
 		put(parse_step, smtp_passwd),
 		SmtpPassword = binary_to_list(get_p(<<"smtp_passwd">>, Json, <<>>)),
 
@@ -634,6 +644,9 @@ parse_config(Json, Filename) ->
 				 java_home = JavaHome,
 				 java_thread_pool = JavaThreadPool,
 				 java_service_scan = JavaServiceScan,
+				 java_service_user_notify = JavaServiceUserNotify,
+				 java_service_user_notify_module = JavaServiceUserNotifyModule,
+				 java_service_user_notify_node = JavaServiceUserNotifyNode,
 				 smtp_passwd = SmtpPassword,
 				 smtp_from = SmtpFrom,
 				 smtp_mail = SmtpMail,

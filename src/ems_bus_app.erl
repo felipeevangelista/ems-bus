@@ -67,6 +67,8 @@ start(_StartType, StartArgs) ->
 			ems_logger:info("  \033[0;32mjava_home\033[0m: \033[01;34m~s\033[0m.", [Conf#config.java_home]),
 			ems_logger:info("  \033[0;32mjava_jar_path\033[0m: \033[01;34m~s\033[0m.", [Conf#config.java_jar_path]),
 			ems_logger:info("  \033[0;32mjava_thread_pool\033[0m: \033[01;34m~p\033[0m.", [Conf#config.java_thread_pool]),
+			ems_logger:info("  \033[0;32mjava_service_scan\033[0m: \033[01;34m~p\033[0m.", [Conf#config.java_service_scan]),
+			ems_logger:info("  \033[0;32mjava_service_user_notify\033[0m: \033[01;34m~p\033[0m.", [Conf#config.java_service_user_notify]),
 			ems_logger:info("  \033[0;32mdisable_services\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_disable_services]),
 			ems_logger:info("  \033[0;32mdisable_services_owner\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_disable_services_owner]),
 			ems_logger:info("  \033[0;32menable_services\033[0m: \033[01;34m~p\033[0m.", [Conf#config.cat_enable_services]),

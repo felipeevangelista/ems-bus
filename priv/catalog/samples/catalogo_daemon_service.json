@@ -33,7 +33,7 @@
 			"erlangms.user" : "{{REST_USER}}",
 			"erlangms.password" : "{{REST_PASSWD}}",
 			"erlangms.java_thread_pool" : "{{JAVA_THREAD_POOL}}",
-			"erlangms.service_scan" : "{{JAVA_SERVICE_SCAN}}"
+			"erlangms.service_scan" : "{{JAVA_SERVICE_SCAN}}",
 			"erlangms.smtp.password" : "{{SMTP_PASSWD}}",
 			"erlangms.smtp.from" : "{{SMTP_FROM}}",
 			"erlangms.smtp.port" : "{{SMTP_PORT}}",
