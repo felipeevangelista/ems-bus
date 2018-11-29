@@ -57,7 +57,9 @@
 -define(DATABASE_PATH, filename:join(?PRIV_PATH, "db")).
 
 % Caminho da pasta de databases
--define(JAR_PATH, filename:join(?PRIV_PATH, "jar")).
+-define(JAVA_JAR_PATH, filename:join(?PRIV_PATH, "jar")).
+
+-define(JAVA_SERVICE_SCAN, "br.unb").
 
 % Caminho do arquivo de configuração padrão (Pode ser incluído também na pasta ~/.erlangms do usuário)
 -define(CONF_FILE_PATH, filename:join(?CONF_PATH, "emsbus.conf")).
@@ -370,6 +372,7 @@
 				 java_jar_path :: string(),
 				 java_home :: string(),
  				 java_thread_pool :: non_neg_integer(),
+ 				 java_service_scan :: string(),
 				 ssl_cacertfile :: binary(),
 				 ssl_certfile :: binary(),
 				 ssl_keyfile :: binary(),

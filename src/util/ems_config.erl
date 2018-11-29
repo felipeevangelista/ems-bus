@@ -519,7 +519,10 @@ parse_config(Json, Filename) ->
 		RestrictedServicesAdmin = get_p(<<"restricted_services_admin">>, Json, ?RESTRICTED_SERVICES_ADMIN),
 		
 		put(parse_step, java_jar_path),
-		JarPath = parse_jar_path(get_p(<<"java_jar_path">>, Json, ?JAR_PATH)),
+		JarPath = parse_jar_path(get_p(<<"java_jar_path">>, Json, ?JAVA_JAR_PATH)),
+
+		put(parse_step, java_service_scan),
+		JavaServiceScan = parse_jar_path(get_p(<<"java_service_scan">>, Json, ?JAVA_SERVICE_SCAN)),
 
 		put(parse_step, java_home),
 		JavaHome = parse_java_home(get_p(<<"java_home">>, Json, <<>>)),
@@ -630,6 +633,7 @@ parse_config(Json, Filename) ->
 				 java_jar_path = JarPath,
 				 java_home = JavaHome,
 				 java_thread_pool = JavaThreadPool,
+				 java_service_scan = JavaServiceScan,
 				 smtp_passwd = SmtpPassword,
 				 smtp_from = SmtpFrom,
 				 smtp_mail = SmtpMail,

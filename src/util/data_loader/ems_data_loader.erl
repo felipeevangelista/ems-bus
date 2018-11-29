@@ -1,6 +1,6 @@
 %%******************************************************************** 
 %% @title Module ems_data_loader  
-%% @version 1.0.0 %%
+%% @version 1.0.0 
 %% @doc Module responsible for load records from database
 %% @author Everton de Vargas Agilar  <evertonagilar@gmail.com> 
 %% @copyright ErlangMS Team 

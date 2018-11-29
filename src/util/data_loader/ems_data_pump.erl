@@ -64,6 +64,24 @@ do_update_record(Map, CtrlUpdate, Conf, Name, Middleware, SourceType, _Fields) -
 	case apply(Middleware, insert_or_update, [Map, CtrlUpdate, Conf, SourceType, update]) of
 		{ok, Record, Table, Operation} ->
 			mnesia:dirty_write(Table, Record),
+
+			io:format("envia msg...\n\n"),
+			MsgUpdateJava = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
+							<<>>, % Payload
+							<<"application/json; charset=utf-8">>,  
+							"br.unb.pessoal.facade.AtualizaDadosSIPFacade", % ModuleName
+							"atualiza",  % FunctionName
+							<<>>,  % ClientJson
+							<<>>,  %UserJson, 
+							<<>>,  % Metadata, 
+							{<<>>, <<>>},  % {Scope, AccessToken}, 
+							0, % T2, 
+							0 %Timeout
+							}, self()},
+			Node = 'br_unb_pessoal_facade_AtualizaDadosSIPFacade_node01@CPD-DES-374405',
+			Module = 'br.unb.pessoal.facade.AtualizaDadosSIPFacade',
+			{Module, Node} ! MsgUpdateJava,
+		
 			{ok, Operation};
 		{ok, skip} -> {ok, skip};
 		{error, edisabled} -> {error, edisabled};
