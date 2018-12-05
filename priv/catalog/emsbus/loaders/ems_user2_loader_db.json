@@ -78,7 +78,7 @@
 					   u.expira_senha as dt_expire_password 
 				from comum.pessoa p, comum.usuario u 
 				where p.id_pessoa = u.id_pessoa 
-				  and u.data_cadastro >= ? or p.ultima_atualizacao >= ? 
+				  and (u.data_cadastro >= ? or p.ultima_atualizacao >= ?)
 				",
 			
 	"fields" : ["id", "codigo", "login", "name", "cpf", "password", 
