@@ -44,6 +44,10 @@ do_insert_record(Map, CtrlInsert, Conf, Name, Middleware, SourceType, _Fields) -
 	case apply(Middleware, insert_or_update, [Map, CtrlInsert, Conf, SourceType, insert]) of
 		{ok, Record, Table, insert} ->
 			mnesia:dirty_write(Table, Record),
+			case erlang:function_exported(Middleware, after_insert_or_update, 5) of
+				true -> apply(Middleware, after_insert_or_update, [Record, CtrlInsert, Conf, SourceType, insert]);
+				false -> ok
+			end,
 			{ok, insert};
 		{ok, Record, _, update} ->
 			?DEBUG("~s skips data with duplicate key: ~p.", [Name, Record]),
@@ -64,31 +68,10 @@ do_update_record(Map, CtrlUpdate, Conf, Name, Middleware, SourceType, _Fields) -
 	case apply(Middleware, insert_or_update, [Map, CtrlUpdate, Conf, SourceType, update]) of
 		{ok, Record, Table, Operation} ->
 			mnesia:dirty_write(Table, Record),
-
-			UserList = ems_schema:to_json([ems_schema:to_json(Record)]),
-			
-			MsgUpdateJava = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
-							UserList, % Payload
-							<<"application/json; charset=utf-8">>,  
-							"br.unb.pessoal.facade.AtualizaDadosSIPFacade", % ModuleName
-							"atualiza",  % FunctionName
-							<<>>,  % ClientJson
-							<<>>,  %UserJson, 
-							<<>>,  % Metadata, 
-							{<<>>, <<>>},  % {Scope, AccessToken}, 
-							0, % T2, 
-							0 %Timeout
-							}, self()},
-			%Node = 'br_unb_pessoal_facade_AtualizaDadosSIPFacade_node01@CPD-DES-374405',
-			Conf = ems_config:getConfig(),
-			Node = Conf#config.java_service_user_notify_node,
-			%Module = 'br.unb.pessoal.facade.AtualizaDadosSIPFacade',
-			Module = Conf#config.java_service_user_notify_module,
-
-			io:format("envia msg para node: ~p   module: ~p\n", [Node, Module]),
-		
-			{Module, Node} ! MsgUpdateJava,
-		
+			case erlang:function_exported(Middleware, after_insert_or_update, 5) of
+				true -> apply(Middleware, after_insert_or_update, [Record, CtrlUpdate, Conf, SourceType, update]);
+				false -> ok
+			end,
 			{ok, Operation};
 		{ok, skip} -> {ok, skip};
 		{error, edisabled} -> {error, edisabled};

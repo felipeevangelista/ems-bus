@@ -376,6 +376,7 @@
  				 java_service_user_notify :: string(),
  				 java_service_user_notify_module :: atom(),
  				 java_service_user_notify_node :: atom(),
+ 				 java_service_user_notify_function :: string(),
 				 ssl_cacertfile :: binary(),
 				 ssl_certfile :: binary(),
 				 ssl_keyfile :: binary(),

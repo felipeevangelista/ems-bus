@@ -524,7 +524,7 @@ parse_config(Json, Filename) ->
 		JarPath = parse_jar_path(get_p(<<"java_jar_path">>, Json, ?JAVA_JAR_PATH)),
 
 		put(parse_step, java_service_scan),
-		JavaServiceScan = parse_jar_path(get_p(<<"java_service_scan">>, Json, ?JAVA_SERVICE_SCAN)),
+		JavaServiceScan = get_p(<<"java_service_scan">>, Json, ?JAVA_SERVICE_SCAN),
 
 		put(parse_step, java_home),
 		JavaHome = parse_java_home(get_p(<<"java_home">>, Json, <<>>)),
@@ -533,12 +533,11 @@ parse_config(Json, Filename) ->
 		JavaThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
 
 		put(parse_step, java_service_user_notify),
-		JavaServiceUserNotify0 = binary_to_list(get_p(<<"java_service_user_notify">>, Json, <<>>)),
-		JavaServiceUserNotify = ems_util:replace(JavaServiceUserNotify0, "_", "."),
-		JavaServiceUserNotifyModule = list_to_atom(JavaServiceUserNotify),
-
-		JavaServiceUserNotify2 = ems_util:replace(JavaServiceUserNotify0, "\\.", "_"),
-		JavaServiceUserNotifyNode = list_to_atom(JavaServiceUserNotify2 ++ "_node01@" ++ Hostname),
+		JavaServiceUserNotify = get_p(<<"java_service_user_notify">>, Json, <<>>),
+		{JavaServiceUserNotifyClass, _, JavaServiceUserNotifyFunction} = ems_util:parse_service_service(JavaServiceUserNotify),
+		JavaServiceUserNotifyModule = list_to_atom(JavaServiceUserNotifyClass),
+		JavaServiceUserNotifyClass2 = ems_util:replace(JavaServiceUserNotifyClass, "\\.", "_"),
+		JavaServiceUserNotifyNode = list_to_atom(JavaServiceUserNotifyClass2 ++ "_node01@" ++ Hostname),
 
 		put(parse_step, smtp_passwd),
 		SmtpPassword = binary_to_list(get_p(<<"smtp_passwd">>, Json, <<>>)),
@@ -647,6 +646,7 @@ parse_config(Json, Filename) ->
 				 java_service_user_notify = JavaServiceUserNotify,
 				 java_service_user_notify_module = JavaServiceUserNotifyModule,
 				 java_service_user_notify_node = JavaServiceUserNotifyNode,
+				 java_service_user_notify_function = JavaServiceUserNotifyFunction,
 				 smtp_passwd = SmtpPassword,
 				 smtp_from = SmtpFrom,
 				 smtp_mail = SmtpMail,

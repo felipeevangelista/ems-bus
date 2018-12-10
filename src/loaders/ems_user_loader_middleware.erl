@@ -11,7 +11,15 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2, after_load_or_update_checkpoint/1]).
+-export([insert_or_update/5, 
+		 is_empty/1, 
+		 size_table/1, 
+		 clear_table/1, 
+		 reset_sequence/1, 
+		 get_filename/0, 
+		 check_remove_records/2, 
+		 after_insert_or_update/5,
+		 after_load_or_update_checkpoint/1]).
 
 
 -spec is_empty(atom()) -> boolean().
@@ -61,7 +69,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 			{ok, NewUser = #user{id = Id, ctrl_hash = CtrlHash}} -> 
 				case ems_user:find(SourceType, Id) of
 					{error, enoent} -> 
-						User = NewUser#user{ctrl_insert = CtrlDate},
+						User = NewUser#user{ctrl_insert = CtrlDate, 
+											ctrl_source_type = SourceType},
 						ems_db:delete(user_cache_lru, Id),
 						{ok, User, SourceType, insert};
 					{ok, CurrentUser = #user{ctrl_hash = CurrentCtrlHash}} ->
@@ -100,7 +109,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_file = NewUser#user.ctrl_file,
 												 ctrl_update = CtrlDate,
 												 ctrl_modified = NewUser#user.ctrl_modified,
-												 ctrl_hash = NewUser#user.ctrl_hash
+												 ctrl_hash = NewUser#user.ctrl_hash,
+												 ctrl_source_type = SourceType
 											},
 								ems_db:delete(user_cache_lru, Id),
 								{ok, User, SourceType, update};
@@ -114,6 +124,47 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 	catch
 		_Exception:Reason -> {error, Reason}
 	end.
+
+
+after_insert_or_update(Record, _CtrlDate, Conf, SourceType, _Operation) ->
+	try
+		%% Invoca service /netadm/dataloader/user/notify somente quando não é user_fs
+		case SourceType =/= user_fs of
+			true ->
+				case Conf#config.java_service_user_notify =/= undefined andalso 
+					 Conf#config.java_service_user_notify_node =/= undefined andalso 
+					 Conf#config.java_service_user_notify_module =/= undefined of
+					true ->
+						UserList = ems_schema:to_json([ems_schema:to_json(Record)]),
+						MsgService = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
+										UserList, % Payload
+										<<"application/json; charset=utf-8">>,  
+										atom_to_list(Conf#config.java_service_user_notify_module),
+										Conf#config.java_service_user_notify_function,  	% FunctionName
+										<<>>,  		 	% ClientJson
+										<<>>,  		 	%UserJson, 
+										<<>>,  		 	% Metadata, 
+										{<<>>, <<>>},  	% {Scope, AccessToken}, 
+										0, 			 	% T2, 
+										0 			 	% Timeout
+										}, self()},
+						%Node = 'br_unb_pessoal_facade_AtualizaDadosSIPFacade_node01@CPD-DES-374405',
+						Node = Conf#config.java_service_user_notify_node,
+						%Module = 'br.unb.pessoal.facade.AtualizaDadosSIPFacade',
+						Module = Conf#config.java_service_user_notify_module,
+						{Module, Node} ! MsgService;
+					false -> ok
+				end;
+			false -> ok
+		end
+	catch
+		_Exception:Reason -> 
+			% Não propaga exceptions, apenas emite uma mensagem no log
+			ems_logger:error("ems_user_loader_middleware /netadm/dataloader/user/notify failed. Reason: ~p.", [Reason]) ,
+			ok
+	end.
+	
+			
 
 
 -spec after_load_or_update_checkpoint(fs | db) -> ok.
