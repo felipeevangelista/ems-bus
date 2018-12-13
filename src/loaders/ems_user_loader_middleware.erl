@@ -133,7 +133,8 @@ after_insert_or_update(Record, _CtrlDate, Conf, SourceType, _Operation) ->
 			true ->
 				case Conf#config.java_service_user_notify =/= undefined andalso 
 					 Conf#config.java_service_user_notify_node =/= undefined andalso 
-					 Conf#config.java_service_user_notify_module =/= undefined of
+					 Conf#config.java_service_user_notify_module =/= undefined andalso 
+					 Conf#config.java_service_user_notify_function =/= undefined of
 					true ->
 						UserList = ems_schema:to_json([ems_schema:to_json(Record)]),
 						MsgService = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 

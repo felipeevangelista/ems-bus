@@ -534,10 +534,19 @@ parse_config(Json, Filename) ->
 
 		put(parse_step, java_service_user_notify),
 		JavaServiceUserNotify = get_p(<<"java_service_user_notify">>, Json, <<>>),
-		{JavaServiceUserNotifyClass, _, JavaServiceUserNotifyFunction} = ems_util:parse_service_service(JavaServiceUserNotify),
-		JavaServiceUserNotifyModule = list_to_atom(JavaServiceUserNotifyClass),
-		JavaServiceUserNotifyClass2 = ems_util:replace(JavaServiceUserNotifyClass, "\\.", "_"),
-		JavaServiceUserNotifyNode = list_to_atom(JavaServiceUserNotifyClass2 ++ "_node01@" ++ Hostname),
+		case JavaServiceUserNotify =/= <<>> of
+			true -> 
+				{JavaServiceUserNotifyClass, _, JavaServiceUserNotifyFunction} = ems_util:parse_service_service(JavaServiceUserNotify),
+				JavaServiceUserNotifyModule = list_to_atom(JavaServiceUserNotifyClass),
+				JavaServiceUserNotifyClass2 = ems_util:replace(JavaServiceUserNotifyClass, "\\.", "_"),
+				JavaServiceUserNotifyNode = list_to_atom(JavaServiceUserNotifyClass2 ++ "_node01@" ++ Hostname);
+			false ->
+				 JavaServiceScan = undefined,
+				 JavaServiceUserNotify = undefined,
+				 JavaServiceUserNotifyModule = undefined,
+				 JavaServiceUserNotifyNode = undefined,
+				 JavaServiceUserNotifyFunction = undefined
+		end,
 
 		put(parse_step, smtp_passwd),
 		SmtpPassword = binary_to_list(get_p(<<"smtp_passwd">>, Json, <<>>)),
