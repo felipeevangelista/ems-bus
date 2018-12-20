@@ -26,8 +26,8 @@
 	},
 
 	{
-		"catalog": "/emsbus/ems_eventmgr", 
-		"file": "ems_eventmgr.json"
+		"catalog": "/emsbus/ems_user_notify_service", 
+		"file": "ems_user_notify_service.json"
 	},
 
 	{

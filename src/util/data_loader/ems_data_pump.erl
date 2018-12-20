@@ -44,10 +44,6 @@ do_insert_record(Map, CtrlInsert, Conf, Name, Middleware, SourceType, _Fields) -
 	case apply(Middleware, insert_or_update, [Map, CtrlInsert, Conf, SourceType, insert]) of
 		{ok, Record, Table, insert} ->
 			mnesia:dirty_write(Table, Record),
-			case erlang:function_exported(Middleware, after_insert_or_update, 5) of
-				true -> apply(Middleware, after_insert_or_update, [Record, CtrlInsert, Conf, SourceType, insert]);
-				false -> ok
-			end,
 			{ok, insert};
 		{ok, Record, _, update} ->
 			?DEBUG("~s skips data with duplicate key: ~p.", [Name, Record]),
@@ -68,12 +64,9 @@ do_update_record(Map, CtrlUpdate, Conf, Name, Middleware, SourceType, _Fields) -
 	case apply(Middleware, insert_or_update, [Map, CtrlUpdate, Conf, SourceType, update]) of
 		{ok, Record, Table, Operation} ->
 			mnesia:dirty_write(Table, Record),
-			case erlang:function_exported(Middleware, after_insert_or_update, 5) of
-				true -> apply(Middleware, after_insert_or_update, [Record, CtrlUpdate, Conf, SourceType, update]);
-				false -> ok
-			end,
 			{ok, Operation};
-		{ok, skip} -> {ok, skip};
+		{ok, skip} -> 
+			{ok, skip};
 		{error, edisabled} -> {error, edisabled};
 		{error, Reason} = Error ->	
 			ems_logger:error("~s data update error: ~p.", [Name, Reason]),

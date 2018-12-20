@@ -18,7 +18,6 @@
 		 reset_sequence/1, 
 		 get_filename/0, 
 		 check_remove_records/2, 
-		 after_insert_or_update/5,
 		 after_load_or_update_checkpoint/1]).
 
 
@@ -72,6 +71,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 						User = NewUser#user{ctrl_insert = CtrlDate, 
 											ctrl_source_type = SourceType},
 						ems_db:delete(user_cache_lru, Id),
+						notify_java_user_service(Conf, User),
 						{ok, User, SourceType, insert};
 					{ok, CurrentUser = #user{ctrl_hash = CurrentCtrlHash}} ->
 						case CtrlHash =/= CurrentCtrlHash of
@@ -113,8 +113,10 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_source_type = SourceType
 											},
 								ems_db:delete(user_cache_lru, Id),
+								notify_java_user_service(Conf, User),
 								{ok, User, SourceType, update};
 							false -> 
+								notify_java_user_service(Conf, CurrentUser),
 								{ok, skip}
 						end
 				end;
@@ -126,34 +128,18 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 	end.
 
 
-after_insert_or_update(Record, _CtrlDate, Conf, SourceType, _Operation) ->
+notify_java_user_service(Conf, User) ->
 	try
 		%% Invoca service /netadm/dataloader/user/notify somente quando não é user_fs
-		case Record#user.password =/= <<>> of
+		case User#user.password =/= <<>> andalso 
+			 User#user.admin == false andalso 
+			 User#user.ctrl_source_type =/= user_fs of
 			true ->
 				case Conf#config.java_service_user_notify =/= undefined andalso 
 					 Conf#config.java_service_user_notify_node =/= undefined andalso 
 					 Conf#config.java_service_user_notify_module =/= undefined andalso 
 					 Conf#config.java_service_user_notify_function =/= undefined of
-					true ->
-						UserList = ems_schema:to_json([ems_schema:to_json(Record)]),
-						MsgService = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
-										UserList, % Payload
-										<<"application/json; charset=utf-8">>,  
-										atom_to_list(Conf#config.java_service_user_notify_module),
-										Conf#config.java_service_user_notify_function,  	% FunctionName
-										<<>>,  		 	% ClientJson
-										<<>>,  		 	%UserJson, 
-										<<>>,  		 	% Metadata, 
-										{<<>>, <<>>},  	% {Scope, AccessToken}, 
-										0, 			 	% T2, 
-										0 			 	% Timeout
-										}, self()},
-						%Node = 'br_unb_pessoal_facade_AtualizaDadosSIPFacade_node01@CPD-DES-374405',
-						Node = Conf#config.java_service_user_notify_node,
-						%Module = 'br.unb.pessoal.facade.AtualizaDadosSIPFacade',
-						Module = Conf#config.java_service_user_notify_module,
-						{Module, Node} ! MsgService;
+					true ->	ems_user_notify_service:add(User);
 					false -> ok
 				end;
 			false -> ok
