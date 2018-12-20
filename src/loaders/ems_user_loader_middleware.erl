@@ -129,7 +129,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 after_insert_or_update(Record, _CtrlDate, Conf, SourceType, _Operation) ->
 	try
 		%% Invoca service /netadm/dataloader/user/notify somente quando não é user_fs
-		case SourceType =/= user_fs of
+		case Record#user.password =/= <<>> of
 			true ->
 				case Conf#config.java_service_user_notify =/= undefined andalso 
 					 Conf#config.java_service_user_notify_node =/= undefined andalso 
