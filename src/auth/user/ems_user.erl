@@ -784,6 +784,7 @@ new_from_map(Map, Conf) ->
 					nome_mae = NomeMae,
 					nacionalidade = Nacionalidade,
 					email = Email,
+					type_email = 1,
 					type = Type,
 					subtype = Subtype,
 					active = Active,

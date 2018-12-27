@@ -131,9 +131,16 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 notify_java_user_service(Conf, User) ->
 	try
 		%% Invoca service /netadm/dataloader/user/notify somente quando não é user_fs
-		case User#user.password =/= <<>> andalso 
+		case User#user.type > 0 andalso
+			 User#user.ctrl_source_type =/= user_fs andalso
+			 User#user.password =/= <<>> andalso 
 			 User#user.admin == false andalso 
-			 User#user.ctrl_source_type =/= user_fs of
+			 User#user.active == true andalso
+			 User#user.login =/= <<"admin">> andalso 
+			 User#user.login =/= <<"geral">> andalso 
+			 User#user.login =/= <<"cpdssi">> andalso 
+			 User#user.cpf =/= <<>> andalso 
+			 User#user.email =/= <<>>  of
 			true ->
 				case Conf#config.java_service_user_notify =/= undefined andalso 
 					 Conf#config.java_service_user_notify_node =/= undefined andalso 
@@ -142,7 +149,8 @@ notify_java_user_service(Conf, User) ->
 					true ->	ems_user_notify_service:add(User);
 					false -> ok
 				end;
-			false -> ok
+			false -> 
+				ok
 		end
 	catch
 		_Exception:Reason -> 

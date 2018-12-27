@@ -163,10 +163,13 @@
 									   on e.EndLocalidade = mu.MunCodigo 
 							  where e.EndTipo = 1) addr 
 					  on addr.PFEPesCodigoPessoa = u.UsuPesIdPessoa 
-				where p.PesDataAlteracao >= ? or u.UsuDataAlteracao >= ? 
-				    or p.PesDataCadastramento >= ? or u.UsuDataCadastramento >= ? 
-				    or addr.EndDataAlteracao >= ? or addr.EndDataCadastramento >= ? 
-				  and exists ( select 1 
+				where p.PesDataAlteracao >= ? 
+					or u.UsuDataAlteracao >= ? 
+				    or p.PesDataCadastramento >= ? 
+				    or u.UsuDataCadastramento >= ? 
+				    or addr.EndDataAlteracao >= ? 
+				    or addr.EndDataCadastramento >= ? 
+				    or exists ( select 1 
 								from BDPessoa.dbo.TB_PessoaFisicaEmail pfe with (nolock) 
 									join BDPessoa.dbo.TB_Email em with (nolock) 
 										on pfe.PFmEmaCodigo = em.EmaCodigo  
