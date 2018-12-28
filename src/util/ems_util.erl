@@ -2936,7 +2936,9 @@ parse_email(Value) ->
 	end.
 	
 
--spec is_email_valido(string()) -> boolean().
+-spec is_email_valido(string() | binary()) -> boolean().
+is_email_valido(Value) when is_binary(Value) -> 
+	is_email_valido(binary_to_list(Value));
 is_email_valido(Value) -> 
 	REPattern = ems_db:get_re_param(check_email_valid_re, "\\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,4}\\b"),
 	case re:run(Value, REPattern) of

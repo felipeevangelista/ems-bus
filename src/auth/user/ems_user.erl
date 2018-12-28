@@ -669,6 +669,13 @@ new_from_map(Map, Conf) ->
 						Cpf = <<>>
 				end
 		end,
+		
+		% Se não tem CPF mas o login é um CPF válido, atribui ao campo CPF
+		case Cpf == <<>> andalso ems_util:is_cpf_valid(Login) of
+			true -> Cpf2 = Login;
+			false -> Cpf2 = Cpf
+		end,
+		
 		put(parse_step, dt_expire_password),
 		DtExpirePassword = case ems_util:date_to_binary(maps:get(<<"dt_expire_password">>, Map, <<>>)) of
 							  <<>> -> undefined;
@@ -730,7 +737,14 @@ new_from_map(Map, Conf) ->
 						end,
 						
 		put(parse_step, email),						
-		Email = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
+		Email0 = ?UTF8_STRING(maps:get(<<"email">>, Map, <<>>)),
+
+		% Se não tem e-mail mas o login é um e-mail válido, atribui ao campo email
+		case Email0 == <<>> andalso ems_util:is_email_valido(Login) of
+			true -> Email = Login;
+			false -> Email = Email0
+		end,
+
 		
 		put(parse_step, type),
 		Type = maps:get(<<"type">>, Map, 1),
@@ -764,7 +778,7 @@ new_from_map(Map, Conf) ->
 					codigo = Codigo,
 					login = Login,
 					name = Name,
-					cpf = Cpf,
+					cpf = Cpf2,
 					password = Password2,
 					passwd_crypto = PasswdCrypto,
 					dt_expire_password = DtExpirePassword,
