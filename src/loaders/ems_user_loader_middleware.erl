@@ -66,6 +66,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 	try
 		case ems_user:new_from_map(Map, Conf) of
 			{ok, NewUser = #user{id = Id, ctrl_hash = CtrlHash}} -> 
+				%io:format("ems_user:find(~p, ~p).", [SourceType, Id]),
 				case ems_user:find(SourceType, Id) of
 					{error, enoent} -> 
 						User = NewUser#user{ctrl_insert = CtrlDate, 
@@ -139,11 +140,8 @@ notify_java_user_service(Conf, User) ->
 				case User#user.type > 0 andalso
 					 User#user.ctrl_source_type =/= user_fs andalso
 					 User#user.password =/= <<>> andalso 
-					 User#user.admin == false andalso 
 					 User#user.active == true andalso
-					 User#user.login =/= <<"admin">> andalso 
-					 User#user.login =/= <<"geral">> andalso 
-					 User#user.login =/= <<"cpdssi">> andalso 
+					 User#user.nome_mae =/= <<>> andalso 
 					 User#user.cpf =/= <<>> andalso 
 					 User#user.email =/= <<>>  of
 					true ->

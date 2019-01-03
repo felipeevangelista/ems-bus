@@ -75,6 +75,7 @@
 		 date_add_day/2,
 		 date_to_string/1,
 		 date_to_binary/1,
+		 date_diff_seconds/2,
 		 time_to_binary/1,
  		 no_periodo/2,
  		 seconds_since_epoch/1,
@@ -489,6 +490,9 @@ date_to_string(_) -> "".
 date_to_binary({{Ano,Mes,Dia},{_Hora,_Min,_Seg}}) ->
     iolist_to_binary(io_lib:format("~2..0B/~2..0B/~4..0B", [Dia, Mes, Ano]));
 date_to_binary(_) -> <<>>.
+    
+date_diff_seconds(Date1, Date2) ->    
+	calendar:datetime_to_gregorian_seconds(Date1) - calendar:datetime_to_gregorian_seconds(Date2).    
     
 -spec time_to_binary(tuple()) -> binary().
 time_to_binary({{_Ano,_Mes,_Dia},{Hora,Min,Seg}}) ->

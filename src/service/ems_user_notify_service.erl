@@ -90,7 +90,7 @@ notifica_users(Conf, Users) ->
 	
 notifica_users(Conf, [], Buffer, _) ->
 	notifica_users_message(Conf, Buffer);
-notifica_users(Conf, Users, Buffer, 100) ->
+notifica_users(Conf, Users, Buffer, 200) ->
 	notifica_users_message(Conf, Buffer),
 	notifica_users(Conf, Users, [], 0);
 notifica_users(Conf, [H|T], Buffer, Count) ->
