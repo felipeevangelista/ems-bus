@@ -25,6 +25,7 @@
 		 json_field_strip_and_escape/1,
 		 tuple_to_binlist/1, 
 		 list_to_integer_def/2,
+		 binary_to_list_def/2,
 		 binary_to_integer_def/2,
 		 binlist_to_atomlist/1,
 		 binlist_to_atomlist_with_trim/1,
@@ -3922,4 +3923,16 @@ oauth2_authenticate_rest_server(RestAuthUrl, RestUser, RestPasswd) ->
 			end;
 		_ -> 
 			{error, eunavailable_rest_server}
+	end.
+
+
+-spec binary_to_list_def(binary(), string()) -> string().
+binary_to_list_def(undefined, Default) -> Default;
+binary_to_list_def(null, Default) -> Default;
+binary_to_list_def(<<>>, Default) -> Default;
+binary_to_list_def(Value, Default) ->
+	try
+		binary_to_list(Value)
+	catch
+		_:_ -> Default
 	end.

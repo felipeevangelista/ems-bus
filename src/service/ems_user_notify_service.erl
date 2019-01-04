@@ -36,7 +36,7 @@ add(User) -> gen_server:cast(?SERVER, {add_user, User}).
 %% gen_server.
 
 -spec init([]) -> {ok, #state{}}.
-init(_Service) -> {ok, #state{users = []}, 5000}.
+init(_Service) -> {ok, #state{users = []}, 6000}.
 
 handle_call(_Request, _From, State) ->
 	{reply, ignored, State, 5000}.
@@ -49,11 +49,11 @@ handle_cast(_Msg, State) ->
 	{noreply, State, 5000}.
 
 handle_info(_Info, State = #state{users = []}) -> 
-	{noreply, State, 5000};
+	{noreply, State, 3000};
 handle_info(_Info, #state{users = Users}) ->
 	Conf = ems_config:getConfig(),
 	notifica_users(Conf, Users),
-	{noreply, #state{}, 1000}.
+	{noreply, #state{users = []}, 100}.
 
 -spec terminate(_, _) -> ok.
 terminate(_Reason, _State) ->
@@ -65,24 +65,26 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 notifica_users_message(Conf, Buffer) ->
-	UserListJson = ems_schema:to_json(Buffer),
-	MsgService = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
-					UserListJson, % Payload
-					<<"application/json; charset=utf-8">>,  
-					atom_to_list(Conf#config.java_service_user_notify_module),
-					Conf#config.java_service_user_notify_function,  	% FunctionName
-					<<>>,  		 	% ClientJson
-					<<>>,  		 	%UserJson, 
-					<<>>,  		 	% Metadata, 
-					{<<>>, <<>>},  	% {Scope, AccessToken}, 
-					0, 			 	% T2, 
-					0 			 	% Timeout
-					}, self()},
-	%Node = 'br_unb_pessoal_facade_AtualizaDadosSIPFacade_node01@CPD-DES-374405',
-	Node = Conf#config.java_service_user_notify_node,
-	%Module = 'br.unb.pessoal.facade.AtualizaDadosSIPFacade',
-	Module = Conf#config.java_service_user_notify_module,
-	{Module, Node} ! MsgService.
+	try
+		UserListJson = ems_schema:to_json(Buffer),
+		MsgService = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
+						UserListJson, % Payload
+						<<"application/json; charset=utf-8">>,  
+						atom_to_list(Conf#config.java_service_user_notify_module),
+						Conf#config.java_service_user_notify_function,  	% FunctionName
+						<<>>,  		 	% ClientJson
+						<<>>,  		 	%UserJson, 
+						<<>>,  		 	% Metadata, 
+						{<<>>, <<>>},  	% {Scope, AccessToken}, 
+						0, 			 	% T2, 
+						0 			 	% Timeout
+						}, self()},
+		Node = Conf#config.java_service_user_notify_node,  %Ex.: 'br_unb_pessoal_facade_AtualizaDadosSIPFacade_node01@CPD-DES-374405'
+		Module = Conf#config.java_service_user_notify_module, %Ex.: 'br.unb.pessoal.facade.AtualizaDadosSIPFacade'
+		{Module, Node} ! MsgService
+	catch 
+		_Exception:Reason -> ems_logger:error("ems_user_notify_service send message failed. Reason: ~p.", [Reason])
+	end.
 
 
 notifica_users(Conf, Users) ->
@@ -94,5 +96,17 @@ notifica_users(Conf, Users, Buffer, 200) ->
 	notifica_users_message(Conf, Buffer),
 	notifica_users(Conf, Users, [], 0);
 notifica_users(Conf, [H|T], Buffer, Count) ->
+	case Conf#config.log_show_user_notify_activity of
+		true -> 
+			ems_logger:info("ems_user_notify_service notify user name: \"~s\", login: \"~s\", cpf: \"~s\" email: \"~s\",  nome_mae: \"~s\", ctrl_source_type: ~p, ctrl_modified: \"~s\".", [
+					binary_to_list(H#user.name), 
+					binary_to_list(H#user.login), 
+					ems_util:binary_to_list_def(H#user.cpf, ""),
+					ems_util:binary_to_list_def(H#user.email, ""), 
+					ems_util:binary_to_list_def(H#user.nome_mae, ""),
+					H#user.ctrl_source_type,
+					ems_util:binary_to_list_def(H#user.ctrl_modified, "")]);
+		false -> ok
+	end,
 	notifica_users(Conf, T, [H | Buffer], Count+1).
 

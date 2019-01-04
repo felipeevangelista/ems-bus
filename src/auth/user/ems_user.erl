@@ -704,7 +704,10 @@ new_from_map(Map, Conf) ->
 		Rg = ?UTF8_STRING(maps:get(<<"rg">>, Map, <<>>)),
 		
 		put(parse_step, data_nascimento),
-		DataNascimento = ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)),
+		DataNascimento = case ems_util:date_to_binary(maps:get(<<"data_nascimento">>, Map, <<>>)) of
+							  <<>> -> undefined;
+							  DtNascimentoValue -> DtNascimentoValue
+						 end,
 		
 		put(parse_step, sexo),
 		Sexo = case maps:get(<<"sexo">>, Map, undefined) of
@@ -768,7 +771,10 @@ new_from_map(Map, Conf) ->
 		CtrlFile = maps:get(<<"ctrl_file">>, Map, <<>>),
 		
 		put(parse_step, ctrl_modified),
-		CtrlModified = maps:get(<<"ctrl_modified">>, Map, undefined),
+		CtrlModified = case ems_util:timestamp_binary(maps:get(<<"ctrl_modified">>, Map, <<>>)) of
+							  <<>> -> undefined;
+							  CtrlModifiedValue -> CtrlModifiedValue
+					   end,
 		
 		put(parse_step, ctrl_hash),
 		CtrlHash = erlang:phash2(Map),
