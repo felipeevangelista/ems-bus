@@ -216,8 +216,8 @@ generate_dynamic_query(FilterJson, Fields,
 	parse_limit(Limit, Offset),
 	SqlSmnt = lists:flatten(case Offset == 1 of
 								 true -> 
-										io_lib:format("select top ~p ~s from (~s) _t ~s ~s", 
-											[Limit, FieldsSmnt, Sql, FilterSmnt, SortSmnt]);
+										io_lib:format("select ~s from (~s) _t ~s ~s limit ~p", 
+											[FieldsSmnt, Sql, FilterSmnt, SortSmnt, Limit]);
 								 _ ->   
 										%% bastante lento se não existir índice na chave
 										io_lib:format("select * from (select ~s, row_number() over (order by current_timestamp) AS _RowNumber from (~s) _t_sql ~s ~s) _t where _t._RowNumber between ~p and ~p", 
