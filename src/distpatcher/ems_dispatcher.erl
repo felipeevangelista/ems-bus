@@ -375,6 +375,13 @@ dispatch_service_work(Request = #request{rid = Rid,
 			end
 	end,
 	T2 = ems_util:get_milliseconds(),
+	io:format("Rid is ~p\n", [Rid]),
+	io:format("Url is ~p\n", [Url]),
+	io:format("binary_to_list(Type) is ~p\n", [binary_to_list(Type)]),
+	io:format("Payload is ~p\n", [Payload]),
+	io:format("ContentType is ~p\n", [ContentType]),
+	io:format("ModuleName is ~p\n", [ModuleName]),
+	io:format("FunctionName is ~p\n", [FunctionName]),
 	Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
 			ClientJson, UserJson, Metadata, {Scope, AccessToken}, T2, Timeout}, self()},
 	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 1).
@@ -404,6 +411,8 @@ dispatch_service_work_send(Request = #request{type = Type},
 						   Count) ->
 	case get_work_node(Host, Host, HostName, ModuleName) of
 		{ok, Node} ->
+			io:format("NODE is ~p\n", [Node]),
+			io:format("Module is ~p\n", [Module]),
 			{Module, Node} ! Msg,
 			?DEBUG("ems_dispatcher send msg to ~p with timeout ~pms.", [{Module, Node}, TimeoutService]),
 			case Type of 

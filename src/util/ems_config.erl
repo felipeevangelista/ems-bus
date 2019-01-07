@@ -340,6 +340,8 @@ get_p(ParamName, Map, DefaultValue) ->
 -spec parse_config(map(), string()) -> #config{}.
 parse_config(Json, Filename) ->
 	try
+		{ok, InetHostname} = inet:gethostname(),
+		
 		% este primeiro parâmetro é usado em todos os demais que é do tipo string
 		put(parse_step, variables),
 		CustomVariables = parse_variables(maps:get(<<"custom_variables">>, Json, #{})),
@@ -350,8 +352,8 @@ parse_config(Json, Filename) ->
 		% permite setar o hostname no arquivo de configuração ou obter o nome da máquina pelo inet
 		case Hostname0 of
 			<<>> -> 
-				{ok, Hostname} = inet:gethostname(),
-				HostnameBin = list_to_binary(Hostname);
+				Hostname = InetHostname,
+				HostnameBin = list_to_binary(InetHostname);
 			_ ->
 				Hostname = binary_to_list(Hostname0),
 				HostnameBin = Hostname0
@@ -519,13 +521,51 @@ parse_config(Json, Filename) ->
 		RestrictedServicesAdmin = get_p(<<"restricted_services_admin">>, Json, ?RESTRICTED_SERVICES_ADMIN),
 		
 		put(parse_step, java_jar_path),
-		JarPath = parse_jar_path(get_p(<<"java_jar_path">>, Json, ?JAR_PATH)),
+		JarPath = parse_jar_path(get_p(<<"java_jar_path">>, Json, ?JAVA_JAR_PATH)),
+
+		put(parse_step, java_service_scan),
+		JavaServiceScan = get_p(<<"java_service_scan">>, Json, ?JAVA_SERVICE_SCAN),
 
 		put(parse_step, java_home),
 		JavaHome = parse_java_home(get_p(<<"java_home">>, Json, <<>>)),
 
 		put(parse_step, java_thread_pool),
 		JavaThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
+
+		put(parse_step, java_service_user_notify),
+		JavaServiceUserNotify = get_p(<<"java_service_user_notify">>, Json, undefined),
+		case JavaServiceUserNotify =/= undefined orelse JavaServiceUserNotify =/= <<>> of
+			true -> 
+				{JavaServiceUserNotifyClass, _, JavaServiceUserNotifyFunction} = ems_util:parse_service_service(JavaServiceUserNotify),
+				JavaServiceUserNotifyModule = list_to_atom(JavaServiceUserNotifyClass),
+				JavaServiceUserNotifyClass2 = ems_util:replace(JavaServiceUserNotifyClass, "\\.", "_"),
+				JavaServiceUserNotifyNode = list_to_atom(JavaServiceUserNotifyClass2 ++ "_node01@" ++ Hostname);
+			false ->
+				 JavaServiceScan = undefined,
+				 JavaServiceUserNotify = undefined,
+				 JavaServiceUserNotifyModule = undefined,
+				 JavaServiceUserNotifyNode = undefined,
+				 JavaServiceUserNotifyFunction = undefined
+		end,
+
+		put(parse_step, java_service_user_notify_on_load_enabled),
+		JavaServiceUserNotifyOnLoad = get_p(<<"java_service_user_notify_on_load_enabled">>, Json, false),
+
+		put(parse_step, java_service_user_notify_on_update_enabled),
+		JavaServiceUserNotifyOnUpdate = get_p(<<"java_service_user_notify_on_update_enabled">>, Json, true),
+
+		put(parse_step, java_service_user_notify_full_sync_enabled),
+		JavaServiceUserNotifyFullSyncEnabled = get_p(<<"java_service_user_notify_full_sync_enabled">>, Json, false),
+		
+		put(parse_step, java_service_user_notify_required_fields),
+		JavaServiceUserNotifyRequiredFields = ems_util:binlist_to_atomlist(get_p(<<"java_service_user_notify_required_fields">>, Json, [<<"name">>, <<"login">>, <<"email">>, <<"cpf">>, <<"nome_mae">>])),
+
+		put(parse_step, java_service_user_notify_source_types),
+		JavaServiceUserNotifySourcesTypes = ems_util:binlist_to_atomlist(get_p(<<"java_service_user_notify_source_types">>, Json, ?CLIENT_DEFAULT_SCOPE)),
+
+		put(parse_step, log_show_user_notify_activity),
+		LogShowUserNotifyActivity = ems_util:parse_bool(get_p(<<"log_show_user_notify_activity">>, Json, true)),
+		
 
 		put(parse_step, smtp_passwd),
 		SmtpPassword = binary_to_list(get_p(<<"smtp_passwd">>, Json, <<>>)),
@@ -626,10 +666,21 @@ parse_config(Json, Filename) ->
 				 log_file_archive_path = LogFileArchivePath,
 				 log_show_odbc_pool_activity = LogShowOdbcPoolActivity,
 				 log_show_data_loader_activity = LogShowDataLoaderActivity,
+				 log_show_user_notify_activity = LogShowUserNotifyActivity,
 				 rest_default_querystring = Querystring,
 				 java_jar_path = JarPath,
 				 java_home = JavaHome,
 				 java_thread_pool = JavaThreadPool,
+				 java_service_scan = JavaServiceScan,
+				 java_service_user_notify = JavaServiceUserNotify,
+				 java_service_user_notify_module = JavaServiceUserNotifyModule,
+				 java_service_user_notify_node = JavaServiceUserNotifyNode,
+				 java_service_user_notify_function = JavaServiceUserNotifyFunction,
+  				 java_service_user_notify_on_load_enabled = JavaServiceUserNotifyOnLoad,
+ 				 java_service_user_notify_on_update_enabled = JavaServiceUserNotifyOnUpdate,
+				 java_service_user_notify_full_sync_enabled = JavaServiceUserNotifyFullSyncEnabled,
+				 java_service_user_notify_required_fields = JavaServiceUserNotifyRequiredFields,
+				 java_service_user_notify_source_types = JavaServiceUserNotifySourcesTypes,
 				 smtp_passwd = SmtpPassword,
 				 smtp_from = SmtpFrom,
 				 smtp_mail = SmtpMail,

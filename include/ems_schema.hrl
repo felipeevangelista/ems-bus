@@ -59,8 +59,9 @@
 			   ctrl_hash :: non_neg_integer(),				%% 36 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
 			   ctrl_last_login :: binary(),					%% 37 - ctrl_last_login			-> Atualizado toda vez que ems_user:find_index_by_login_and_password é executado
 			   ctrl_login_count = 0 :: non_neg_integer(),	%% 38 - ctrl_login_count		-> Incrementado toda vez que ems_user:find_index_by_login_and_password é executado
-			   ctrl_last_login_scope :: atom(),				%% 39 - ctrl_last_login_scope		-> Qual tabela que encontrou o usuário
-			   ctrl_last_login_client :: binary()			%% 40 - ctrl_last_login_client		-> Em qual cliente logou
+			   ctrl_last_login_scope :: atom(),				%% 39 - ctrl_last_login_scope	-> Qual tabela que encontrou o usuário
+			   ctrl_last_login_client :: binary(),			%% 40 - ctrl_last_login_client	-> Em qual cliente logou
+			   ctrl_source_type :: atom()					%% 41 - ctrl_source_type		-> nome da tabela onde os dados são armazenados
 		}).
 		
 -define(USER_SCHEMA_DESCRIPTOR, {
@@ -104,7 +105,8 @@
 			   binary_type,									%% 37 - ctrl_last_login
 			   non_neg_integer_type, 						%% 38 - ctrl_login_count
 			   atom_type,									%% 39 - ctrl_last_login_scope
-			   binary_type									%% 37 - ctrl_last_login_client
+			   binary_type,									%% 40 - ctrl_last_login_client
+			   atom_type									%% 41 - ctrl_source_type
 			}).		
 		
 %

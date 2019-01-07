@@ -25,6 +25,7 @@
 		 json_field_strip_and_escape/1,
 		 tuple_to_binlist/1, 
 		 list_to_integer_def/2,
+		 binary_to_list_def/2,
 		 binary_to_integer_def/2,
 		 binlist_to_atomlist/1,
 		 binlist_to_atomlist_with_trim/1,
@@ -75,6 +76,7 @@
 		 date_add_day/2,
 		 date_to_string/1,
 		 date_to_binary/1,
+		 date_diff_seconds/2,
 		 time_to_binary/1,
  		 no_periodo/2,
  		 seconds_since_epoch/1,
@@ -489,6 +491,9 @@ date_to_string(_) -> "".
 date_to_binary({{Ano,Mes,Dia},{_Hora,_Min,_Seg}}) ->
     iolist_to_binary(io_lib:format("~2..0B/~2..0B/~4..0B", [Dia, Mes, Ano]));
 date_to_binary(_) -> <<>>.
+    
+date_diff_seconds(Date1, Date2) ->    
+	calendar:datetime_to_gregorian_seconds(Date1) - calendar:datetime_to_gregorian_seconds(Date2).    
     
 -spec time_to_binary(tuple()) -> binary().
 time_to_binary({{_Ano,_Mes,_Dia},{Hora,Min,Seg}}) ->
@@ -2936,7 +2941,9 @@ parse_email(Value) ->
 	end.
 	
 
--spec is_email_valido(string()) -> boolean().
+-spec is_email_valido(string() | binary()) -> boolean().
+is_email_valido(Value) when is_binary(Value) -> 
+	is_email_valido(binary_to_list(Value));
 is_email_valido(Value) -> 
 	REPattern = ems_db:get_re_param(check_email_valid_re, "\\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,4}\\b"),
 	case re:run(Value, REPattern) of
@@ -3916,4 +3923,16 @@ oauth2_authenticate_rest_server(RestAuthUrl, RestUser, RestPasswd) ->
 			end;
 		_ -> 
 			{error, eunavailable_rest_server}
+	end.
+
+
+-spec binary_to_list_def(binary(), string()) -> string().
+binary_to_list_def(undefined, Default) -> Default;
+binary_to_list_def(null, Default) -> Default;
+binary_to_list_def(<<>>, Default) -> Default;
+binary_to_list_def(Value, Default) ->
+	try
+		binary_to_list(Value)
+	catch
+		_:_ -> Default
 	end.

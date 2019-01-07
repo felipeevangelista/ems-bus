@@ -1,6 +1,6 @@
 %%******************************************************************** 
 %% @title Module ems_data_loader  
-%% @version 1.0.0 %%
+%% @version 1.0.0 
 %% @doc Module responsible for load records from database
 %% @author Everton de Vargas Agilar  <evertonagilar@gmail.com> 
 %% @copyright ErlangMS Team 
@@ -254,7 +254,7 @@ handle_info(check_sync_full, State = #state{name = Name,
 						ems_db:inc_counter(SyncFullCheckpointMetricName),
 						ems_logger:info("~s sync full begin now.", [Name], LogShowDataLoaderActivity),
 						State2 = State#state{last_update = undefined,
-											 allow_clear_table_full_sync = (Hour == 5)},  % limpar a tabela somente às 5h da manhã
+											 allow_clear_table_full_sync = false},  
 						case do_check_load_or_update_checkpoint(State2) of
 							{ok, State3 = #state{insert_count = InsertCount, update_count = UpdateCount, error_count = ErrorCount, disable_count = DisableCount, skip_count = SkipCount}} ->
 								ems_data_loader_ctl:notify_finish_work(Name, check_sync_full, WaitCount, InsertCount, UpdateCount, ErrorCount, DisableCount, SkipCount, undefined),

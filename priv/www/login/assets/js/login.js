@@ -169,7 +169,11 @@ Login.LoginSistemas = (function() {
 		e.preventDefault();
 		var urlBase = '';
 		var protocol = window.location.protocol;
-		var baseUrl = protocol + '//' + window.location.hostname + ':' + window.location.port; 
+		var baseUrl = protocol + '//' + window.location.hostname;
+		// Pode ser que esteja atras de um proxy e não vai ter porta na url
+		if (window.location.port != ""){
+			baseUrl = baseUrl + ':' + window.location.port; 
+		}
 		var querystring = getQuerystring();
 		var url = baseUrl + '/dados/code_request?'+
 				 'client_id=' + querystring['client_id']+

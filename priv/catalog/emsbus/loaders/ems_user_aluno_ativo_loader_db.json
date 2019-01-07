@@ -72,7 +72,11 @@
 				1 as active,
 				(select u.UsuId from BDAcesso.dbo.TB_Usuario u with (nolock) 
 				 where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
-				 null as dt_expire_password    
+				 null as dt_expire_password,
+ 				 case 
+						when al.AluDataAlteracao > p.PesDataAlteracao then al.AluDataAlteracao  
+						else p.PesDataAlteracao  
+				 end as ctrl_modified 
 				from BDSiac.dbo.TB_Aluno al with (nolock) join BDPessoa.dbo.TB_Pessoa p with (nolock) 
 						on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
 						left join (select distinct 
@@ -148,7 +152,11 @@
 				1 as active,
 				(select u.UsuId from BDAcesso.dbo.TB_Usuario u 
 				 where u.UsuLogin = 'aluno@unb.br') as remap_user_id,
-				 null as dt_expire_password    
+				 null as dt_expire_password,
+				 case 
+						when al.AluDataAlteracao > p.PesDataAlteracao then al.AluDataAlteracao  
+						else p.PesDataAlteracao  
+				 end as ctrl_modified 
 				from BDSiac.dbo.TB_Aluno al with (nolock) join BDPessoa.dbo.TB_Pessoa p with (nolock) 
 						on al.AluPesCodigoPessoa = p.PesCodigoPessoa 
 						left join (select distinct 
@@ -183,6 +191,6 @@
 				"passwd_crypto", "endereco", "complemento_endereco", 
 				"bairro", "cidade", "uf", "cep", "rg", "data_nascimento", 
 				"sexo", "telefone", "celular", "ddd", "nome_pai", "nome_mae", "nacionalidade", 
-				"email", "type", "subtype", "active", "remap_user_id", "dt_expire_password"]
+				"email", "type", "subtype", "active", "remap_user_id", "dt_expire_password", "ctrl_modified"]
 				
 }

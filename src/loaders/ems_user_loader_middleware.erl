@@ -11,7 +11,14 @@
 -include("include/ems_config.hrl").
 -include("include/ems_schema.hrl").
 
--export([insert_or_update/5, is_empty/1, size_table/1, clear_table/1, reset_sequence/1, get_filename/0, check_remove_records/2, after_load_or_update_checkpoint/1]).
+-export([insert_or_update/5, 
+		 is_empty/1, 
+		 size_table/1, 
+		 clear_table/1, 
+		 reset_sequence/1, 
+		 get_filename/0, 
+		 check_remove_records/2, 
+		 after_load_or_update_checkpoint/1]).
 
 
 -spec is_empty(atom()) -> boolean().
@@ -55,14 +62,16 @@ get_filename() ->
 	
 	
 -spec insert_or_update(map() | tuple(), tuple(), #config{}, atom(), insert | update) -> {ok, #service{}, atom(), insert | update} | {ok, skip} | {error, atom()}.
-insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
+insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 	try
 		case ems_user:new_from_map(Map, Conf) of
 			{ok, NewUser = #user{id = Id, ctrl_hash = CtrlHash}} -> 
 				case ems_user:find(SourceType, Id) of
 					{error, enoent} -> 
-						User = NewUser#user{ctrl_insert = CtrlDate},
+						User = NewUser#user{ctrl_insert = CtrlDate, 
+											ctrl_source_type = SourceType},
 						ems_db:delete(user_cache_lru, Id),
+						notify_java_user_service(Conf, User, Operation),
 						{ok, User, SourceType, insert};
 					{ok, CurrentUser = #user{ctrl_hash = CurrentCtrlHash}} ->
 						case CtrlHash =/= CurrentCtrlHash of
@@ -100,11 +109,14 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 												 ctrl_file = NewUser#user.ctrl_file,
 												 ctrl_update = CtrlDate,
 												 ctrl_modified = NewUser#user.ctrl_modified,
-												 ctrl_hash = NewUser#user.ctrl_hash
+												 ctrl_hash = NewUser#user.ctrl_hash,
+												 ctrl_source_type = SourceType
 											},
 								ems_db:delete(user_cache_lru, Id),
+								notify_java_user_service(Conf, User, Operation),
 								{ok, User, SourceType, update};
 							false -> 
+								notify_java_user_service(Conf, CurrentUser, Operation),
 								{ok, skip}
 						end
 				end;
@@ -114,6 +126,45 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 	catch
 		_Exception:Reason -> {error, Reason}
 	end.
+
+
+notify_java_user_service(Conf, User, Operation) ->
+	case Conf#config.java_service_user_notify =/= undefined andalso 
+		 Conf#config.java_service_user_notify_node =/= undefined andalso 
+		 Conf#config.java_service_user_notify_module =/= undefined andalso 
+		 Conf#config.java_service_user_notify_function =/= undefined andalso 
+		 ((Conf#config.java_service_user_notify_on_load_enabled andalso Operation == insert)
+		   orelse
+		   (Conf#config.java_service_user_notify_on_update_enabled andalso Operation == update)
+		   orelse
+		   Conf#config.java_service_user_notify_full_sync_enabled
+		 )
+		 of
+		true ->	
+			try
+				%% Somente envia a mensagem se os requisitos abaixo forem atingidos
+				case User#user.type > 0 andalso
+					 lists:member(User#user.ctrl_source_type, Conf#config.java_service_user_notify_source_types) andalso
+					 User#user.password =/= <<>> andalso 
+					 User#user.active == true andalso
+					 (User#user.nome_mae =/= <<>> orelse (User#user.nome_mae == <<>> andalso not lists:member(nome_mae, Conf#config.java_service_user_notify_required_fields))) andalso
+					 (User#user.cpf =/= <<>> orelse (User#user.cpf == <<>> andalso not lists:member(cpf, Conf#config.java_service_user_notify_required_fields))) andalso
+					 (User#user.email =/= <<>> orelse (User#user.email == <<>> andalso not lists:member(email, Conf#config.java_service_user_notify_required_fields))) of
+					true ->
+						ems_user_notify_service:add(User);
+					false ->  
+						ok
+				end
+			catch
+				_Exception:Reason -> 
+					% Não propaga exceptions, apenas emite uma mensagem no log
+					ems_logger:error("ems_user_loader_middleware /netadm/dataloader/user/notify failed. Reason: ~p.", [Reason]) ,
+					ok
+			end;
+		false -> ok
+	end.
+	
+			
 
 
 -spec after_load_or_update_checkpoint(fs | db) -> ok.

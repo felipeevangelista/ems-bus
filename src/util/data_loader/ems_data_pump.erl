@@ -65,7 +65,8 @@ do_update_record(Map, CtrlUpdate, Conf, Name, Middleware, SourceType, _Fields) -
 		{ok, Record, Table, Operation} ->
 			mnesia:dirty_write(Table, Record),
 			{ok, Operation};
-		{ok, skip} -> {ok, skip};
+		{ok, skip} -> 
+			{ok, skip};
 		{error, edisabled} -> {error, edisabled};
 		{error, Reason} = Error ->	
 			ems_logger:error("~s data update error: ~p.", [Name, Reason]),

@@ -57,7 +57,9 @@
 -define(DATABASE_PATH, filename:join(?PRIV_PATH, "db")).
 
 % Caminho da pasta de databases
--define(JAR_PATH, filename:join(?PRIV_PATH, "jar")).
+-define(JAVA_JAR_PATH, filename:join(?PRIV_PATH, "jar")).
+
+-define(JAVA_SERVICE_SCAN, "br.unb").
 
 % Caminho do arquivo de configuração padrão (Pode ser incluído também na pasta ~/.erlangms do usuário)
 -define(CONF_FILE_PATH, filename:join(?CONF_PATH, "emsbus.conf")).
@@ -264,6 +266,7 @@
 
 -define(CLIENT_DEFAULT_SCOPE, [user_db, user2_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs]).
 
+
 % Código de cores
 -ifdef(win32_plataform).
 
@@ -327,7 +330,7 @@
 				 ems_hostname :: binary(),							%% Nome da maquina onde o barramento está sendo executado
 				 ems_host :: atom(),								%% Atom do name da maquina onde o barramento está sendo executado
 				 ems_file_dest :: string(),							%% Nome do arquivo de configuração (útil para saber o local do arquivo)
-				 ems_debug = false :: boolean(),							%% Habilita o modo debug
+				 ems_debug = false :: boolean(),					%% Habilita o modo debug
 				 ems_result_cache  :: non_neg_integer(),
 				 ems_result_cache_shared :: non_neg_integer(),
 				 ems_result_cache_enabled = true :: boolean(),
@@ -342,10 +345,10 @@
 				 authorization :: binary(),
 				 oauth2_with_check_constraint :: boolean(),
 				 oauth2_refresh_token :: non_neg_integer(),
-				 auth_allow_user_inative_credentials :: boolean(),	% Permite login de usuários inativos.
+				 auth_allow_user_inative_credentials :: boolean(),	%% Permite login de usuários inativos.
 				 rest_base_url :: binary(),
 				 rest_auth_url :: binary(),
-				 rest_login_url :: binary(),						% Url da tela de login
+				 rest_login_url :: binary(),						%% Url da tela de login
 				 rest_url_mask :: boolean(),
 				 rest_default_querystring :: map(),					%% querystring default
 				 rest_environment :: binary(),
@@ -370,6 +373,17 @@
 				 java_jar_path :: string(),
 				 java_home :: string(),
  				 java_thread_pool :: non_neg_integer(),
+ 				 java_service_scan :: string(),
+ 				 java_service_user_notify :: string(),
+ 				 java_service_user_notify_module :: atom(),
+ 				 java_service_user_notify_node :: atom(),
+ 				 java_service_user_notify_function :: string(),
+ 				 java_service_user_notify_on_load_enabled :: boolean(),    %% vai sincronizar no evento load
+ 				 java_service_user_notify_on_update_enabled :: boolean(),  %% vai sincronizar no evento update
+ 				 java_service_user_notify_full_sync_enabled :: boolean(),  %% vai sincronizar no evento full sync (chamada manual do ws)
+ 				 log_show_user_notify_activity :: boolean(),
+ 				 java_service_user_notify_required_fields :: list(binary()),   %% lista de campos requeridos para invocar o ws java_service_user_notify
+ 				 java_service_user_notify_source_types :: list(atom()),		   %% lista de fontes de dados para invocar o ws java_service_user_notify
 				 ssl_cacertfile :: binary(),
 				 ssl_certfile :: binary(),
 				 ssl_keyfile :: binary(),

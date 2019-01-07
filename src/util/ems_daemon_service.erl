@@ -579,7 +579,8 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 							false -> ems_logger:warn("ems_daemon_service detect inexistent java_jar_path \033[01;34m\"~s\"\033[0m.", [JavaJarPath0])
 						end
 				end,
-
+				
+	JavaServiceScan = Conf#config.java_service_scan,
 	
     DaemonParams2 = ems_util:replace_all_vars_and_custom_variables(DaemonParams, 
     		[{<<"PORT">>, integer_to_list(Port)},
@@ -593,6 +594,7 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 			 {<<"JAVA_HOME">>, JavaHome},
 			 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
 			 {<<"JAVA_JAR_PATH">>, JavaJarPath},
+			 {<<"JAVA_SERVICE_SCAN">>, JavaServiceScan},
 			 {<<"REST_BASE_URL">>, binary_to_list(Conf#config.rest_base_url)},
 			 {<<"REST_ENVIRONMENT">>, Conf#config.rest_environment},
 			 {<<"REST_USER">>, Conf#config.rest_user},
@@ -624,6 +626,7 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		 {<<"JAVA_HOME">>, JavaHome},
 		 {<<"JAVA_THREAD_POOL">>, Conf#config.java_thread_pool},
 		 {<<"JAVA_JAR_PATH">>, JavaJarPath},
+		 {<<"JAVA_SERVICE_SCAN">>, JavaServiceScan},
 		 {<<"REST_BASE_URL">>, binary_to_list(Conf#config.rest_base_url)},
 		 {<<"REST_ENVIRONMENT">>, Conf#config.rest_environment},
 		 {<<"REST_USER">>, Conf#config.rest_user},
