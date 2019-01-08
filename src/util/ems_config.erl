@@ -534,7 +534,7 @@ parse_config(Json, Filename) ->
 
 		put(parse_step, java_service_user_notify),
 		JavaServiceUserNotify = get_p(<<"java_service_user_notify">>, Json, undefined),
-		case JavaServiceUserNotify =/= undefined orelse JavaServiceUserNotify =/= <<>> of
+		case JavaServiceUserNotify =/= undefined andalso JavaServiceUserNotify =/= <<>> of
 			true -> 
 				{JavaServiceUserNotifyClass, _, JavaServiceUserNotifyFunction} = ems_util:parse_service_service(JavaServiceUserNotify),
 				JavaServiceUserNotifyModule = list_to_atom(JavaServiceUserNotifyClass),
