@@ -78,6 +78,32 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 							true ->
 								?DEBUG("ems_user_loader_middleware update ~p from ~p.", [Map, SourceType]),
 								%type, subtype são atualizado somente pelo dataloader de dados funcionais
+							   
+							    OldLogin = case NewUser#user.login =/= CurrentUser#user.login of
+												true -> CurrentUser#user.login;
+												false -> CurrentUser#user.old_login
+										   end,
+
+							    OldName = case NewUser#user.name =/= CurrentUser#user.name of
+												true -> CurrentUser#user.name;
+												false -> CurrentUser#user.old_name
+										  end,
+
+							    OldCpf = case NewUser#user.cpf =/= CurrentUser#user.cpf of
+												true -> CurrentUser#user.cpf;
+												false -> CurrentUser#user.old_cpf
+										  end,
+
+							    OldEmail = case NewUser#user.email =/= CurrentUser#user.email of
+												true -> CurrentUser#user.email;
+												false -> CurrentUser#user.old_email
+										  end,
+
+							    OldPassword = case NewUser#user.password =/= CurrentUser#user.password of
+												true -> CurrentUser#user.password;
+												false -> CurrentUser#user.old_password
+										  end,
+
 								User = CurrentUser#user{
 												 codigo = NewUser#user.codigo,
 												 login = NewUser#user.login,
@@ -105,6 +131,11 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 												 remap_user_id = NewUser#user.remap_user_id,
 												 admin = NewUser#user.admin,
 												 active = NewUser#user.active,
+												 old_login = OldLogin,
+												 old_name = OldName,
+												 old_cpf = OldCpf,
+												 old_email = OldEmail,
+												 old_password = OldPassword,
 												 ctrl_path = NewUser#user.ctrl_path,
 												 ctrl_file = NewUser#user.ctrl_file,
 												 ctrl_update = CtrlDate,
