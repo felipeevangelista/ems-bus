@@ -541,8 +541,6 @@ parse_config(Json, Filename) ->
 				JavaServiceUserNotifyClass2 = ems_util:replace(JavaServiceUserNotifyClass, "\\.", "_"),
 				JavaServiceUserNotifyNode = list_to_atom(JavaServiceUserNotifyClass2 ++ "_node01@" ++ Hostname);
 			false ->
-				 JavaServiceScan = undefined,
-				 JavaServiceUserNotify = undefined,
 				 JavaServiceUserNotifyModule = undefined,
 				 JavaServiceUserNotifyNode = undefined,
 				 JavaServiceUserNotifyFunction = undefined
@@ -561,7 +559,7 @@ parse_config(Json, Filename) ->
 		JavaServiceUserNotifyRequiredFields = ems_util:binlist_to_atomlist(get_p(<<"java_service_user_notify_required_fields">>, Json, [<<"name">>, <<"login">>, <<"email">>, <<"cpf">>, <<"nome_mae">>])),
 
 		put(parse_step, java_service_user_notify_source_types),
-		JavaServiceUserNotifySourcesTypes = ems_util:binlist_to_atomlist(get_p(<<"java_service_user_notify_source_types">>, Json, ?CLIENT_DEFAULT_SCOPE)),
+		JavaServiceUserNotifySourcesTypes = ems_util:binlist_to_atomlist(get_p(<<"java_service_user_notify_source_types">>, Json, ?CLIENT_DEFAULT_SCOPE_BIN)),
 
 		put(parse_step, log_show_user_notify_activity),
 		LogShowUserNotifyActivity = ems_util:parse_bool(get_p(<<"log_show_user_notify_activity">>, Json, true)),
@@ -599,6 +597,8 @@ parse_config(Json, Filename) ->
 							end,
 
 		put(parse_step, config_0),
+		
+		
 		Conf0 = #config{ 
 				 cat_host_alias = HostAlias,
 				 cat_host_search = get_p(<<"host_search">>, Json, <<>>),							

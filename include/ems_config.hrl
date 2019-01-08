@@ -265,6 +265,8 @@
 -define(RESULT_CACHE_SHARED, true). 
 
 -define(CLIENT_DEFAULT_SCOPE, [user_db, user2_db, user_aluno_ativo_db, user_aluno_inativo_db, user_fs]).
+-define(CLIENT_DEFAULT_SCOPE_BIN, [<<"user_db">>, <<"user2_db">>, <<"user_aluno_ativo_db">>, <<"user_aluno_inativo_db">>, <<"user_fs">>]).
+
 
 
 % Código de cores
