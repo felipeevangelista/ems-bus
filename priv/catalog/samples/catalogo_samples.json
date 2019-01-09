@@ -37,6 +37,11 @@
 	{
 		"catalog": "/samples/catalogo_daemon_service", 
 		"file": "catalogo_daemon_service.json"
+	},
+	
+	{
+		"catalog": "/samples/catalogo_certificate", 
+		"file": "catalogo_certificate.json"
 	}	
 	
 ]

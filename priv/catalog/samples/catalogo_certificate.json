@@ -1,0 +1,14 @@
+[
+	{
+		"name" : "/certificate/validate",
+		"comment": "Validate certificate",
+		"owner": "samples",
+		"version": "1",
+		"service" : "ems_criptograph:execute",
+		"url": "/certificate/validate",
+		"type": "GET",
+		"authorization" : "public",
+		"http_max_content_length": 104857600,
+		"lang" : "erlang"
+	}
+]
