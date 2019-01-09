@@ -15,9 +15,9 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"old_login", "old_name", "old_cpf", "old_email",
+						"old_login", "old_codigo", "old_name", "old_cpf", "old_email",
 						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
-						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type"]
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type", "ctrl_watermark"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -48,9 +48,9 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"old_login", "old_name", "old_cpf", "old_email",
+						"old_login", "old_codigo", "old_name", "old_cpf", "old_email",
 						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
-						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type"]
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type", "ctrl_watermark"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -104,9 +104,9 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"old_login", "old_name", "old_cpf", "old_email",
+						"old_login", "old_codigo", "old_name", "old_cpf", "old_email",
 						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
-						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type"]
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type", "ctrl_watermark"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -137,9 +137,9 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"old_login", "old_name", "old_cpf", "old_email",
+						"old_login", "old_codigo", "old_name", "old_cpf", "old_email",
 						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
-						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type"]
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type", "ctrl_watermark"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -193,9 +193,9 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"old_login", "old_name", "old_cpf", "old_email",
+						"old_login", "old_codigo", "old_name", "old_cpf", "old_email",
 						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
-						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type"]
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type", "ctrl_watermark"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",
@@ -226,9 +226,9 @@
 						"endereco", "complemento_endereco", "bairro", "cidade", "uf", "cep", "rg", 
 						"data_nascimento", "sexo", "telefone", "celular", "ddd", "nome_pai", 
 						"nome_mae", "nacionalidade", "remap_user_id", "dt_expire_password", "admin",
-						"old_login", "old_name", "old_cpf", "old_email",
+						"old_login", "old_codigo", "old_name", "old_cpf", "old_email",
 						"ctrl_insert", "ctrl_update", "ctrl_modified", "ctrl_last_login", 
-						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type"]
+						"ctrl_login_count", "ctrl_last_login_scope", "ctrl_last_login_client", "ctrl_source_type", "ctrl_watermark"]
 		},
 		"schema_in" : "user",
 		"schema_out" : "user",

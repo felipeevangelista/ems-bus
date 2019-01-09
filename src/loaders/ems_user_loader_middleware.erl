@@ -69,11 +69,12 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 				case ems_user:find(SourceType, Id) of
 					{error, enoent} -> 
 						User = NewUser#user{ctrl_insert = CtrlDate, 
-											ctrl_source_type = SourceType},
+											ctrl_source_type = SourceType,
+											ctrl_watermark = 0},
 						ems_db:delete(user_cache_lru, Id),
 						notify_java_user_service(Conf, User, Operation),
 						{ok, User, SourceType, insert};
-					{ok, CurrentUser = #user{ctrl_hash = CurrentCtrlHash}} ->
+					{ok, CurrentUser = #user{ctrl_hash = CurrentCtrlHash, ctrl_watermark = CtrlWatermark}} ->
 						case CtrlHash =/= CurrentCtrlHash of
 							true ->
 								?DEBUG("ems_user_loader_middleware update ~p from ~p.", [Map, SourceType]),
@@ -82,6 +83,11 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 							    OldLogin = case NewUser#user.login =/= CurrentUser#user.login of
 												true -> CurrentUser#user.login;
 												false -> CurrentUser#user.old_login
+										   end,
+
+							    OldCodigo = case NewUser#user.codigo =/= CurrentUser#user.codigo of
+												true -> CurrentUser#user.codigo;
+												false -> CurrentUser#user.old_codigo
 										   end,
 
 							    OldName = case NewUser#user.name =/= CurrentUser#user.name of
@@ -132,6 +138,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 												 admin = NewUser#user.admin,
 												 active = NewUser#user.active,
 												 old_login = OldLogin,
+												 old_codigo = OldCodigo,
 												 old_name = OldName,
 												 old_cpf = OldCpf,
 												 old_email = OldEmail,
@@ -141,7 +148,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 												 ctrl_update = CtrlDate,
 												 ctrl_modified = NewUser#user.ctrl_modified,
 												 ctrl_hash = NewUser#user.ctrl_hash,
-												 ctrl_source_type = SourceType
+												 ctrl_source_type = SourceType,
+												 ctrl_watermark = CtrlWatermark + 1
 											},
 								ems_db:delete(user_cache_lru, Id),
 								notify_java_user_service(Conf, User, Operation),
