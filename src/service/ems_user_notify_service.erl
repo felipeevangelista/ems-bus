@@ -103,10 +103,8 @@ notifica_users_message(Conf, Buffer) ->
 			{_Code, RidRemote, {_Reason, JsonUsersProcessados}} when RidRemote == Rid  -> 
 				{ok, ListaUsersProcessados} = ems_util:json_decode_as_map(JsonUsersProcessados),
 				notify_users_processados(ListaUsersProcessados);
-			UnknowMessage -> 
-				ems_logger:error("ems_user_notify_service unknow message from Java service: ~p", [UnknowMessage])
-			after 35000 ->
-				ems_logger:error("ems_user_notify_service timeout after 5000ms.")
+			_UnknowMessage -> ok
+			after 7000 -> ok
 		end
 	catch 
 		_Exception:ReasonEx -> ems_logger:error("ems_user_notify_service send message failed. Reason: ~p.", [ReasonEx])
