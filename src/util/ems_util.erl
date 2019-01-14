@@ -206,7 +206,8 @@
 		 str_trim/1,
 		 binary_to_hex/1,
 		 str_contains/2,
-		 oauth2_authenticate_rest_server/3
+		 oauth2_authenticate_rest_server/3,
+		 bytes_to_human_size/1
 		]).
 
 -spec version() -> string().
@@ -3936,3 +3937,11 @@ binary_to_list_def(Value, Default) ->
 	catch
 		_:_ -> Default
 	end.
+	
+-spec bytes_to_human_size(non_neg_integer()) -> string().
+bytes_to_human_size(Value) when Value >= 1024 -> 
+	case Value / 1024 > 1024 of
+		true -> lists:flatten(io_lib:format("~p MB", [ round(Value / 1024 / 1024)]));
+		false -> lists:flatten(io_lib:format("~p KB", [ round(Value / 1024)]))
+	end;
+bytes_to_human_size(_) -> "0".
