@@ -533,7 +533,7 @@ parse_config(Json, Filename) ->
 		JavaThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
 
 		put(parse_step, java_service_user_notify_enabled),
-		JavaServiceUserNotifyEnabled = get_p(<<"java_service_user_notify_enabled">>, Json, false),
+		JavaServiceUserNotifyEnabled = ems_util:parse_bool(get_p(<<"java_service_user_notify_enabled">>, Json, false)),
 		
 		put(parse_step, java_service_user_notify),
 		JavaServiceUserNotify = get_p(<<"java_service_user_notify">>, Json, undefined),

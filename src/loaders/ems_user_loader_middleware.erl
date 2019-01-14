@@ -168,7 +168,8 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, Operation) ->
 
 
 notify_java_user_service(Conf, User, Operation) ->
-	case Conf#config.java_service_user_notify =/= undefined andalso 
+	case Conf#config.java_service_user_notify_enabled == true andalso
+		 Conf#config.java_service_user_notify =/= undefined andalso 
 		 Conf#config.java_service_user_notify_node =/= undefined andalso 
 		 Conf#config.java_service_user_notify_module =/= undefined andalso 
 		 Conf#config.java_service_user_notify_function =/= undefined andalso 
