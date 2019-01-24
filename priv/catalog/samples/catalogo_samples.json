@@ -42,6 +42,10 @@
 	{
 		"catalog": "/samples/catalogo_certificate", 
 		"file": "catalogo_certificate.json"
-	}	
+	},
+	{
+		"catalog": "/samples/catalogo_cifer", 
+		"file": "catalogo_cifer.json"
+	}
 	
 ]
