@@ -601,7 +601,7 @@ handle_request_search_login(Name,
 														  host = Ip,
 														  protocol = ldap,
 														  port = Port}),
-							ResultDone = make_result_done(noSuchObject),
+							ResultDone = make_result_done(invalidCredentials),
 							{ok, [ResultDone]};
 						_ -> 
 							case ems_util:ldap_attribute_map_to_user_field(Attribute) of
@@ -622,7 +622,7 @@ handle_request_search_login(Name,
 																  host = Ip,
 																  protocol = ldap,
 																  port = Port}),
-									ResultDone = make_result_done(noSuchAttribute),
+									ResultDone = make_result_done(invalidCredentials),
 									{ok, [ResultDone]}
 							end
 					end;
@@ -720,7 +720,7 @@ do_find_by_filter(Filter,
 										  host = Ip,
 										  protocol = ldap,
 										  port = Port}),
-			ResultDone = make_result_done(noSuchObject),
+			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]};
 		{ok, [User|_]} -> 
 			case BindRequestName of
@@ -769,7 +769,7 @@ do_find_by_filter(Filter,
 										  host = Ip,
 										  protocol = ldap,
 										  port = Port}),
-			ResultDone = make_result_done(noSuchObject),
+			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]}
 	end.
 
