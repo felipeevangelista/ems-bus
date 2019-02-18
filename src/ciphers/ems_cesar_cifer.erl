@@ -3,7 +3,8 @@
 -export([encrypt/2, decrypt/2, execute/1]).
 
 
-execute(Request) ->   
+execute(Request) ->  
+    io:format("Aqui 1 >>>>>>>>>>>>>> ~n"), 
     CipherText = encrypt("teste para verificar criptografia",3),
     PlainText = decrypt(CipherText, 3),
     io:format("CipherText: ~p~n~n",[CipherText]),
@@ -11,6 +12,7 @@ execute(Request) ->
     {ok, Request}.
 
 encrypt(PlainText, Padding) ->
+    io:format("PlainText >>> ~p~n",[PlainText]),
     PlainTextList = binary_to_list(PlainText),
     io:format("PlainTextList: ~p~n~n",[PlainTextList]),
     CipherTextList = lists:map(fun(Item) -> Item + Padding end, PlainTextList),

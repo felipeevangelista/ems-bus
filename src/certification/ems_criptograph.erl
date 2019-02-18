@@ -2,20 +2,30 @@
 
 -include("../include/ems_schema.hrl").
 
--export([read_private_key/1, read_public_key/1, read_certificate/1 ,read_pdf/1, execute/1]).
+-export([read_private_key/1, read_public_key/1, read_certificate/1 ,read_pdf/1, execute/1, verify_sign/3]).
 
 
 
 execute(Request) -> 
-    %%PrivateKey = read_private_key("/home/rcarauta/desenvolvimento/certificado/client.der"),
+    PrivateKey = read_private_key("/media/rcarauta/SSD/desenvolvimento/barramento/ems-bus/src/certification/private.pem"),
     Certificate = read_certificate("/home/rcarauta/desenvolvimento/certificado/client.crt"),
-    %%PDF = read_pdf("/home/rcarauta/Downloads/file.pdf"),
-
-    io:format("Data2: ~p~n",[Certificate]),
+    PDF = read_pdf("/home/rcarauta/Downloads/file.pdf"),
 
     ListFilesAuthorities = read_all_files_path("/home/rcarauta/desenvolvimento/certificado/autoridades"),
 
     io:format("Valid certificates: ~p~n~n",[verify_valid_certificate(Certificate, ListFilesAuthorities)]),
+
+    io:format("Data2: ~p~n",[Certificate]),
+
+    sign_pdf(PrivateKey, PDF),
+
+    PublicKey = read_public_key("/media/rcarauta/SSD/desenvolvimento/barramento/ems-bus/src/certification/public.pem"),
+
+    Verified = verify_sign(PDF, "/media/rcarauta/SSD/desenvolvimento/barramento/ems-bus/src/certification/fileSign", PublicKey),
+
+    io:format("Verified >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p~n~n",[Verified]),
+
+    io:format("Funcionou perfeitamente bem >>>>>>>>>>>>>>>>>>>>>>>>>>!!!!!!!!!!!!!!!!!!!! :) ~n~n~n~n"),
 
     {ok, Request#request{code = 200,
             content_type_out = <<"application/json">>,
@@ -23,11 +33,17 @@ execute(Request) ->
 	}.
 
 read_private_key(FilePrivateKey) ->
- 	 ems_util:open_file(FilePrivateKey).
+      RawSKey =  ems_util:open_file(FilePrivateKey),
+      [EncSKey] = public_key:pem_decode(RawSKey),
+      SKey = public_key:pem_entry_decode(EncSKey),
+      SKey.
 	
 
 read_public_key(FilePublicKey) ->
-     ems_util:open_file(FilePublicKey).
+        RawPKey =  ems_util:open_file(FilePublicKey),
+        [EncPKey] = public_key:pem_decode(RawPKey),
+        PKey = public_key:pem_entry_decode(EncPKey),
+        PKey.
 
 read_certificate(FileCertificate) ->
     ContentCert = ems_util:open_file(FileCertificate),
@@ -41,6 +57,19 @@ read_certificate(FileCertificate) ->
 read_pdf(FilePDF) ->
     ems_util:open_file(FilePDF).
  
+
+sign_pdf(PrivKey, Msg) ->
+    DigestType = sha256,
+    SigBin = public_key:sign(Msg, DigestType, PrivKey),
+    io:format("Assinado >>>>>>>>>>>>>>>>>>>> ~n"),
+    file:write_file("/media/rcarauta/SSD/desenvolvimento/barramento/ems-bus/src/certification/fileSign", SigBin).
+
+
+verify_sign(Msg, SignatureFile ,PublicKey) ->
+    DigestType = sha256,
+    Signature = ems_util:open_file(SignatureFile),
+    public_key:verify(Msg, DigestType, Signature, PublicKey).
+
 
 read_all_files_path(Dir) ->
     read_all_files_path(Dir, true).

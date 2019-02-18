@@ -17,7 +17,7 @@
 -export_records([user, user_history, user_permission, user_perfil, 
 				 user_email, user_dados_funcionais, user_endereco, user_telefone,
 				 catalog_schema, schema_type, service, service_owner, 
-				 client, service_datasource, stat_counter_hist, counter]).
+				 client, service_datasource, stat_counter_hist, counter, user_notify_rec]).
 
 
 % to_record
@@ -197,6 +197,7 @@ new(schema_type) -> #schema_type{};
 new(client) -> #client{};
 new(stat_counter_hist) -> #stat_counter_hist{};
 new(counter) -> #counter{};
+new(user_notify_rec) -> #user_notify_rec{};
 new(_) -> erlang:error(einvalid_type).
 
 
@@ -217,6 +218,7 @@ new_(user_perfil) -> #user_perfil{_ = '_'};
 new_(client) -> #client{_ = '_'};
 new_(stat_counter_hist) -> #stat_counter_hist{_ = '_'};
 new_(counter) -> #counter{_ = '_'};
+new_(user_notify_rec) -> #user_notify_rec{_ = '_'};
 new_(_) -> erlang:error(einvalid_type).
 
 
@@ -265,6 +267,7 @@ get_schema_table(catalog_kernel_db) -> ?SERVICE_DESCRIPTOR;
 get_schema_table(catalog_options_fs) -> ?SERVICE_DESCRIPTOR;
 get_schema_table(catalog_options_db) -> ?SERVICE_DESCRIPTOR;
 get_schema_table(service_datasource) -> ?SERVICE_DATASOURCE_DESCRIPTOR;
+get_schema_table(user_notify_rec) -> ?USER_NOTIFY_REC_SCHEMA_DESCRIPTOR;
 get_schema_table(_) -> undefined.
 
 

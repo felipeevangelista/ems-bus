@@ -8,7 +8,7 @@
 		"url": "/cifer/cesar",
 		"type": "GET",
 		"authorization" : "public",
-		"http_max_content_length": 104857600,
+		"http_max_content_length": 1048576000,
 		"lang" : "erlang"
 	}
 ]

@@ -532,6 +532,9 @@ parse_config(Json, Filename) ->
 		put(parse_step, java_thread_pool),
 		JavaThreadPool = ems_util:parse_range(get_p(<<"java_thread_pool">>, Json, 12), 1, 120),
 
+		put(parse_step, java_service_user_notify_enabled),
+		JavaServiceUserNotifyEnabled = ems_util:parse_bool(get_p(<<"java_service_user_notify_enabled">>, Json, false)),
+		
 		put(parse_step, java_service_user_notify),
 		JavaServiceUserNotify = get_p(<<"java_service_user_notify">>, Json, undefined),
 		case JavaServiceUserNotify =/= undefined andalso JavaServiceUserNotify =/= <<>> of
@@ -672,6 +675,7 @@ parse_config(Json, Filename) ->
 				 java_home = JavaHome,
 				 java_thread_pool = JavaThreadPool,
 				 java_service_scan = JavaServiceScan,
+				 java_service_user_notify_enabled = JavaServiceUserNotifyEnabled,
 				 java_service_user_notify = JavaServiceUserNotify,
 				 java_service_user_notify_module = JavaServiceUserNotifyModule,
 				 java_service_user_notify_node = JavaServiceUserNotifyNode,

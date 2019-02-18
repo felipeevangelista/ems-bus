@@ -18,6 +18,19 @@
 -record(counter, {key :: atom(), 
      			  value :: non_neg_integer()}).
 
+-record(user_notify_rec, {id :: non_neg_integer(), 					
+						  ctrl_source_type :: atom(),					
+						  ctrl_watermark :: non_neg_integer()			
+		}).
+
+-define(USER_NOTIFY_REC_SCHEMA_DESCRIPTOR, {
+			   atom_type,									%%  0 - nome da tabela	
+			   non_neg_integer_type, 						%%  1 - id   
+			   atom_type,									%%  2 - ctrl_source_type
+			   non_neg_integer_type							%%  3 - ctrl_watermark
+			}).		
+		
+
 -record(user, {id :: non_neg_integer(), 					%%  1 - id       				-> TB_Usuario.UsuId
 			   codigo :: non_neg_integer(),					%%  2 - codigo   				-> Tb_Pessoa.PesCodigoPessoa
 			   login :: binary(),							%%  3 - login	
@@ -52,21 +65,23 @@
 			   remap_user_id :: non_neg_integer(),			%% 29 - remap_user_id
 			   admin = false :: boolean(),					%% 30 - admin					-> alguns web services podem ser acedidos somente por admins
 			   old_login :: binary(),						%% 31 - old_login	
-			   old_name :: binary(), 						%% 32 - old_name		
-			   old_cpf :: binary(),							%% 33 - old_cpf		
-			   old_email :: binary(), 						%% 34 - old_email	
-			   old_password :: binary(),					%% 35 - old_password 
-			   ctrl_path :: string(),						%% 36 - ctrl_path
-			   ctrl_file :: string(),						%% 37 - ctrl_file
-			   ctrl_insert :: binary(),						%% 38 - ctrl_insert				-> Data que foi inserido no banco mnesia
-			   ctrl_update :: binary(), 					%% 39 - ctrl_update				-> Data que foi atualiado no banco mnesia			
-			   ctrl_modified :: binary(),					%% 40 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
-			   ctrl_hash :: non_neg_integer(),				%% 41 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
-			   ctrl_last_login :: binary(),					%% 42 - ctrl_last_login			-> Atualizado toda vez que ems_user:find_index_by_login_and_password é executado
-			   ctrl_login_count = 0 :: non_neg_integer(),	%% 43 - ctrl_login_count		-> Incrementado toda vez que ems_user:find_index_by_login_and_password é executado
-			   ctrl_last_login_scope :: atom(),				%% 44 - ctrl_last_login_scope	-> Qual tabela que encontrou o usuário
-			   ctrl_last_login_client :: binary(),			%% 45 - ctrl_last_login_client	-> Em qual cliente logou
-			   ctrl_source_type :: atom()					%% 46 - ctrl_source_type		-> nome da tabela onde os dados são armazenados
+			   old_codigo :: non_neg_integer(),				%% 32 - old_login	
+			   old_name :: binary(), 						%% 33 - old_name		
+			   old_cpf :: binary(),							%% 34 - old_cpf		
+			   old_email :: binary(), 						%% 35 - old_email	
+			   old_password :: binary(),					%% 36 - old_password 
+			   ctrl_path :: string(),						%% 37 - ctrl_path
+			   ctrl_file :: string(),						%% 38 - ctrl_file
+			   ctrl_insert :: binary(),						%% 39 - ctrl_insert				-> Data que foi inserido no banco mnesia
+			   ctrl_update :: binary(), 					%% 40 - ctrl_update				-> Data que foi atualiado no banco mnesia			
+			   ctrl_modified :: binary(),					%% 41 - ctrl_modified			-> Data que foi modificado na fonte onde está cadastrado (em disco ou banco de dados externo)
+			   ctrl_hash :: non_neg_integer(),				%% 42 - ctrl_hash 				-> Hash gerado para poder comparar dois registros	
+			   ctrl_last_login :: binary(),					%% 43 - ctrl_last_login			-> Atualizado toda vez que ems_user:find_index_by_login_and_password é executado
+			   ctrl_login_count = 0 :: non_neg_integer(),	%% 44 - ctrl_login_count		-> Incrementado toda vez que ems_user:find_index_by_login_and_password é executado
+			   ctrl_last_login_scope :: atom(),				%% 45 - ctrl_last_login_scope	-> Qual tabela que encontrou o usuário
+			   ctrl_last_login_client :: binary(),			%% 46 - ctrl_last_login_client	-> Em qual cliente logou
+			   ctrl_source_type :: atom(),					%% 47 - ctrl_source_type		-> nome da tabela onde os dados são armazenados
+			   ctrl_watermark :: non_neg_integer()			%% 48 - ctrl_watermark			-> cada vez que um registro é modificado, sua marca dágua é incrementada e quando inserido é 0
 		}).
 		
 -define(USER_SCHEMA_DESCRIPTOR, {
@@ -102,21 +117,23 @@
 			   non_neg_integer_type,						%% 29 - remap_user_id
 			   boolean_type,								%% 30 - admin	
 			   binary_type,									%% 31 - old_login	
-			   binary_type, 								%% 32 - old_name		
-			   binary_type,									%% 33 - old_cpf		
-			   binary_type, 								%% 34 - old_email	
-			   binary_type,									%% 35 - old_password 
-			   string_type,									%% 36 - ctrl_path
-			   string_type,									%% 37 - ctrl_file
-			   binary_type,									%% 38 - ctrl_insert
-			   binary_type, 								%% 39 - ctrl_update
-			   binary_type,									%% 40 - ctrl_modified
-			   non_neg_integer_type,						%% 41 - ctrl_hash 	
-			   binary_type,									%% 42 - ctrl_last_login
-			   non_neg_integer_type, 						%% 43 - ctrl_login_count
-			   atom_type,									%% 44 - ctrl_last_login_scope
-			   binary_type,									%% 45 - ctrl_last_login_client
-			   atom_type									%% 46 - ctrl_source_type
+			   non_neg_integer_type,						%% 32 - old_codigo
+			   binary_type, 								%% 33 - old_name		
+			   binary_type,									%% 34 - old_cpf		
+			   binary_type, 								%% 35 - old_email	
+			   binary_type,									%% 36 - old_password 
+			   string_type,									%% 37 - ctrl_path
+			   string_type,									%% 38 - ctrl_file
+			   binary_type,									%% 39 - ctrl_insert
+			   binary_type, 								%% 40 - ctrl_update
+			   binary_type,									%% 41 - ctrl_modified
+			   non_neg_integer_type,						%% 42 - ctrl_hash 	
+			   binary_type,									%% 43 - ctrl_last_login
+			   non_neg_integer_type, 						%% 44 - ctrl_login_count
+			   atom_type,									%% 45 - ctrl_last_login_scope
+			   binary_type,									%% 46 - ctrl_last_login_client
+			   atom_type,									%% 47 - ctrl_source_type
+			   non_neg_integer_type							%% 48 - ctrl_watermark
 			}).		
 		
 %

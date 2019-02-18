@@ -384,6 +384,7 @@ dispatch_service_work(Request = #request{rid = Rid,
 	io:format("FunctionName is ~p\n", [FunctionName]),
 	Msg = {{Rid, Url, binary_to_list(Type), ParamsMap, QuerystringMap, Payload, ContentType, ModuleName, FunctionName, 
 			ClientJson, UserJson, Metadata, {Scope, AccessToken}, T2, Timeout}, self()},
+			io:format("Request >>>>>>>>>>>>>>>>>>>>>>>> ~p ~n~n",[Request]),
 	dispatch_service_work_send(Request, Service, ShowDebugResponseHeaders, Msg, 1).
 
 

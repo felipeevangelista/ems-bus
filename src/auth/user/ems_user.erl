@@ -811,6 +811,7 @@ new_from_map(Map, Conf) ->
 					remap_user_id = RemapUserId,
 					admin = Admin,
 					old_login = undefined,
+					old_codigo = undefined,
 					old_name = undefined,
 					old_cpf = undefined,
 					old_email = undefined,
@@ -822,7 +823,8 @@ new_from_map(Map, Conf) ->
 					ctrl_last_login = undefined,
 					ctrl_login_count = 0,
 					ctrl_last_login_scope = undefined,
-					ctrl_last_login_client = undefined
+					ctrl_last_login_client = undefined,
+					ctrl_watermark = 0
 			}
 		}
 	catch
