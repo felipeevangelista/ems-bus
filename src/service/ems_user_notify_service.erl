@@ -19,11 +19,12 @@
 %% Server API
 -export([start/1, stop/0]).
 
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3, notify_users_processados/1]).
 
 -export([add/1]).
 
--record(state, {users = []}).
+-record(state, {users = [], 
+				id_message = 0}).
 
 %% API.
 
@@ -36,7 +37,10 @@ add(User) -> gen_server:cast(?SERVER, {add_user, User}).
 %% gen_server.
 
 -spec init([]) -> {ok, #state{}}.
-init(_Service) -> {ok, #state{users = []}, 6000}.
+init(_Service) -> 
+	%%ets:new(ets_user_notify_processados, [set, named_table, public]),
+	ems_cache:new(ets_user_notify_processados),
+	{ok, #state{users = []}, 6000}.
 
 handle_call(_Request, _From, State) ->
 	{reply, ignored, State, 5000}.
@@ -64,10 +68,23 @@ code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.
 
 
+notify_users_processados([]) -> ok;
+notify_users_processados([#{ <<"id">> := Id, 
+							 <<"ctrl_source_type">> := SourceType, 
+							 <<"ctrl_watermark">> := Watermark}|T]) ->
+	SourceTypeAtom = binary_to_atom(SourceType, utf8),
+	Key = erlang:phash2([Id, SourceTypeAtom, Watermark]),
+	Value = {Id, SourceTypeAtom, Watermark},
+	ems_cache:add(ets_user_notify_processados, 3600000, Key, Value),
+	notify_users_processados(T).
+
+
+notifica_users_message(_, []) -> ok;
 notifica_users_message(Conf, Buffer) ->
 	try
 		UserListJson = ems_schema:to_json(Buffer),
-		MsgService = {{0, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
+		Rid = 1,
+		MsgService = {{Rid, "/netadm/dataloader/user/notify", "POST", #{}, #{}, 
 						UserListJson, % Payload
 						<<"application/json; charset=utf-8">>,  
 						atom_to_list(Conf#config.java_service_user_notify_module),
@@ -77,13 +94,20 @@ notifica_users_message(Conf, Buffer) ->
 						<<>>,  		 	% Metadata, 
 						{<<>>, <<>>},  	% {Scope, AccessToken}, 
 						0, 			 	% T2, 
-						0 			 	% Timeout
+						0 		 		% Timeout
 						}, self()},
 		Node = Conf#config.java_service_user_notify_node,  %Ex.: 'br_unb_pessoal_facade_AtualizaDadosSIPFacade_node01@CPD-DES-374405'
 		Module = Conf#config.java_service_user_notify_module, %Ex.: 'br.unb.pessoal.facade.AtualizaDadosSIPFacade'
-		{Module, Node} ! MsgService
+		{Module, Node} ! MsgService,
+		receive 
+			{_Code, RidRemote, {_Reason, JsonUsersProcessados}} when RidRemote == Rid  -> 
+				{ok, ListaUsersProcessados} = ems_util:json_decode_as_map(JsonUsersProcessados),
+				notify_users_processados(ListaUsersProcessados);
+			_UnknowMessage -> ok
+			after 7000 -> ok
+		end
 	catch 
-		_Exception:Reason -> ems_logger:error("ems_user_notify_service send message failed. Reason: ~p.", [Reason])
+		_Exception:ReasonEx -> ems_logger:error("ems_user_notify_service send message failed. Reason: ~p.", [ReasonEx])
 	end.
 
 
@@ -95,18 +119,39 @@ notifica_users(Conf, [], Buffer, _) ->
 notifica_users(Conf, Users, Buffer, 200) ->
 	notifica_users_message(Conf, Buffer),
 	notifica_users(Conf, Users, [], 0);
-notifica_users(Conf, [H|T], Buffer, Count) ->
-	case Conf#config.log_show_user_notify_activity of
+notifica_users(Conf, [H = #user{id = Id, 
+							name = Name, 
+							login = Login,
+							cpf = Cpf,
+							email = Email,
+							nome_mae = NomeMae,
+							ctrl_source_type = SourceType,
+							ctrl_watermark = Watermark,
+							ctrl_modified = Modified}|T], Buffer, Count) ->
+	Key = erlang:phash2([Id, SourceType, Watermark]),
+	AllowNotify = case ets:lookup(ets_user_notify_processados, Key) of
+						[] -> 
+							true; 
+						_ -> 
+							false
+				  end,
+	case AllowNotify of
 		true -> 
-			ems_logger:info("ems_user_notify_service notify user name: \"~s\", login: \"~s\", cpf: \"~s\" email: \"~s\",  nome_mae: \"~s\", ctrl_source_type: ~p, ctrl_modified: \"~s\".", [
-					binary_to_list(H#user.name), 
-					binary_to_list(H#user.login), 
-					ems_util:binary_to_list_def(H#user.cpf, ""),
-					ems_util:binary_to_list_def(H#user.email, ""), 
-					ems_util:binary_to_list_def(H#user.nome_mae, ""),
-					H#user.ctrl_source_type,
-					ems_util:binary_to_list_def(H#user.ctrl_modified, "")]);
-		false -> ok
-	end,
-	notifica_users(Conf, T, [H | Buffer], Count+1).
+			case Conf#config.log_show_user_notify_activity of
+				true -> 
+					ems_logger:info("ems_user_notify_service notify user name: \"~s\", login: \"~s\", cpf: \"~s\" email: \"~s\",  nome_mae: \"~s\", ctrl_source_type: ~p, ctrl_watermark: ~p, ctrl_modified: \"~s\".", [
+							binary_to_list(Name), 
+							binary_to_list(Login), 
+							ems_util:binary_to_list_def(Cpf, ""),
+							ems_util:binary_to_list_def(Email, ""), 
+							ems_util:binary_to_list_def(NomeMae, ""),
+							SourceType,
+							Watermark,
+							ems_util:binary_to_list_def(Modified, "")]);
+				false -> ok
+			end,
+			notifica_users(Conf, T, [H | Buffer], Count+1);
+		false ->
+			notifica_users(Conf, T, Buffer, Count)
+	end.
 

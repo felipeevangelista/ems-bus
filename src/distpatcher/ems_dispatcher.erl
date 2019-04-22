@@ -95,7 +95,7 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 									service_result_cache_hit_metric_name = ServiceResultCacheHitMetricName,
 									service_host_denied_metric_name = ServiceHostDeniedMetricName,
 									service_auth_denied_metric_name = ServiceAuthDeniedMetricName},
-				ShowDebugResponseHeaders) -> 
+				ShowDebugResponseHeaders) -> 			
 	?DEBUG("ems_dispatcher lookup request ~p.", [Request]),
 	case ems_util:allow_ip_address(Ip, AllowedAddress) of
 		true ->
@@ -106,7 +106,7 @@ dispatch_request(Request = #request{req_hash = ReqHash,
 					Request2 = Request#request{client = Client,
 											   user = User,
 											   scope = Scope,
-											   access_token = AccessToken},
+										    access_token = AccessToken},
 					case Type of
 						<<"OPTIONS">> -> 
 								{ok, request, Request2#request{code = 200, 

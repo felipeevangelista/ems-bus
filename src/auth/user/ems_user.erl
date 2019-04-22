@@ -474,15 +474,22 @@ to_resource_owner(User, ClientId) ->
 		true -> 
 			case User#user.cpf of
 				<<>> ->
-					{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]),
+					{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [perfil_id, name]),
 					ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-					{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
-					ListaPermissionJson = ems_schema:to_json(ListaPermission);
+					{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, perfil_id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
+					ListaPermissionJson = ems_schema:to_json(ListaPermission),
+					io:format("ListaPermissionJson >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p~n~n",[ListaPermissionJson]),
+					io:format("User >>>>>>>>>>>>>>>>>>> ~p~n~n",[User#user.id]),
+					io:format("ClienteId >>>>>>>>>>>>>>>>>>> ~p~n~n",[ClientId]);
 				_ ->
-					{ok, ListaPerfil} = ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]),
+					{ok, ListaPerfil} = ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [perfil_id, name]),
 					ListaPerfilJson = ems_schema:to_json(ListaPerfil),
-					{ok, ListaPermission} = ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
-					ListaPermissionJson = ems_schema:to_json(ListaPermission)
+					{ok, ListaPermission} = ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, perfil_id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
+					ListaPermissionJson = ems_schema:to_json(ListaPermission),
+					io:format("ListaPermissionJson >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p~n~n",[ListaPermissionJson]),
+					io:format("ListaPerfil >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p~n~n",[ListaPerfil]),
+					io:format("User >>>>>>>>>>>>>>>>>>> ~p~n~n",[User#user.id]),
+					io:format("ClienteId >>>>>>>>>>>>>>>>>>> ~p~n~n",[ClientId])
 			end,
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
@@ -811,6 +818,7 @@ new_from_map(Map, Conf) ->
 					remap_user_id = RemapUserId,
 					admin = Admin,
 					old_login = undefined,
+					old_codigo = undefined,
 					old_name = undefined,
 					old_cpf = undefined,
 					old_email = undefined,
@@ -822,7 +830,8 @@ new_from_map(Map, Conf) ->
 					ctrl_last_login = undefined,
 					ctrl_login_count = 0,
 					ctrl_last_login_scope = undefined,
-					ctrl_last_login_client = undefined
+					ctrl_last_login_client = undefined,
+					ctrl_watermark = 0
 			}
 		}
 	catch

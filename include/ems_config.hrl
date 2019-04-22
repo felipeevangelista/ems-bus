@@ -113,8 +113,8 @@
 % Armazena o buffer do log a cada LOG_FILE_CHECKPOINT ms (Aumente este valor se existir muita contenção de escrita em disco)
 -define(LOG_FILE_CHECKPOINT, 400).  
 
-% Tamanho máximo permitido para os arquivos de logs: 250MB
--define(LOG_FILE_MAX_SIZE, 262144000000).  
+% Tamanho máximo permitido para os arquivos de logs: 500MB
+-define(LOG_FILE_MAX_SIZE, 524288000).  
 
 % Arquiva o log a cada LOG_ARCHIVE_CHECKPOINT ms
 -define(LOG_ARCHIVE_CHECKPOINT, 1000 * 60 * 60 * 24).  % Por default são 24 horas
@@ -376,6 +376,7 @@
 				 java_home :: string(),
  				 java_thread_pool :: non_neg_integer(),
  				 java_service_scan :: string(),
+ 				 java_service_user_notify_enabled :: boolean(),
  				 java_service_user_notify :: string(),
  				 java_service_user_notify_module :: atom(),
  				 java_service_user_notify_node :: atom(),
