@@ -199,7 +199,7 @@ handle_request({'LDAPMessage', _,
 															  host = Ip,
 															  protocol = ldap,
 															  port = Port}),
-								ResultDone = make_result_done(insufficientAccessRights),
+								ResultDone = make_result_done(invalidCredentials),
 								{ok, [ResultDone]}
 						end
 			end;
@@ -550,7 +550,7 @@ handle_bind_request(Name,
 								 BindResponse = make_bind_response(success, Name);
 							  _-> 
 								 ems_logger:error("ems_ldap_handler handle_bind_request bind_~s ~p invalid credential from ~p.", [atom_to_list(UidOrCn), Name, Ip]),
-								 BindResponse = make_bind_response(insufficientAccessRights, Name)
+								 BindResponse = make_bind_response(invalidCredentials, Name)
 						   end
 					end,
 					BindResponse;
@@ -601,7 +601,7 @@ handle_request_search_login(Name,
 														  host = Ip,
 														  protocol = ldap,
 														  port = Port}),
-							ResultDone = make_result_done(noSuchObject),
+							ResultDone = make_result_done(invalidCredentials),
 							{ok, [ResultDone]};
 						_ -> 
 							case ems_util:ldap_attribute_map_to_user_field(Attribute) of
@@ -622,7 +622,7 @@ handle_request_search_login(Name,
 																  host = Ip,
 																  protocol = ldap,
 																  port = Port}),
-									ResultDone = make_result_done(noSuchAttribute),
+									ResultDone = make_result_done(invalidCredentials),
 									{ok, [ResultDone]}
 							end
 					end;
@@ -720,7 +720,7 @@ do_find_by_filter(Filter,
 										  host = Ip,
 										  protocol = ldap,
 										  port = Port}),
-			ResultDone = make_result_done(noSuchObject),
+			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]};
 		{ok, [User|_]} -> 
 			case BindRequestName of
@@ -769,7 +769,7 @@ do_find_by_filter(Filter,
 										  host = Ip,
 										  protocol = ldap,
 										  port = Port}),
-			ResultDone = make_result_done(noSuchObject),
+			ResultDone = make_result_done(invalidCredentials),
 			{ok, [ResultDone]}
 	end.
 
