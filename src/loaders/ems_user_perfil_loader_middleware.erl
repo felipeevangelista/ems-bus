@@ -62,7 +62,7 @@ get_filename() ->
 insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 	try
 		case ems_user_perfil:new_from_map(Map, Conf) of
-			{ok, NewRecord = #user_perfil{id = Id, ctrl_hash = CtrlHash}} -> 
+			{ok, NewRecord = #user_perfil{id = Id, ctrl_hash = CtrlHash}} ->
 				Table = ems_user_perfil:get_table(SourceType),
 				case ems_user_perfil:find(Table, Id) of
 					{error, enoent} -> 
@@ -73,6 +73,7 @@ insert_or_update(Map, CtrlDate, Conf, SourceType, _Operation) ->
 							true ->
 								?DEBUG("ems_user_perfil_perfil_loader_middleware update ~p from ~p.", [Map, SourceType]),
 								UserPerfil = CurrentRecord#user_perfil{
+												 perfil_id = NewRecord#user_perfil.perfil_id,
 												 user_id = NewRecord#user_perfil.user_id,
 												 client_id = NewRecord#user_perfil.client_id,
 												 name = NewRecord#user_perfil.name,

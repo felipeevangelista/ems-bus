@@ -883,7 +883,7 @@ utf8_binary_to_list(Value) ->
 
 check_encoding_bin(Bin) when is_binary(Bin) ->
     case unicode:characters_to_binary(Bin,utf8,utf8) of
-	Bin ->
+	Bin ->	
 	    utf8;
 	_ ->
 	    latin1
@@ -3865,6 +3865,7 @@ binary_to_hex(Bin) when is_binary(Bin) ->
 
 hex(C) when C < 10 -> $0 + C;
 hex(C) -> $a + C - 10.
+	
 
 % Return a encrypted password in binary format        
 criptografia_sha1(<<>>) -> <<>>;

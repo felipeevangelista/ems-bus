@@ -1,0 +1,29 @@
+[
+	{
+		"name" : "/certificate/sign",
+		"comment": "Assinar o adocumento",
+		"owner": "samples",
+		"version": "1",
+		"service" : "ems_criptograph:sign_document",
+		"url": "/certificate/sign",
+		"type": "GET",
+		"authorization" : "public",
+		"http_max_content_length": 1048576000,
+		"timeout" : 1000000,
+		"lang" : "erlang"
+	},
+
+	{
+		"name" : "/certificate/validate",
+		"comment": "Validate certificate",
+		"owner": "samples",
+		"version": "1",
+		"service" : "ems_criptograph:verify_document",
+		"url": "/certificate/validate",
+		"type": "GET",
+		"authorization" : "public",
+		"http_max_content_length": 1048576000,
+		"timeout" : 1000000,
+		"lang" : "erlang"
+	}
+]

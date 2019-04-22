@@ -606,7 +606,8 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 			 {<<"SMTP_PASSWD">>, Conf#config.smtp_passwd},
 			 {<<"SMTP_PORT">>, Conf#config.smtp_port},
 			 {<<"SMTP_MAIL">>, Conf#config.smtp_mail},
-			 {<<"PRIV_PATH">>, ?PRIV_PATH}
+			 {<<"PRIV_PATH">>, ?PRIV_PATH},
+			 {<<"HOST">>, Conf#config.ems_host}
 			]), 
     DaemonParams3 = case DaemonParamsEncode of
 						<<"base64">> -> list_to_binary("'base64:" ++ base64:encode_to_string(DaemonParams2) ++ "'");
@@ -638,7 +639,8 @@ parse_variables(Str, #state{daemon_id = DaemonId,
 		 {<<"SMTP_PASSWD">>, Conf#config.smtp_passwd},
 		 {<<"SMTP_PORT">>, Conf#config.smtp_port},
 		 {<<"SMTP_MAIL">>, Conf#config.smtp_mail},
-		 {<<"PRIV_PATH">>, ?PRIV_PATH}
+		 {<<"PRIV_PATH">>, ?PRIV_PATH},
+		 {<<"HOST">>, Conf#config.ems_host}
 		]), 
 	Result.
 
