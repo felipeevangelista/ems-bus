@@ -110,6 +110,7 @@ notifica_users_message(Conf, Buffer) ->
 		_Exception:ReasonEx -> ems_logger:error("ems_user_notify_service send message failed. Reason: ~p.", [ReasonEx])
 	end.
 
+
 notifica_users(Conf, Users) ->
 	notifica_users(Conf, Users, [], 0).
 	
