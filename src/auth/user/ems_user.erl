@@ -477,19 +477,12 @@ to_resource_owner(User, ClientId) ->
 					{ok, ListaPerfil} = ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [perfil_id, name]),
 					ListaPerfilJson = ems_schema:to_json(ListaPerfil),
 					{ok, ListaPermission} = ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, perfil_id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
-					ListaPermissionJson = ems_schema:to_json(ListaPermission),
-					io:format("ListaPermissionJson >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p~n~n",[ListaPermissionJson]),
-					io:format("User >>>>>>>>>>>>>>>>>>> ~p~n~n",[User#user.id]),
-					io:format("ClienteId >>>>>>>>>>>>>>>>>>> ~p~n~n",[ClientId]);
+					ListaPermissionJson = ems_schema:to_json(ListaPermission);
 				_ ->
 					{ok, ListaPerfil} = ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [perfil_id, name]),
 					ListaPerfilJson = ems_schema:to_json(ListaPerfil),
 					{ok, ListaPermission} = ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, perfil_id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]),
-					ListaPermissionJson = ems_schema:to_json(ListaPermission),
-					io:format("ListaPermissionJson >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p~n~n",[ListaPermissionJson]),
-					io:format("ListaPerfil >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p~n~n",[ListaPerfil]),
-					io:format("User >>>>>>>>>>>>>>>>>>> ~p~n~n",[User#user.id]),
-					io:format("ClienteId >>>>>>>>>>>>>>>>>>> ~p~n~n",[ClientId])
+					ListaPermissionJson = ems_schema:to_json(ListaPermission)
 			end,
 			iolist_to_binary([<<"{"/utf8>>,
 								<<"\"id\":"/utf8>>, integer_to_binary(User#user.id), <<","/utf8>>,
@@ -506,16 +499,16 @@ to_resource_owner(User, ClientId) ->
 								<<"\"lista_permission\":"/utf8>>, ListaPermissionJson, 
 							<<"}"/utf8>>]);
 		false ->
-			ListaPerfilFinal = case ems_user_perfil:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name]) of
+			ListaPerfilFinal = case ems_user_perfil:find_by_user_and_client(User#user.remap_user_id, ClientId, [perfil_id, name]) of
 									{ok, ListaPerfil} -> 
 										case User#user.cpf of
 											<<>> ->
-												case ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]) of
+												case ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [perfil_id, name]) of
 													{ok, ListaPerfil2} -> ListaPerfil ++ ListaPerfil2;
 													_ -> ListaPerfil
 												end;
 											_ ->
-												case ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]) of
+												case ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [perfil_id, name]) of
 													{ok, ListaPerfil2} -> ListaPerfil ++ ListaPerfil2;
 													_ -> ListaPerfil
 												end
@@ -523,28 +516,28 @@ to_resource_owner(User, ClientId) ->
 									_ -> 
 										case User#user.cpf of
 											<<>> ->
-												case ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [id, name]) of
+												case ems_user_perfil:find_by_user_and_client(User#user.id, ClientId, [perfil_id, name]) of
 													{ok, ListaPerfil2} -> ListaPerfil2;
 													_ -> []
 												end;
 											_ ->
-												case ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name]) of
+												case ems_user_perfil:find_by_cpf_and_client(User#user.cpf, ClientId, [perfil_id, name]) of
 													{ok, ListaPerfil2} -> ListaPerfil2;
 													_ -> []
 												end
 										end
 								end,
 			ListaPerfilJson = ems_schema:to_json(ListaPerfilFinal),
-			ListaPermissionFinal = case ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+			ListaPermissionFinal = case ems_user_permission:find_by_user_and_client(User#user.remap_user_id, ClientId, [id, perfil_id , name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
 										{ok, ListaPermission} ->
 											case User#user.cpf of
 												<<>> ->
-													case ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+													case ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, perfil_id , name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
 														{ok, ListaPermission2} -> ListaPermission ++ ListaPermission2;
 														_ -> ListaPermission
 													end;
 												_ ->
-													case ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+													case ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, perfil_id , name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
 														{ok, ListaPermission2} -> ListaPermission ++ ListaPermission2;
 														_ -> ListaPermission
 													end
@@ -552,12 +545,12 @@ to_resource_owner(User, ClientId) ->
 										_ -> 
 											case User#user.cpf of
 												<<>> ->
-													case ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+													case ems_user_permission:find_by_user_and_client(User#user.id, ClientId, [id, perfil_id , name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
 														{ok, ListaPermission2} -> ListaPermission2;
 														_ -> []
 													end;
 												_ ->
-													case ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
+													case ems_user_permission:find_by_cpf_and_client(User#user.cpf, ClientId, [id, perfil_id , name, url, grant_get, grant_post, grant_put, grant_delete, position, glyphicon]) of
 														{ok, ListaPermission2} -> ListaPermission2;
 														_ -> []
 													end
