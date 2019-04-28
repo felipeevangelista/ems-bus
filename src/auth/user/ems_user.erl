@@ -97,7 +97,7 @@ find_by_codigo_pessoa(Table, Codigo) ->
 find_index_by_login_and_password([], _, _, _, _, _, _, _, _, _, _, _, _) ->
 	ems_data_loader:sync(ems_user_loader_db),
 	{error, access_denied, enoent};
-find_index_by_login_and_password([Table|T], LoginBin, 
+find_index_by_login_and_password([Table|T] = Tables, LoginBin, 
 											LoginSemBarraBin, 
 											PasswordBin, 
 											PasswordBinCryptoSHA1, 
@@ -144,7 +144,53 @@ find_index_by_login_and_password([Table|T], LoginBin,
 						end,	
 						{ok, User2};
 					false -> 
-						find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PasswordBinCryptoSHA1, PasswordBinLowerCryptoSHA1, PasswordBinUpperCryptoSHA1, PasswordBinCryptoMD5, PasswordBinLowerCryptoMD5, PasswordBinUpperCryptoMD5, PasswordStrLower, PasswordStrUpper, Client)
+					
+						% Eh tabela user_aluno_ativo_db e encontrou o login mas não bateu a senha, vamos tentar buscar a 
+						% senha na tabela user_db (se a tabela user_db também está no scope)
+						case Table == user_aluno_ativo_db andalso lists:member(user_db, Tables) == true of
+							true -> 
+								case mnesia:dirty_index_read(user_db, LoginBin, #user.login) of
+									[#user{password = PasswordUserEmOutraTabela}|_] -> 
+
+										case PasswordUserEmOutraTabela =:= PasswordBinCryptoSHA1 
+											 orelse PasswordUserEmOutraTabela =:= PasswordBin 
+											 orelse PasswordUserEmOutraTabela =:= PasswordBinLowerCryptoSHA1 
+											 orelse PasswordUserEmOutraTabela =:= PasswordBinUpperCryptoSHA1 
+											 orelse PasswordUserEmOutraTabela =:= PasswordBinLowerCryptoMD5 
+											 orelse PasswordUserEmOutraTabela =:= PasswordBinUpperCryptoMD5 
+											 orelse PasswordUserEmOutraTabela =:= PasswordStrLower 
+											 orelse PasswordUserEmOutraTabela =:= PasswordStrUpper of
+												true -> 
+													ClientName = case Client of
+																	undefined -> undefined;
+																	_ -> Client#client.name
+																 end,
+													case Table of
+														user_cache_lru ->
+															User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+																			  ctrl_login_count = User#user.ctrl_login_count + 1,
+																			  ctrl_last_login_client = ClientName},
+															mnesia:dirty_write(user_cache_lru, User2),
+															case CtrlLoginScope of
+																undefined -> ok; % não deveria se está no cache lru
+																_ -> mnesia:dirty_write(CtrlLoginScope, User2)
+															end;
+														_ -> 
+															User2 = User#user{ctrl_last_login = ems_util:timestamp_binary(), 
+																			  ctrl_login_count = User#user.ctrl_login_count + 1,
+																			  ctrl_last_login_scope = Table,
+																			  ctrl_last_login_client = ClientName},
+															mnesia:dirty_write(user_cache_lru, User2),
+															mnesia:dirty_write(Table, User2)
+													end,	
+													{ok, User2};
+												false -> 
+														find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PasswordBinCryptoSHA1, PasswordBinLowerCryptoSHA1, PasswordBinUpperCryptoSHA1, PasswordBinCryptoMD5, PasswordBinLowerCryptoMD5, PasswordBinUpperCryptoMD5, PasswordStrLower, PasswordStrUpper, Client)
+											end
+										end;
+							false ->					
+								find_index_by_login_and_password(T, LoginBin, LoginSemBarraBin, PasswordBin, PasswordBinCryptoSHA1, PasswordBinLowerCryptoSHA1, PasswordBinUpperCryptoSHA1, PasswordBinCryptoMD5, PasswordBinLowerCryptoMD5, PasswordBinUpperCryptoMD5, PasswordStrLower, PasswordStrUpper, Client)
+						end
 			end;
 		_ -> 
 			case mnesia:dirty_index_read(Table, LoginSemBarraBin, #user.login) of
