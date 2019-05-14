@@ -41,7 +41,9 @@ start() ->
 	application:start(jesse),
 	application:start(mochiweb),
     application:start(oauth2),
-	application:start(ems_bus).
+	application:start(ems_bus),
+	application:start(lager),
+	application:start(exometer).
     
 stop() -> 
 	application:stop(ems_bus),
@@ -65,4 +67,5 @@ stop() ->
     application:stop(ssl),
     application:stop(inets),
     application:stop(crypto),
-    application:stop(oauth2).
+	application:stop(exometer),
+	application:stop(lager).
