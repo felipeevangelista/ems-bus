@@ -23,6 +23,9 @@ start(_StartType, StartArgs) ->
 			Conf = ems_config:getConfig(),
 			ems_logger:set_level(info),
 			ems_dispatcher:start(),
+			application:set_env(snmp, agent, [{config, [{dir, "deps/exometer/priv/snmp"},{force_load, true},{verbosity, info}]}, {db_dir, "tmp/snmp"}, {agent_type, master}]),
+			snmp:start(),
+			exometer:start(),	
 			Ret = ems_bus_sup:start_link(StartArgs),
 			AuthorizationMode = case Conf#config.authorization of
 									basic -> <<"basic, oauth2">>;
