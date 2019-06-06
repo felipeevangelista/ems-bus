@@ -23,9 +23,13 @@ start(_StartType, StartArgs) ->
 			Conf = ems_config:getConfig(),
 			ems_logger:set_level(info),
 			ems_dispatcher:start(),
-			application:set_env(snmp, agent, [{config, [{dir, "deps/exometer/priv/snmp"},{force_load, true},{verbosity, info}]}, {db_dir, "tmp/snmp"}, {agent_type, master}]),
+			% @TODO - Create flag to enable snmp reporter	
+			application:set_env(snmp, agent, [{config, [{dir, "deps/exometer/priv/snmp"},{force_load, true},{verbosity, debug}]}, {db_dir, "tmp/snmp/agent/db/"}, {agent_type, master}]),	
+			application:set_env(snmp, manager, [{config, [{dir, "deps/exometer/priv/snmp"},{db_dir, "tmp/snmp/manager/db/"}]}]),	
 			snmp:start(),
-			exometer:start(),	
+			exometer:start(),
+			exometer_report:add_reporter(exometer_report_snmp,[]),
+			% end @TODO
 			Ret = ems_bus_sup:start_link(StartArgs),
 			AuthorizationMode = case Conf#config.authorization of
 									basic -> <<"basic, oauth2">>;
@@ -104,6 +108,10 @@ stop(_State) ->
     ems_logger:sync(),
     ems_bus_sup:stop(),
 	ems_config:stop(),
+	% @TODO - Create flag to enable snmp reporter	
+	exometer:stop(),
+	snmp:stop(),
+	% end @TODO	
     ok.
     
     

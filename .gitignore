@@ -27,3 +27,11 @@ rel/rpm/ems-bus-centos-CentOS-7/SOURCES/**
 rel/rpm/ems-bus-centos-CentOS-7/BUILDROOT/**
 rel/deb/*.deb
 rel/deb/*/control
+#Exometer SNMP files
+log/**
+mibs/**
+tmp/exometer_report_snmp/**
+tmp/snmp/agent/db/**
+tmp/snmp/manager/db/**
+include/EXOMETER-METRICS-MIB.hrl
+!.keep
