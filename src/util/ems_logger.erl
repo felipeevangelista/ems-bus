@@ -543,12 +543,15 @@ write_msg(Tipo, Msg, State = #state{log_level = Level,
 			case Tipo of
 				info  -> 
 					ems_db:inc_counter(ems_logger_write_info),
+					ems_metric:inc_counter_metric(ems_logger_write_info),
 					Msg1 = iolist_to_binary([?INFO_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, Msg, <<"\n">>]);
 				error -> 
 					ems_db:inc_counter(ems_logger_write_error),
+					ems_metric:inc_counter_metric(ems_logger_write_error),
 					Msg1 = iolist_to_binary([?ERROR_MESSAGE, ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?RED_COLOR, Msg, ?WHITE_BRK_COLOR]);
 				warn  -> 
 					ems_db:inc_counter(ems_logger_write_warn),
+					ems_metric:inc_counter_metric(ems_logger_write_warn),
 					Msg1 = iolist_to_binary([?WARN_MESSAGE,  ?LIGHT_GREEN_COLOR, ems_clock:local_time_str(), ?WHITE_SPACE_COLOR, ?WARN_COLOR, Msg, ?WHITE_BRK_COLOR]);
 				debug -> 
 					ems_db:inc_counter(ems_logger_write_debug),

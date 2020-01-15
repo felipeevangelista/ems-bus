@@ -1,0 +1,13 @@
+
+	{
+		"name" : "/tester",
+		"comment": "Web service para realização de testes com o Exometer",
+		"owner": "emsbus",
+		"version": "1.0.0",
+		"service" : "ems_tester_exometer_service:tester",
+		"url": "/tester/exometer",
+		"async": "false",
+		"type": "GET",
+		"authorization" : "public",
+		"lang" : "erlang"
+	}
